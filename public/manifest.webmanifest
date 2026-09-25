@@ -1,0 +1,16 @@
+{
+  "name": "Board RPG",
+  "short_name": "Board RPG",
+  "start_url": ".",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#181425",
+  "theme_color": "#181425",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}

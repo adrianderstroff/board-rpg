@@ -1,0 +1,76 @@
+# Reusable cell patterns (§6) for movement, ability/item ranges and areas.
+# Parts: walk (flood fill), ray (slide), leap (fixed jumps), area (static shape), include.
+# Directions: orthogonal | diagonal | all. Grid: x = screen down-right, y = screen down-left.
+
+# ---------- movement ----------
+walk1:
+  name: Step
+  parts: [{ walk: 1 }]
+
+king1:
+  name: King's Step
+  parts: [{ walk: 1, dirs: all }]
+
+knight:
+  name: Knight's Leap
+  parts:
+    - leap: [[1, 2]]
+      symmetric: true
+    - walk: 1
+
+diagonal2:
+  name: Bishop's Glide
+  parts:
+    - { ray: 2, dirs: diagonal }
+    - { walk: 1 }
+
+queen3:
+  name: Queen's Dash
+  parts: [{ ray: 3, dirs: all }]
+
+rook3:
+  name: Rook's Stride
+  parts: [{ ray: 3, dirs: orthogonal }]
+
+scuttle:
+  name: Scuttle
+  parts:
+    - { ray: 2, dirs: diagonal }
+    - { walk: 1 }
+
+flyer:
+  name: Flight
+  parts: [{ area: 3, shape: square }]
+  ignoreHeight: true
+
+# ---------- ranges & areas ----------
+self:
+  parts: []
+  includeOrigin: true
+
+adjacent:
+  parts: [{ area: 1, shape: square }]
+  includeOrigin: true
+  ignoreHeight: true
+
+range2:
+  parts: [{ area: 2 }]
+  includeOrigin: true
+  ignoreHeight: true
+
+range3:
+  parts: [{ area: 3 }]
+  ignoreHeight: true
+
+cross1:
+  parts: [{ area: 1, shape: cross }]
+  ignoreHeight: true
+
+diamond1:
+  parts: [{ area: 1 }]
+  ignoreHeight: true
+
+diamond4:
+  parts: [{ area: 4 }]
+  includeOrigin: true
+  ignoreHeight: true

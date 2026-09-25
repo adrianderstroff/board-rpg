@@ -1,0 +1,81 @@
+# Enemies (§3.3, §18). elements: damage multipliers (1.5 weak, 0.5 resist, 0 immune).
+# ai: weighted battle actions ("attack" or an ability id) with optional conditions.
+# boardAi.behavior: aggressive | guard | wander | static. pack: joins adjacent allies when heroes are near.
+# boardAi.abilities: board abilities used before moving (chance per turn when a good target exists).
+
+sand_scorpion:
+  name: Sand Scorpion
+  description: Buries itself in warm sand and strikes at anything that moves.
+  level: 2
+  stats: { maxHp: 30, maxMp: 0, str: 10, def: 9, mag: 2, mdef: 4, spd: 6 }
+  move: scuttle
+  elements: { ice: 1.5, earth: 0.5 }
+  charset: enemy_scorpion
+  battler: enemy_scorpion
+  face: enemy_scorpion
+  ai:
+    - { action: attack, weight: 3 }
+    - { action: poison_sting, weight: 2, when: { targetLacksStatus: poison } }
+  boardAi:
+    behavior: guard
+    aggroRange: 4
+    pack: true
+    abilities: [{ ability: venom_spit, chance: 0.3 }]
+  exp: 9
+  gold: 6
+  drops: [{ item: antidote, chance: 0.25 }]
+  steal: [{ item: antidote, chance: 1 }]
+
+giant_condor:
+  name: Giant Condor
+  description: Circles above the dunes, waiting for travellers to tire.
+  level: 3
+  stats: { maxHp: 26, maxMp: 0, str: 11, def: 5, mag: 4, mdef: 6, spd: 14 }
+  move: flyer
+  elements: { thunder: 1.5 }
+  statuses: [flying]
+  charset: enemy_condor
+  battler: enemy_condor
+  face: enemy_condor
+  ai:
+    - { action: attack, weight: 3 }
+    - { action: dive, weight: 2, target: lowestHp }
+    - { action: gust, weight: 1 }
+  boardAi:
+    behavior: aggressive
+    aggroRange: 6
+    wanderRadius: 3
+    pack: true
+    abilities: [{ ability: wind_shear, chance: 0.35 }]
+  exp: 11
+  gold: 8
+  drops:
+    - { item: potion, chance: 0.2 }
+    - { item: phoenix_feather, chance: 0.05 }
+  steal: [{ item: potion, chance: 1 }]
+
+emperor_scorpion:
+  name: Emperor Scorpion
+  description: Ancient king of the dunes. Its shell turns blades.
+  level: 6
+  boss: true
+  stats: { maxHp: 180, maxMp: 0, str: 17, def: 14, mag: 8, mdef: 8, spd: 7 }
+  move: king1
+  elements: { ice: 1.5, earth: 0.5, fire: 0.5 }
+  immune: [sleep, stun]
+  charset: enemy_emperor_scorpion
+  battler: enemy_emperor_scorpion
+  face: enemy_emperor_scorpion
+  ai:
+    - { action: attack, weight: 2 }
+    - { action: crushing_claw, weight: 2, target: lowestHp }
+    - { action: venom_tail, weight: 2, when: { targetLacksStatus: poison } }
+    - { action: sandstorm, weight: 6, when: { round: 3 } }
+  boardAi:
+    behavior: guard
+    aggroRange: 2
+    abilities: [{ ability: quake, chance: 0.5 }]
+  exp: 80
+  gold: 60
+  drops: [{ item: scorpion_shell, chance: 1 }]
+  steal: [{ item: hi_potion, chance: 1 }]

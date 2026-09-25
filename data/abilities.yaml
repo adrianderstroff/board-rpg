@@ -1,0 +1,401 @@
+# Abilities (§13). Each has optional `battle` and `board` definitions; missing = unusable there.
+# battle.target: enemy | ally | self | any | allEnemies | allAllies | fallenAlly
+# board.range / board.area: pattern ids (patterns.yaml) or inline patterns.
+# board.targets: hero | enemy | npc | anyCharacter | fallen | emptyCell | anyCell | self
+# Effects: damage, fixedDamage, heal, healPercent, restoreMp, applyStatus, cureStatus, revive,
+#          fieldEffect, placeTrap, steal, reveal, learnAbility
+
+# ---------------- Knight: Sword Art ----------------
+cleave:
+  name: Cleave
+  type: Sword Art
+  mp: 3
+  icon: type_swordart
+  description: A heavy two-handed blow.
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: physical, power: 1.5 }
+
+guard:
+  name: Guard
+  type: Sword Art
+  mp: 2
+  icon: status_protect
+  description: Raise a shield wall. Protect for 3 turns.
+  battle:
+    target: ally
+    effects:
+      - { type: applyStatus, status: protect, turns: 3 }
+  board:
+    range: adjacent
+    targets: [hero]
+    effects:
+      - { type: applyStatus, status: protect, turns: 3 }
+
+shield_bash:
+  name: Shield Bash
+  type: Sword Art
+  mp: 4
+  icon: type_swordart
+  description: A weak hit that may stun.
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: physical, power: 0.8 }
+      - { type: applyStatus, status: stun, chance: 0.35, turns: 1 }
+
+cross_slash:
+  name: Cross Slash
+  type: Sword Art
+  mp: 8
+  icon: type_swordart
+  description: Cuts through every enemy.
+  battle:
+    target: allEnemies
+    effects:
+      - { type: damage, kind: physical, power: 1.1 }
+
+# ---------------- Magician: Magic ----------------
+fire:
+  name: Fire
+  type: Magic
+  group: Attack
+  mp: 4
+  icon: fire
+  description: "Battle: fire damage. Board: sets a cell ablaze for 3 rounds."
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: magical, power: 1.0, element: fire }
+  board:
+    range: range3
+    targets: [anyCell]
+    effects:
+      - { type: fieldEffect, effect: burning, rounds: 3 }
+
+ice:
+  name: Ice
+  type: Magic
+  group: Attack
+  mp: 5
+  icon: ice
+  description: "Battle: ice damage. Board: freezes a cross of cells for 3 rounds."
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: magical, power: 1.0, element: ice }
+  board:
+    range: range3
+    area: cross1
+    targets: [anyCell]
+    effects:
+      - { type: fieldEffect, effect: frozen, rounds: 3 }
+
+thunder:
+  name: Thunder
+  type: Magic
+  group: Attack
+  mp: 8
+  icon: thunder
+  description: Lightning strikes all enemies.
+  battle:
+    target: allEnemies
+    effects:
+      - { type: damage, kind: magical, power: 0.8, element: thunder }
+
+venom_mist:
+  name: Venom Mist
+  type: Magic
+  group: Attack
+  mp: 5
+  icon: status_poison
+  description: "Battle: may poison all enemies. Board: poisonous cloud (3 rounds)."
+  battle:
+    target: allEnemies
+    effects:
+      - { type: applyStatus, status: poison, chance: 0.7 }
+  board:
+    range: range3
+    area: diamond1
+    targets: [anyCell]
+    effects:
+      - { type: fieldEffect, effect: poisonous, rounds: 3 }
+
+heal:
+  name: Heal
+  type: Magic
+  group: Support
+  mp: 4
+  icon: heart
+  description: "Battle: heal one target. Board: heal everyone on a cell."
+  battle:
+    target: ally
+    effects:
+      - { type: heal, base: 20, scale: 1.2 }
+  board:
+    range: range2
+    targets: [hero, enemy]
+    effects:
+      - { type: heal, base: 20, scale: 1.2 }
+
+sleep:
+  name: Sleep
+  type: Magic
+  group: Support
+  mp: 5
+  icon: status_sleep
+  description: Puts a target to sleep. On the board it skips their turns.
+  battle:
+    target: enemy
+    effects:
+      - { type: applyStatus, status: sleep, chance: 0.6, turns: 3 }
+  board:
+    range: range3
+    targets: [enemy, hero]
+    effects:
+      - { type: applyStatus, status: sleep, chance: 0.6, turns: 2 }
+
+quagmire:
+  name: Quagmire
+  type: Magic
+  group: Support
+  mp: 4
+  icon: status_stuck
+  description: "Battle: slows one enemy. Board: sticky mud in a cross (3 rounds)."
+  battle:
+    target: enemy
+    effects:
+      - { type: applyStatus, status: slow, turns: 3 }
+  board:
+    range: range3
+    area: cross1
+    targets: [anyCell]
+    effects:
+      - { type: fieldEffect, effect: sticky, rounds: 3 }
+
+# ---------------- Thief: Skill ----------------
+steal:
+  name: Steal
+  type: Skill
+  mp: 0
+  icon: type_skill
+  description: Steal an item. On the board, available when meeting NPCs.
+  battle:
+    target: enemy
+    effects:
+      - { type: steal }
+
+hide:
+  name: Hide
+  type: Skill
+  mp: 2
+  icon: status_hidden
+  description: Become untargetable. Engaging while hidden grants a First Strike.
+  battle:
+    target: self
+    effects:
+      - { type: applyStatus, status: hidden, turns: 1 }
+  board:
+    range: self
+    targets: [self]
+    effects:
+      - { type: applyStatus, status: hidden, turns: 3 }
+
+trap:
+  name: Trap
+  type: Skill
+  mp: 3
+  icon: type_skill
+  description: Hides a snare on an empty cell. Enemies stepping on it get hurt and stuck.
+  offensive: true
+  board:
+    range: range2
+    targets: [emptyCell]
+    effects:
+      - { type: placeTrap, damage: 15, status: stuck }
+
+mug:
+  name: Mug
+  type: Skill
+  mp: 5
+  icon: type_skill
+  description: Attack and steal at once.
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: physical, power: 1.0 }
+      - { type: steal }
+
+# ---------------- Monk: Ki ----------------
+chakra:
+  name: Chakra
+  type: Ki
+  mp: 3
+  icon: type_ki
+  description: Heals yourself and cures poison.
+  battle:
+    target: self
+    effects:
+      - { type: heal, base: 15, scale: 1.0 }
+      - { type: cureStatus, statuses: [poison] }
+  board:
+    range: self
+    targets: [self]
+    effects:
+      - { type: heal, base: 15, scale: 1.0 }
+      - { type: cureStatus, statuses: [poison] }
+
+perceive:
+  name: Perceive
+  type: Ki
+  mp: 2
+  icon: star
+  description: "Reveals enemy stats. Board: all enemies within 4 cells, and halves the ambush chance this round."
+  battle:
+    target: enemy
+    effects:
+      - { type: reveal }
+  board:
+    range: self
+    area: diamond4
+    targets: [self]
+    effects:
+      - { type: reveal }
+
+palm_strike:
+  name: Palm Strike
+  type: Ki
+  mp: 4
+  icon: type_ki
+  description: A focused blow that ignores half of the target's defense.
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: physical, power: 1.3, ignoreDef: 0.5 }
+
+aura:
+  name: Aura
+  type: Ki
+  mp: 6
+  icon: status_regen
+  description: Regeneration for all allies.
+  battle:
+    target: allAllies
+    effects:
+      - { type: applyStatus, status: regen, turns: 3 }
+  board:
+    range: adjacent
+    targets: [hero]
+    effects:
+      - { type: applyStatus, status: regen, turns: 3 }
+
+# ---------------- Party (all heroes, board only) ----------------
+join_party:
+  name: Join Party
+  type: Party
+  mp: 0
+  icon: type_party
+  description: Join an allied party on the same or an adjacent cell.
+  special: joinParty
+
+leave_party:
+  name: Leave Party
+  type: Party
+  mp: 0
+  icon: type_party
+  description: Leave your party. You stay on the same cell.
+  special: leaveParty
+
+# ---------------- Enemy skills ----------------
+poison_sting:
+  name: Poison Sting
+  type: Enemy
+  mp: 0
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: physical, power: 1.0 }
+      - { type: applyStatus, status: poison, chance: 0.4 }
+
+dive:
+  name: Dive
+  type: Enemy
+  mp: 0
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: physical, power: 1.4 }
+
+gust:
+  name: Gust
+  type: Enemy
+  mp: 0
+  battle:
+    target: allEnemies
+    effects:
+      - { type: damage, kind: magical, power: 0.5, base: 4 }
+
+crushing_claw:
+  name: Crushing Claw
+  type: Enemy
+  mp: 0
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: physical, power: 1.5 }
+
+venom_tail:
+  name: Venom Tail
+  type: Enemy
+  mp: 0
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: physical, power: 0.9 }
+      - { type: applyStatus, status: poison, chance: 0.7 }
+
+sandstorm:
+  name: Sandstorm
+  type: Enemy
+  mp: 0
+  battle:
+    target: allEnemies
+    effects:
+      - { type: damage, kind: magical, power: 0.6, base: 6, element: earth }
+      - { type: applyStatus, status: blind, chance: 0.25 }
+
+# ---------------- Enemy board abilities (used by board AI, see enemies.yaml boardAi.abilities) ----------------
+venom_spit:
+  name: Venom Spit
+  type: Enemy
+  mp: 0
+  description: Spits venom at a nearby cell.
+  board:
+    range: range2
+    targets: [hero]
+    effects:
+      - { type: applyStatus, status: poison, chance: 0.5, turns: [2, 3] }
+
+wind_shear:
+  name: Wind Shear
+  type: Enemy
+  mp: 0
+  description: A blast of wind that slows its targets.
+  board:
+    range: range3
+    targets: [hero]
+    effects:
+      - { type: applyStatus, status: slow, chance: 0.6, turns: 2 }
+
+quake:
+  name: Quake
+  type: Enemy
+  mp: 0
+  description: Stomps the sand into sucking mud around the target.
+  board:
+    range: range3
+    area: cross1
+    targets: [hero]
+    effects:
+      - { type: fieldEffect, effect: sticky, rounds: 3 }

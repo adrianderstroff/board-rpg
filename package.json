@@ -1,0 +1,28 @@
+{
+  "name": "board-rpg",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "art": "node tools/art/generate.mjs",
+    "audio": "node tools/audio/generate.mjs",
+    "e2e": "node tools/e2e.mjs",
+    "dev:phone": "vite --host"
+  },
+  "dependencies": {
+    "phaser": "^4.2.1",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.1"
+  }
+}

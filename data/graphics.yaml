@@ -1,0 +1,54 @@
+# Graphic sheets referenced by heroes/enemies/npcs. Paths are relative to public/assets/.
+# Charset layout (RPG Maker 2000 style): 3 frames (step A, idle, step B) x 4 rows
+# (facing screen down-right, down-left, up-right, up-left). See public/assets/ASSETS.md.
+
+charsets:
+  hero_knight:    { image: charsets/hero_knight.png,    frameWidth: 24, frameHeight: 32 }
+  hero_magician:  { image: charsets/hero_magician.png,  frameWidth: 24, frameHeight: 32 }
+  hero_thief:     { image: charsets/hero_thief.png,     frameWidth: 24, frameHeight: 32 }
+  hero_monk:      { image: charsets/hero_monk.png,      frameWidth: 24, frameHeight: 32 }
+  npc_elder:      { image: charsets/npc_elder.png,      frameWidth: 24, frameHeight: 32 }
+  npc_villager_m: { image: charsets/npc_villager_m.png, frameWidth: 24, frameHeight: 32 }
+  npc_villager_f: { image: charsets/npc_villager_f.png, frameWidth: 24, frameHeight: 32 }
+  npc_child:      { image: charsets/npc_child.png,      frameWidth: 24, frameHeight: 32 }
+  npc_guard:      { image: charsets/npc_guard.png,      frameWidth: 24, frameHeight: 32 }
+  npc_smith:      { image: charsets/npc_smith.png,      frameWidth: 24, frameHeight: 32 }
+  npc_merchant:   { image: charsets/npc_merchant.png,   frameWidth: 24, frameHeight: 32 }
+  npc_mage:       { image: charsets/npc_mage.png,       frameWidth: 24, frameHeight: 32 }
+  npc_innkeeper:  { image: charsets/npc_innkeeper.png,  frameWidth: 24, frameHeight: 32 }
+  enemy_scorpion: { image: charsets/enemy_scorpion.png, frameWidth: 24, frameHeight: 32 }
+  enemy_condor:   { image: charsets/enemy_condor.png,   frameWidth: 24, frameHeight: 32 }
+  enemy_emperor_scorpion: { image: charsets/enemy_emperor_scorpion.png, frameWidth: 32, frameHeight: 32 }
+
+# Battlers: one row of frames. `frames` maps poses to frame indices.
+battlers:
+  hero_knight:   { image: battlers/hero_knight.png,   frameWidth: 32, frameHeight: 32, frames: { idle: 0, idle2: 1, attack: 2, cast: 3, hurt: 4, ko: 5 } }
+  hero_magician: { image: battlers/hero_magician.png, frameWidth: 32, frameHeight: 32, frames: { idle: 0, idle2: 1, attack: 2, cast: 3, hurt: 4, ko: 5 } }
+  hero_thief:    { image: battlers/hero_thief.png,    frameWidth: 32, frameHeight: 32, frames: { idle: 0, idle2: 1, attack: 2, cast: 3, hurt: 4, ko: 5 } }
+  hero_monk:     { image: battlers/hero_monk.png,     frameWidth: 32, frameHeight: 32, frames: { idle: 0, idle2: 1, attack: 2, cast: 3, hurt: 4, ko: 5 } }
+  enemy_scorpion: { image: battlers/enemy_scorpion.png, frameWidth: 48, frameHeight: 40, frames: { idle: 0, idle2: 1, attack: 2, hurt: 3 } }
+  enemy_condor:   { image: battlers/enemy_condor.png,   frameWidth: 48, frameHeight: 48, frames: { idle: 0, idle2: 1, attack: 2, hurt: 3 } }
+  enemy_emperor_scorpion: { image: battlers/enemy_emperor_scorpion.png, frameWidth: 96, frameHeight: 72, frames: { idle: 0, idle2: 1, attack: 2, hurt: 3 } }
+
+faces:
+  hero_knight:   { image: faces/hero_knight.png }
+  hero_magician: { image: faces/hero_magician.png }
+  hero_thief:    { image: faces/hero_thief.png }
+  hero_monk:     { image: faces/hero_monk.png }
+  elder:         { image: faces/elder.png }
+  smith:         { image: faces/smith.png }
+  merchant:      { image: faces/merchant.png }
+  mage:          { image: faces/mage.png }
+  innkeeper:     { image: faces/innkeeper.png }
+  child:         { image: faces/child.png }
+  guard:         { image: faces/guard.png }
+  villager_m:    { image: faces/villager_m.png }
+  villager_f:    { image: faces/villager_f.png }
+  generic:       { image: faces/generic.png }
+  enemy_scorpion: { image: faces/enemy_scorpion.png }
+  enemy_condor:   { image: faces/enemy_condor.png }
+  enemy_emperor_scorpion: { image: faces/enemy_emperor_scorpion.png }
+
+battlebacks:
+  desert:  { image: battlebacks/desert.png }
+  village: { image: battlebacks/village.png }

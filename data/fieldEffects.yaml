@@ -1,0 +1,24 @@
+# Temporary or terrain field effects on board cells (§7.4). Applied when a character LANDS on the cell.
+# overlayRow: row in system/field_effects.png.
+
+burning:
+  name: Burning
+  damagePercent: 8
+  element: fire
+  overlayRow: 0
+
+poisonous:
+  name: Poisonous
+  status: poison
+  statusTurns: [2, 4]
+  overlayRow: 1
+
+frozen:
+  name: Frozen
+  slide: true
+  overlayRow: 2
+
+sticky:
+  name: Sticky
+  status: stuck
+  overlayRow: 3

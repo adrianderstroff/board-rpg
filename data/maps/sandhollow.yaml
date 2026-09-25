@@ -1,0 +1,171 @@
+# Sandhollow – peaceful desert village (§18).
+# Layers are character grids (x = column, y = row). Grid +x = screen down-right, +y = screen down-left.
+#   terrain: legend.terrain chars; space or unknown char = hole (no cell)
+#   height:  0-9, a-z (10-35) block heights
+#   decor:   legend.decor chars, '.' = nothing
+name: Sandhollow
+kind: peaceful
+chipset: desert
+battleback: village
+music: village
+
+legend:
+  terrain:
+    s: sand
+    r: rock
+    p: stone_path
+    z: plaza
+    g: grass
+    w: water
+    A: adobe
+    W: adobe_window
+    D: adobe_door
+  decor:
+    P: palm
+    W: well
+    R: stall_red
+    G: stall_green
+    U: stall_purple
+    x: crate
+    b: barrel
+    j: pot
+    L: lamp_post
+
+layers:
+  terrain: |
+    rrrrrrrrrrrrrr
+    rAAssAAAsAAAsr
+    rDWssWDWsWDWsr
+    rsspppppppppsr
+    rssszzzzzsspsr
+    rssszzzzzssppp
+    rsspzzzzzpppsr
+    rsspsssssssssr
+    rAApsssssssssr
+    rDWpssgggssssr
+    rsspsgwwgssssr
+    rrrrrggggrrrrr
+  height: |
+    22222222222222
+    23300333033302
+    23300333033302
+    20000000000002
+    20001111100002
+    20001111100000
+    20001111100002
+    20000000000002
+    23300000000002
+    23300000000002
+    20000000000002
+    22222000022222
+  decor: |
+    ..............
+    ...b........x.
+    ....j.......j.
+    ..............
+    .P............
+    ......W.......
+    ..............
+    ......R.G.U...
+    ....L.......P.
+    ..............
+    ....P....P....
+    ..............
+
+spawns:
+  start: { x: 3, y: 4, dir: E }
+  from_dunes: { x: 12, y: 5, dir: W }
+
+exits:
+  - { x: 13, y: 5, dir: E, to: scorpion_dunes, spawn: from_village, label: Scorpion Dunes, enabled: { flag: gate_open } }
+
+events:
+  - id: elder
+    x: 6
+    y: 3
+    pages:
+      - { npc: elder, dir: S, dialog: elder_intro }
+      - { when: { questStep: { quest: road_to_oasis, step: clear } }, npc: elder, dir: S, dialog: elder_waiting }
+      - { when: { questStep: { quest: road_to_oasis, step: report } }, npc: elder, dir: S, dialog: elder_report }
+      - { when: { questDone: road_to_oasis }, npc: elder, dir: S, dialog: elder_after }
+
+  - id: smith
+    x: 6
+    y: 8
+    pages:
+      - npc: smith
+        dir: S
+        sign: sign_weapon
+        interactions:
+          - { type: shop, shop: sandhollow_smith, label: Buy/Sell }
+          - { type: talk, dialog: smith_talk }
+
+  - id: merchant
+    x: 8
+    y: 8
+    pages:
+      - npc: merchant
+        dir: S
+        sign: sign_item
+        interactions:
+          - { type: shop, shop: sandhollow_items, label: Buy/Sell }
+          - { type: talk, dialog: merchant_talk }
+
+  - id: mage
+    x: 10
+    y: 8
+    pages:
+      - npc: mage
+        dir: S
+        sign: sign_magic
+        interactions:
+          - { type: shop, shop: sandhollow_magic, label: Buy/Sell }
+          - { type: talk, dialog: mage_talk }
+
+  - id: innkeeper
+    x: 10
+    y: 3
+    pages:
+      - npc: innkeeper
+        dir: S
+        sign: sign_inn
+        interactions:
+          - { type: inn, label: Rest }
+          - { type: talk, dialog: inn_talk }
+
+  - id: nia
+    x: 7
+    y: 9
+    pages:
+      - { npc: child, dir: S, move: wander, wanderRadius: 2, dialog: nia_ask }
+      - { when: { questStep: { quest: nias_charm, step: find } }, npc: child, dir: S, move: wander, wanderRadius: 2, dialog: nia_waiting }
+      - { when: { item: village_charm }, npc: child, dir: S, move: wander, wanderRadius: 2, dialog: nia_thanks }
+      - { when: { questDone: nias_charm }, npc: child, dir: S, move: wander, wanderRadius: 2, dialog: nia_happy }
+
+  - id: villager_1
+    x: 3
+    y: 6
+    pages:
+      - { npc: villager_m, dir: E, move: wander, wanderRadius: 3, dialog: villager_1 }
+
+  - id: villager_2
+    x: 9
+    y: 4
+    pages:
+      - { npc: villager_f, dir: S, move: wander, wanderRadius: 3, dialog: villager_2 }
+      - { when: { questDone: clear_dunes }, npc: villager_f, dir: S, move: wander, wanderRadius: 3, dialog: villager_2_after }
+
+  - id: guard
+    x: 12
+    y: 6
+    pages:
+      - { npc: guard, dir: W, dialog: guard_closed }
+      - { when: { flag: gate_open }, npc: guard, dir: W, dialog: guard_open }
+
+  - id: sign_east
+    x: 12
+    y: 4
+    pages:
+      - decor: sign_post
+        interactions:
+          - { type: examine, label: Read, dialog: sign_east }

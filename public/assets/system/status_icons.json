@@ -1,0 +1,14 @@
+{
+  "poison": 0,
+  "sleep": 1,
+  "stun": 2,
+  "blind": 3,
+  "slow": 4,
+  "haste": 5,
+  "protect": 6,
+  "regen": 7,
+  "hidden": 8,
+  "stuck": 9,
+  "flying": 10,
+  "defend": 11
+}

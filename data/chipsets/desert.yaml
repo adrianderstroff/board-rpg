@@ -1,0 +1,58 @@
+# Desert chipset: binds graphics (block frames) to logic (walkable, surface effects).
+# Block frames are 32x24: a 32x16 top diamond plus one 8px layer of side faces.
+image: chipsets/desert.png
+frameWidth: 32
+frameHeight: 24
+tileWidth: 32
+tileHeight: 16
+blockHeight: 8
+
+terrains:
+  sand:         { name: Sand,        frame: 0,  fill: 13, walkable: true }
+  sand_dark:    { name: Dune,        frame: 1,  fill: 13, walkable: true }
+  sand_ripple:  { name: Dune,        frame: 2,  fill: 13, walkable: true }
+  stone_path:   { name: Old Road,    frame: 3,  fill: 13, walkable: true }
+  plaza:        { name: Plaza,       frame: 4,  fill: 13, walkable: true }
+  grass:        { name: Grass,       frame: 5,  fill: 17, walkable: true }
+  water:        { name: Water,       frame: 6,  frames: [6, 7], fill: 17, walkable: false }
+  quicksand:    { name: Quicksand,   frame: 8,  fill: 13, walkable: true, surface: sticky }
+  rock:         { name: Rock,        frame: 9,  fill: 14, walkable: true }
+  adobe:        { name: House,       frame: 10, fill: 10, walkable: false }
+  adobe_window: { name: House,       frame: 11, fill: 10, walkable: false }
+  adobe_door:   { name: House,       frame: 12, fill: 10, walkable: false }
+  wood:         { name: Planks,      frame: 15, fill: 17, walkable: true }
+  ice:          { name: Ice,         frame: 16, fill: 14, walkable: true, surface: frozen }
+  dirt:         { name: Dirt,        frame: 17, fill: 17, walkable: true }
+  tiled_roof:   { name: House,       frame: 18, fill: 10, walkable: false }
+  oasis_edge:   { name: Grass,       frame: 19, fill: 17, walkable: true }
+
+# Decor sprites: 32x48 frames standing on the cell centre at (16, 40).
+decorImage: chipsets/desert_decor.png
+decorFrameWidth: 32
+decorFrameHeight: 48
+decorAnchorY: 40
+decor:
+  palm:         { name: Palm,        frame: 0,  blocks: true }
+  cactus:       { name: Cactus,      frame: 1,  blocks: true }
+  cactus_small: { name: Cactus,      frame: 2,  blocks: false }
+  rock_small:   { name: Stones,      frame: 3,  blocks: false }
+  rock_big:     { name: Boulder,     frame: 4,  blocks: true }
+  well:         { name: Well,        frame: 5,  blocks: true }
+  stall_red:    { name: Forge Stall, frame: 6,  blocks: true }
+  stall_green:  { name: Item Stall,  frame: 7,  blocks: true }
+  stall_purple: { name: Magic Stall, frame: 8,  blocks: true }
+  crate:        { name: Crate,       frame: 9,  blocks: true }
+  barrel:       { name: Barrel,      frame: 10, blocks: true }
+  sign_post:    { name: Sign,        frame: 11, blocks: true }
+  pot:          { name: Jar,         frame: 12, blocks: true }
+  chest_closed: { name: Chest,       frame: 13, blocks: true }
+  chest_open:   { name: Chest,       frame: 14, blocks: true }
+  fence:        { name: Fence,       frame: 15, blocks: true }
+  dead_tree:    { name: Dead Tree,   frame: 16, blocks: true }
+  bones:        { name: Bones,       frame: 17, blocks: false }
+  tent:         { name: Tent,        frame: 18, blocks: true }
+  bed:          { name: Bed,         frame: 19, blocks: true }
+  anvil:        { name: Anvil,       frame: 20, blocks: true }
+  bush:         { name: Bush,        frame: 21, blocks: false }
+  lamp_post:    { name: Lamp,        frame: 22, blocks: true }
+  sparkle:      { name: Glint,       frame: 23, blocks: false }

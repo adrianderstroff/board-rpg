@@ -1,0 +1,324 @@
+# Items (§14). category: key | weapon | armor | accessory | consumable | battle | scroll
+# equip.stats are flat bonuses (weapon "ATK" = str, "MAG" = mag). equip.kind must match classes.yaml equip lists.
+# board.range patterns decide who can be reached on the board (default for potions: own + adjacent cells).
+
+# ---------------- consumables ----------------
+potion:
+  name: Potion
+  category: consumable
+  price: 20
+  icon: potion
+  description: Restores 50 HP.
+  battle: { target: ally, effects: [{ type: heal, base: 50 }] }
+  board: { range: adjacent, targets: [hero], effects: [{ type: heal, base: 50 }] }
+
+hi_potion:
+  name: Hi-Potion
+  category: consumable
+  price: 80
+  icon: hipotion
+  description: Restores 150 HP.
+  battle: { target: ally, effects: [{ type: heal, base: 150 }] }
+  board: { range: adjacent, targets: [hero], effects: [{ type: heal, base: 150 }] }
+
+ether:
+  name: Ether
+  category: consumable
+  price: 60
+  icon: ether
+  description: Restores 25 MP.
+  battle: { target: ally, effects: [{ type: restoreMp, amount: 25 }] }
+  board: { range: adjacent, targets: [hero], effects: [{ type: restoreMp, amount: 25 }] }
+
+antidote:
+  name: Antidote
+  category: consumable
+  price: 15
+  icon: antidote
+  description: Cures poison.
+  battle: { target: ally, effects: [{ type: cureStatus, statuses: [poison] }] }
+  board: { range: adjacent, targets: [hero], effects: [{ type: cureStatus, statuses: [poison] }] }
+
+eye_drops:
+  name: Eye Drops
+  category: consumable
+  price: 15
+  icon: eyedrops
+  description: Cures blindness.
+  battle: { target: ally, effects: [{ type: cureStatus, statuses: [blind] }] }
+
+remedy:
+  name: Remedy
+  category: consumable
+  price: 100
+  icon: remedy
+  description: Cures all negative statuses.
+  battle: { target: ally, effects: [{ type: cureStatus, allNegative: true }] }
+  board: { range: adjacent, targets: [hero], effects: [{ type: cureStatus, allNegative: true }] }
+
+phoenix_feather:
+  name: Phoenix Feather
+  category: consumable
+  price: 150
+  icon: feather
+  description: Revives a fallen hero with 25% HP.
+  battle: { target: fallenAlly, effects: [{ type: revive, percent: 25 }] }
+  board: { range: adjacent, targets: [fallen], effects: [{ type: revive, percent: 25 }] }
+
+# ---------------- battle items ----------------
+fire_bomb:
+  name: Fire Bomb
+  category: battle
+  price: 60
+  icon: bomb
+  description: "Battle: 40 fire damage to all enemies. Board: burns an area."
+  battle: { target: allEnemies, effects: [{ type: fixedDamage, amount: 40, element: fire }] }
+  board: { range: range3, area: diamond1, targets: [anyCell], effects: [{ type: fieldEffect, effect: burning, rounds: 3 }] }
+
+frost_shard:
+  name: Frost Shard
+  category: battle
+  price: 60
+  icon: shard
+  description: "Battle: 45 ice damage to one enemy. Board: freezes a cell."
+  battle: { target: enemy, effects: [{ type: fixedDamage, amount: 45, element: ice }] }
+  board: { range: range3, targets: [anyCell], effects: [{ type: fieldEffect, effect: frozen, rounds: 3 }] }
+
+sleep_powder:
+  name: Sleep Powder
+  category: battle
+  price: 50
+  icon: powder
+  description: Puts a target to sleep.
+  battle: { target: enemy, effects: [{ type: applyStatus, status: sleep, chance: 0.7, turns: 3 }] }
+  board: { range: range2, targets: [enemy, hero], effects: [{ type: applyStatus, status: sleep, chance: 0.7, turns: 2 }] }
+
+glue_pot:
+  name: Glue Pot
+  category: battle
+  price: 40
+  icon: glue
+  description: "Battle: slows an enemy. Board: sticky cell."
+  battle: { target: enemy, effects: [{ type: applyStatus, status: slow, turns: 3 }] }
+  board: { range: range3, targets: [anyCell], effects: [{ type: fieldEffect, effect: sticky, rounds: 3 }] }
+
+levitation_draught:
+  name: Levitation Draught
+  category: battle
+  price: 90
+  icon: feather
+  description: "Float for 5 turns: field effects, traps and ice can't touch you."
+  battle: { target: ally, effects: [{ type: applyStatus, status: flying, turns: 5 }] }
+  board: { range: adjacent, targets: [hero], effects: [{ type: applyStatus, status: flying, turns: 5 }] }
+
+# ---------------- scrolls ----------------
+scroll_venom_mist:
+  name: "Scroll: Venom Mist"
+  category: scroll
+  price: 200
+  icon: scroll
+  description: Teaches a Magician Venom Mist.
+  learn: { ability: venom_mist, classes: [magician] }
+
+scroll_quagmire:
+  name: "Scroll: Quagmire"
+  category: scroll
+  price: 180
+  icon: scroll
+  description: Teaches a Magician Quagmire.
+  learn: { ability: quagmire, classes: [magician] }
+
+scroll_cross_slash:
+  name: "Scroll: Cross Slash"
+  category: scroll
+  price: 250
+  icon: scroll
+  description: Teaches a Knight Cross Slash.
+  learn: { ability: cross_slash, classes: [knight] }
+
+scroll_aura:
+  name: "Scroll: Aura"
+  category: scroll
+  price: 220
+  icon: scroll
+  description: Teaches a Monk Aura.
+  learn: { ability: aura, classes: [monk] }
+
+# ---------------- key items ----------------
+village_charm:
+  name: Village Charm
+  category: key
+  price: 0
+  icon: charm
+  description: A little clay charm shaped like a sun. Nia lost it.
+
+# ---------------- weapons ----------------
+bronze_sword:
+  name: Bronze Sword
+  category: weapon
+  price: 100
+  icon: sword
+  description: A dependable blade.
+  equip: { slot: weapon, kind: sword, stats: { str: 8 } }
+
+iron_sword:
+  name: Iron Sword
+  category: weapon
+  price: 350
+  icon: sword
+  description: Heavier, sharper.
+  equip: { slot: weapon, kind: sword, stats: { str: 14 } }
+
+flame_blade:
+  name: Flame Blade
+  category: weapon
+  price: 900
+  icon: sword
+  description: Burns with inner fire. Grants Fire.
+  equip: { slot: weapon, kind: sword, stats: { str: 18, mag: 5 }, element: fire, grants: [fire] }
+
+great_sword:
+  name: Great Sword
+  category: weapon
+  price: 700
+  icon: sword
+  description: Huge and slow.
+  equip: { slot: weapon, kind: sword, stats: { str: 24, spd: -3 } }
+
+oak_staff:
+  name: Oak Staff
+  category: weapon
+  price: 80
+  icon: staff
+  description: Focuses the mind.
+  equip: { slot: weapon, kind: staff, stats: { str: 3, mag: 6 } }
+
+ruby_rod:
+  name: Ruby Rod
+  category: weapon
+  price: 500
+  icon: staff
+  description: A rod with a burning gem. Grants Fire.
+  equip: { slot: weapon, kind: staff, stats: { str: 4, mag: 12 }, grants: [fire] }
+
+frost_rod:
+  name: Frost Rod
+  category: weapon
+  price: 500
+  icon: staff
+  description: Cold to the touch. Grants Ice.
+  equip: { slot: weapon, kind: staff, stats: { str: 4, mag: 12 }, grants: [ice] }
+
+dagger:
+  name: Dagger
+  category: weapon
+  price: 90
+  icon: dagger
+  description: Light and quick.
+  equip: { slot: weapon, kind: dagger, stats: { str: 6, spd: 1 } }
+
+kris:
+  name: Kris
+  category: weapon
+  price: 400
+  icon: dagger
+  description: Wavy blade coated in venom.
+  equip: { slot: weapon, kind: dagger, stats: { str: 10, spd: 2 }, onHit: { status: poison, chance: 0.25 } }
+
+leather_knuckles:
+  name: Leather Knuckles
+  category: weapon
+  price: 90
+  icon: claw
+  description: Wrapped fists.
+  equip: { slot: weapon, kind: claw, stats: { str: 7 } }
+
+iron_claws:
+  name: Iron Claws
+  category: weapon
+  price: 380
+  icon: claw
+  description: Steel talons.
+  equip: { slot: weapon, kind: claw, stats: { str: 13 } }
+
+tiger_fangs:
+  name: Tiger Fangs
+  category: weapon
+  price: 850
+  icon: claw
+  description: Fast and fierce.
+  equip: { slot: weapon, kind: claw, stats: { str: 18, mag: 2, spd: 1 } }
+
+# ---------------- armor ----------------
+leather_vest:
+  name: Leather Vest
+  category: armor
+  price: 60
+  icon: vest
+  equip: { slot: armor, kind: lightArmor, stats: { def: 4, mdef: 1 } }
+
+chain_mail:
+  name: Chain Mail
+  category: armor
+  price: 300
+  icon: armor
+  equip: { slot: armor, kind: heavyArmor, stats: { def: 10, mdef: 2, spd: -1 } }
+
+plate_armor:
+  name: Plate Armor
+  category: armor
+  price: 800
+  icon: armor
+  equip: { slot: armor, kind: heavyArmor, stats: { def: 16, mdef: 4, spd: -2 } }
+
+cloth_robe:
+  name: Cloth Robe
+  category: armor
+  price: 60
+  icon: robe
+  equip: { slot: armor, kind: robe, stats: { def: 2, mdef: 6 } }
+
+silk_robe:
+  name: Silk Robe
+  category: armor
+  price: 450
+  icon: robe
+  equip: { slot: armor, kind: robe, stats: { def: 4, mdef: 12 } }
+
+scorpion_shell:
+  name: Scorpion Shell
+  category: armor
+  price: 600
+  icon: shell
+  description: Armor carved from the Emperor Scorpion's carapace.
+  equip: { slot: armor, kind: shell, stats: { def: 12, mdef: 6 } }
+
+# ---------------- accessories ----------------
+speed_anklet:
+  name: Speed Anklet
+  category: accessory
+  price: 400
+  icon: anklet
+  equip: { slot: accessory, kind: accessory, stats: { spd: 3 } }
+
+amulet:
+  name: Amulet
+  category: accessory
+  price: 300
+  icon: amulet
+  description: Protects from poison.
+  equip: { slot: accessory, kind: accessory, immune: [poison] }
+
+mana_ring:
+  name: Mana Ring
+  category: accessory
+  price: 350
+  icon: ring
+  equip: { slot: accessory, kind: accessory, stats: { maxMp: 10 } }
+
+power_band:
+  name: Power Band
+  category: accessory
+  price: 350
+  icon: band
+  equip: { slot: accessory, kind: accessory, stats: { str: 4 } }

@@ -1,0 +1,45 @@
+# Quests (§10.4). Exactly one quest is active. Steps complete in order when `done` holds.
+# endings: finish conditions (first match wins); hidden endings are never shown.
+# Without endings a quest ends when all steps are done.
+
+road_to_oasis:
+  title: Road to the Oasis
+  description: The road east to the Mirage Oasis is blocked. Sandhollow's elder may know more.
+  steps:
+    - id: talk_elder
+      objective: Talk to Elder Hamid
+      done: { talkedTo: elder }
+      onComplete: [{ setFlag: gate_open }, { startQuest: { id: clear_dunes, activate: true } }]
+    - id: clear
+      objective: Clear the Scorpion Dunes
+      done: { questDone: clear_dunes }
+    - id: report
+      objective: Report back to Elder Hamid
+      done: { flag: reported_to_elder }
+
+clear_dunes:
+  title: Clear the Dunes
+  description: An Emperor Scorpion rules the dunes east of Sandhollow. Defeat it.
+  parent: road_to_oasis
+  steps:
+    - id: boss
+      objective: Defeat the Emperor Scorpion
+      done: { defeated: { enemy: emperor_scorpion } }
+  endings:
+    - id: cleansed
+      hidden: true
+      when: { all: [{ questStepsDone: clear_dunes }, { defeatedAllOn: scorpion_dunes }] }
+      onComplete: [{ setFlag: dunes_cleansed }]
+    - id: cleared
+      when: { questStepsDone: clear_dunes }
+
+nias_charm:
+  title: Nia's Charm
+  description: Nia lost her clay sun charm somewhere near the oasis in the dunes.
+  steps:
+    - id: find
+      objective: Find Nia's charm near the oasis
+      done: { item: village_charm }
+    - id: return
+      objective: Bring the charm back to Nia
+      done: { flag: charm_returned }

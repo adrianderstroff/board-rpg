@@ -1,0 +1,115 @@
+# Status effects (§4.2). Durations count down at the end of the owner's turn in each scope.
+# scope: where the status is active. persists: survives the board <-> battle switch.
+
+poison:
+  name: Poison
+  icon: status_poison
+  scope: [board, battle]
+  persists: true
+  negative: true
+  tickPercent: -6
+  nonLethalOnBoard: true
+  defaultTurns: 5
+
+sleep:
+  name: Sleep
+  icon: status_sleep
+  scope: [board, battle]
+  persists: false
+  negative: true
+  skipTurn: true
+  breakOnDamage: true
+  defaultTurns: 3
+
+stun:
+  name: Stun
+  icon: status_stun
+  scope: [battle]
+  persists: false
+  negative: true
+  skipTurn: true
+  defaultTurns: 1
+
+blind:
+  name: Blind
+  icon: status_blind
+  scope: [battle]
+  persists: false
+  negative: true
+  hitModifier: 0.5
+  defaultTurns: 4
+
+slow:
+  name: Slow
+  icon: status_slow
+  scope: [board, battle]
+  persists: false
+  negative: true
+  modifiers: { spd: 0.5 }
+  defaultTurns: 3
+
+haste:
+  name: Haste
+  icon: status_haste
+  scope: [board, battle]
+  persists: false
+  negative: false
+  modifiers: { spd: 1.5 }
+  defaultTurns: 3
+
+protect:
+  name: Protect
+  icon: status_protect
+  scope: [board, battle]
+  persists: true
+  negative: false
+  modifiers: { def: 1.5, mdef: 1.5 }
+  defaultTurns: 3
+
+regen:
+  name: Regen
+  icon: status_regen
+  scope: [board, battle]
+  persists: true
+  negative: false
+  tickPercent: 8
+  defaultTurns: 3
+
+hidden:
+  name: Hidden
+  icon: status_hidden
+  scope: [board, battle]
+  persists: true
+  negative: false
+  untargetable: true
+  breakOnOffense: true
+  defaultTurns: 3
+
+flying:
+  name: Flying
+  icon: status_flying
+  description: Floats above the ground – unaffected by field effects, traps and ice.
+  scope: [board, battle]
+  persists: true
+  negative: false
+  fieldImmune: true
+  defaultTurns: 5
+
+defending:
+  name: Defending
+  icon: status_defend
+  description: Braced for impact until the next turn.
+  scope: [battle]
+  persists: false
+  negative: false
+  modifiers: { def: 2, mdef: 1.5 }
+  consumeOnTurnStart: true
+
+stuck:
+  name: Stuck
+  icon: status_stuck
+  scope: [board]
+  persists: true
+  negative: true
+  reachModifier: -1
+  defaultTurns: 2

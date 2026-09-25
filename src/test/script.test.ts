@@ -1,0 +1,103 @@
+import { describe, expect, it } from "vitest";
+import { Game } from "../core/game";
+import { parseMarkup, plainText } from "../core/script/markup";
+import { DialogRunner } from "../core/script/dialog";
+import { interactionsFor, performInteraction } from "../core/script/interact";
+import { canSwitchQuest, currentObjective, evaluateQuests, switchQuest } from "../core/script/quests";
+import { MemoryStorage, loadGame, saveGame } from "../core/state/save";
+import { exitAt, exitEnabled, mapMemory } from "../core/board/board";
+import { testDb } from "./helpers";
+
+function newGame(seed = 7) {
+  return Game.create(testDb(), seed).game;
+}
+
+function talk(game: Game, eventId: string) {
+  const ctx = game.ctx;
+  const opts = interactionsFor(ctx, "aldric", `n:${eventId}`);
+  const talkOpt = opts.find((o) => o.interaction.type === "talk")!;
+  const out = performInteraction(ctx, "aldric", `n:${eventId}`, talkOpt);
+  const runner = new DialogRunner(ctx, out.dialog!.id, out.dialog!.speaker);
+  const lines: string[] = [];
+  for (let step = runner.next(); step.type !== "end"; step = runner.next(0)) {
+    if (step.type === "say") lines.push(step.text);
+  }
+  return lines;
+}
+
+describe("markup", () => {
+  it("parses highlight, color, wave, pauses and variables", () => {
+    const tokens = parseMarkup("Hi *{name}*|! [c=red]hot[/c] ~wavy~", (n) => (n === "name" ? "Kit" : undefined));
+    expect(plainText(tokens)).toBe("Hi Kit! hot wavy");
+    const k = tokens.find((t) => t.kind === "char" && t.ch === "K");
+    expect(k && k.kind === "char" && k.style.color).toBe("#feae34");
+    expect(tokens.some((t) => t.kind === "pause")).toBe(true);
+    const w = tokens.find((t) => t.kind === "char" && t.ch === "w");
+    expect(w && w.kind === "char" && w.style.wave).toBe(true);
+    const h = tokens.find((t) => t.kind === "char" && t.ch === "h");
+    expect(h && h.kind === "char" && h.style.color).toBe("#e43b44");
+  });
+
+  it("supports escapes", () => {
+    expect(plainText(parseMarkup("a \\* b"))).toBe("a * b");
+  });
+});
+
+describe("quests", () => {
+  it("talking to the elder opens the gate and starts the sub quest", () => {
+    const game = newGame();
+    expect(currentObjective(game.ctx)).toBe("Talk to Elder Hamid");
+    const exit = exitAt(game.ctx, { x: 13, y: 5 })!;
+    expect(exitEnabled(game.ctx, exit)).toBe(false);
+    const lines = talk(game, "elder");
+    expect(lines[0]).toContain("Sandhollow");
+    expect(exitEnabled(game.ctx, exit)).toBe(true);
+    expect(game.state.quests.active).toBe("clear_dunes");
+    expect(currentObjective(game.ctx)).toBe("Defeat the Emperor Scorpion");
+  });
+
+  it("finishing the sub quest returns to the parent; hidden ending when everything is cleared", () => {
+    const game = newGame();
+    talk(game, "elder");
+    const ctx = game.ctx;
+    ctx.state.records.kills.emperor_scorpion = 1;
+    mapMemory(ctx, "scorpion_dunes").defeated.push(...ctx.db.map("scorpion_dunes").enemies!.map((e) => e.id));
+    evaluateQuests(ctx);
+    expect(ctx.state.quests.entries.clear_dunes).toMatchObject({ status: "done", ending: "cleansed" });
+    expect(ctx.state.flags.dunes_cleansed).toBe(true);
+    expect(ctx.state.quests.active).toBe("road_to_oasis");
+    expect(currentObjective(ctx)).toBe("Report back to Elder Hamid");
+    talk(game, "elder");
+    expect(ctx.state.quests.entries.road_to_oasis.status).toBe("done");
+    expect(ctx.state.inventory.flame_blade).toBe(1);
+  });
+
+  it("side quests can be switched to and completed", () => {
+    const game = newGame();
+    const ctx = game.ctx;
+    const out = performInteraction(ctx, "aldric", "n:nia", interactionsFor(ctx, "aldric", "n:nia")[0]);
+    const runner = new DialogRunner(ctx, out.dialog!.id);
+    let step = runner.next();
+    while (step.type !== "choice") step = runner.next();
+    runner.next(0); // "We'll look for it."
+    expect(ctx.state.quests.entries.nias_charm.status).toBe("started");
+    expect(ctx.state.quests.active).toBe("road_to_oasis"); // not activated
+    expect(canSwitchQuest(ctx)).toBe(true);
+    switchQuest(ctx, "nias_charm");
+    expect(currentObjective(ctx)).toBe("Find Nia's charm near the oasis");
+    ctx.state.inventory.village_charm = 1;
+    evaluateQuests(ctx);
+    expect(currentObjective(ctx)).toBe("Bring the charm back to Nia");
+  });
+});
+
+describe("save/load", () => {
+  it("round-trips the whole game state", () => {
+    const game = newGame();
+    talk(game, "elder");
+    const storage = new MemoryStorage();
+    saveGame(game.db, game.state, storage, 1);
+    const loaded = loadGame(storage, 1)!;
+    expect(loaded).toEqual(game.state);
+  });
+});

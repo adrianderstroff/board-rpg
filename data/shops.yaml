@@ -1,0 +1,18 @@
+# Shops (§15). type decides the keeper's sign: weapon (sword), item (potion), magic (star).
+
+sandhollow_smith:
+  name: Brann's Forge
+  type: weapon
+  items: [bronze_sword, iron_sword, great_sword, oak_staff, dagger, kris, leather_knuckles, iron_claws,
+          leather_vest, chain_mail, cloth_robe, silk_robe]
+
+sandhollow_items:
+  name: Salma's Remedies
+  type: item
+  items: [potion, hi_potion, ether, antidote, eye_drops, remedy, phoenix_feather, speed_anklet, amulet]
+
+sandhollow_magic:
+  name: Oriel's Curiosities
+  type: magic
+  items: [scroll_venom_mist, scroll_quagmire, scroll_cross_slash, scroll_aura, fire_bomb, frost_shard,
+          sleep_powder, glue_pot, levitation_draught, ruby_rod, frost_rod, mana_ring]
