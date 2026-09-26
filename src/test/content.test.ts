@@ -36,6 +36,10 @@ describe("content", () => {
       const db = new Database(layeredRaw(under(`/library/${v}/data/`), under(`/library/${v}/template/data/`), { library: "", project: "" }));
       expect(validateContent(db)).toEqual([]);
       expect(db.maps.has(db.config.start.map)).toBe(true);
+      // the game start stands in the middle of the first map
+      const map = db.maps.get(db.config.start.map)!;
+      const rows = map.layers.terrain.trim().split(/\r?\n/);
+      expect(map.spawns[db.config.start.spawn]).toMatchObject({ x: (rows[0].length - 1) / 2, y: (rows.length - 1) / 2 });
     }
   });
 });

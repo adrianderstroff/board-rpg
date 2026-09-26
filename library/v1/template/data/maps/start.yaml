@@ -11,14 +11,15 @@ legend:
 
 layers:
   terrain: |
-    ssssssss
-    ssssssss
-    ssssssss
-    ssssssss
-    ssssssss
-    ssssssss
-    ssssssss
-    ssssssss
+    sssssssss
+    sssssssss
+    sssssssss
+    sssssssss
+    sssssssss
+    sssssssss
+    sssssssss
+    sssssssss
+    sssssssss
 
 spawns:
-  start: { x: 3, y: 3, dir: S }
+  start: { x: 4, y: 4, dir: S }   # the game start, in the middle
