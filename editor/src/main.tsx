@@ -22,15 +22,21 @@ const fail = (e: Error) => {
 
 async function start() {
   const s = await startStorage();
-  // the project: ?project=<id>, else the one open last time in this storage, else the demo, else the first
+  // the project: ?project=<id>, else the one open last time in this storage – the first time a new,
+  // empty "Untitled" (the site; the demo is in the project menu), on the dev server the demo
   const key = `project.${s.kind}`;
   let projects = await s.store.listProjects();
-  // an empty folder starts with a project from the library's template
-  if (!projects.length) {
-    await s.store.createProject({ id: "my-game", name: "My Game" });
+  const asked = new URLSearchParams(location.search).get("project");
+  const last = readStored<string | null>(key, null);
+  const firstTime = !asked && !last && s.kind !== "dev";
+  if (firstTime || !projects.length) {
+    let id = "untitled";
+    for (let n = 2; projects.some((p) => p.id === id); n++) id = `untitled-${n}`;
+    await s.store.createProject({ id, name: "Untitled" });
     projects = await s.store.listProjects();
+    writeStored(key, id);
   }
-  const wanted = new URLSearchParams(location.search).get("project") || readStored(key, "demo");
+  const wanted = asked || readStored(key, "demo");
   const id = projects.some((p) => p.id === wanted) ? wanted : projects.some((p) => p.id === "demo") ? "demo" : projects[0].id;
   const project = new Project(storageFileApi(id));
   await project.load();

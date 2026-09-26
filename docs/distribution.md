@@ -23,8 +23,11 @@ it. Where the tree lives is the **storage**:
 - The editor starts with the dev server when there is one; otherwise with the folder picked last
   time (its permission is asked for again – a click), else in the browser. The project menu shows
   the storage and switches: *Browser* or *Open a folder…* (only where the browser can).
-- A new browser storage starts with a copy of the demo (bundled with the editor), so there is
-  something to open right away.
+- The first time the editor opens (on the site: the browser or a new folder) it starts with a new,
+  empty project **Untitled** from the library's template (one map, a hero – playable right away).
+  A new browser storage also holds a copy of the demo (bundled with the editor), to look at from
+  the project menu. After that the editor opens the project that was open last. The dev server
+  opens the demo.
 - Export / Import `.brpg` work in every storage – they are how projects move between them (and to
   the player).
 - **Assets** of projects in the browser or a folder are files the page reads itself: the editor
