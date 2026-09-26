@@ -5,8 +5,10 @@ import { getGrid } from "../../../src/core/board/grid";
 import type { Corner, MapDef } from "../../../src/core/data/types";
 import type { Dir, Pos } from "../../../src/core/util/grid";
 import { K } from "../../../src/game/keys";
-import { addEntity, deleteEntity, entitiesAt, entityPath, listEntities, moveEntity, sameRef, type EntityKind, type EntityRef, duplicateEntity } from "../entities/model";
+import { addEntity, entitiesAt, entityPath, listEntities, moveEntity, sameRef, type EntityKind, type EntityRef, duplicateEntity, type AddKind } from "../entities/model";
 import { entitySprites, placingSprite } from "../entities/visuals";
+import { removeEntity } from "../entities/remove";
+import { placeStart } from "../entities/teleports";
 import type { Project } from "../project";
 import { GridCanvas } from "./GridCanvas";
 import { IsoCanvas, type CanvasHandlers, type Ghost, type Marker } from "./IsoCanvas";
@@ -61,9 +63,11 @@ export interface Brush {
 export interface EntitySelection {
   selected: EntityRef | null;
   select: (ref: EntityRef | null) => void;
-  /** An entity kind waiting to be placed with the next click. */
-  placing: EntityKind | null;
-  setPlacing: (kind: EntityKind | null) => void;
+  /** What waits to be placed with the next click. */
+  placing: AddKind | null;
+  setPlacing: (kind: AddKind | null) => void;
+  /** A teleport's exit cell was clicked: now its destination is picked (MapsScreen's window). */
+  startTeleport: (at: Pos) => void;
   /** An entity being duplicated: the copy goes where the next click is. */
   copying: EntityRef | null;
   setCopying: (ref: EntityRef | null) => void;
@@ -166,10 +170,7 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
         // right click deletes the (selected or topmost) entity on the cell
         const here = entitiesAt(project.data<MapDef>(path), c);
         const target = here.find((e) => sameRef(e, entities.selected)) ?? here[0];
-        if (target) {
-          project.edit(path, `Delete ${target.kind}`, (doc) => deleteEntity(doc, target));
-          entities.select(null);
-        }
+        if (target && removeEntity(project, mapId, target)) entities.select(null);
         return;
       }
       if (entities.placing || entities.copying) {
@@ -178,13 +179,20 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
         let ref: EntityRef | null = null;
         const src = entities.copying;
         const kind = entities.placing;
-        if (src)
+        if (kind === "teleport") {
+          // the exit's cell is chosen – its destination next, in a window
+          entities.setPlacing(null);
+          entities.startTeleport(c);
+          return;
+        }
+        if (kind === "start" || kind === "quickplay") ref = { kind: "spawn", key: placeStart(project, mapId, c, kind) };
+        else if (src)
           project.edit(path, `Duplicate ${src.kind}`, (doc) => {
             ref = duplicateEntity(doc, doc.toJS() as MapDef, src, c);
           });
         else if (kind)
           project.edit(path, `Add ${kind}`, (doc) => {
-            ref = addEntity(doc, doc.toJS() as MapDef, kind, c, { map: mapId, enemy: [...(db?.enemies.keys() ?? [])][0], sign: Object.keys(db?.graphics.wallSigns?.frames ?? { inn: 0 })[0] });
+            ref = addEntity(doc, doc.toJS() as MapDef, kind as EntityKind, c, { map: mapId, enemy: [...(db?.enemies.keys() ?? [])][0], sign: Object.keys(db?.graphics.wallSigns?.frames ?? { inn: 0 })[0] });
           });
         entities.setPlacing(null);
         entities.setCopying(null);
@@ -387,9 +395,7 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
       }
       if (e.key === "Delete" || e.key === "Backspace") {
         if (mode === "entity" && entities.selected) {
-          const ref = entities.selected;
-          project.edit(path, `Delete ${ref.kind}`, (doc) => deleteEntity(doc, ref));
-          entities.select(null);
+          if (removeEntity(project, mapId, entities.selected)) entities.select(null);
         } else if (mode !== "entity" && areaRef.current && tool === "select") {
           const r = areaRef.current;
           const cells = rectCells({ x: r.x, y: r.y }, { x: r.x + r.w - 1, y: r.y + r.h - 1 });

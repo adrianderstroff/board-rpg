@@ -241,6 +241,20 @@ input.box-check:checked { background: var(--bg) url("data:image/svg+xml,%3Csvg x
 .inspector.fill .page-fields { flex: 1; min-height: 0; overflow: auto; }
 .entity-actions { flex: none; display: flex; gap: 6px; align-items: center; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
 .entity-actions .spacer { flex: 1; }
+.bad-text { color: var(--bad); }
+ul.uses { margin: 4px 0 0; padding-left: 16px; color: var(--dim); }
+.teleport-target { align-items: center; }
+.teleport-target .spacer { flex: 1; }
+/* the destination window: maps to choose from, then the map to place the arrival on */
+.map-choice { display: flex; flex-direction: column; gap: 2px; }
+.map-choice button { display: flex; justify-content: space-between; gap: 8px; text-align: left; background: none; border-color: transparent; }
+.map-choice button:hover:not(:disabled) { background: var(--panel-2); border-color: transparent; }
+.map-choice button.here span { color: var(--accent); }
+.map-choice small { color: var(--dim); }
+.float-body:has(.destination-canvas) { padding: 0; }
+.destination-canvas { position: relative; height: 100%; min-height: 200px; }
+.float-toolbar .row { gap: 8px; align-items: center; flex-wrap: wrap; }
+.float-toolbar .spacer { flex: 1; }
 .page-form { background: #ffffff06; border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; }
 .inspector { width: auto; }
 

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { isMap, isScalar } from "yaml";
 import type { Database } from "../../../src/core/data/database";
 import type { EventPageDef, Interaction, MapDef } from "../../../src/core/data/types";
 import type { Dir } from "../../../src/core/util/grid";
@@ -7,10 +6,13 @@ import { ActionEditor } from "../forms/ActionEditor";
 import { ConditionEditor } from "../forms/ConditionEditor";
 import { Check, Field, fileSetter, ListEditor, Num, Select, Text } from "../forms/fields";
 import { Icon } from "../icons";
+import { useProjectContext } from "../projectContext";
 import type { Project } from "../project";
 import { entityPath, KIND_INFO, type EntityRef } from "./model";
 import { QuickPlayForm } from "../screens/QuickPlayForm";
 import { LookPicker, type LookPick } from "./LookPicker";
+import { TeleportTarget } from "./TeleportTarget";
+import { arrivalRole, arrivalUses, cleanupArrival, ensureArrival, mapFile, renameArrival, retargetExit } from "./teleports";
 import { pageLayers, SpriteView } from "./LookPreview";
 
 const DIRS: Dir[] = ["N", "E", "S", "W"];
@@ -29,7 +31,7 @@ export function EntityForm({ project, mapId, entity, onSelect }: { project: Proj
   const setIn = fileSetter(project, file);
   if (!db) return null;
   const base = entityPath(entity);
-  const data = (entity.kind === "spawn" ? map.spawns?.[entity.key as string] : entity.kind === "quickplay" ? map.editor?.quickPlay : (map as unknown as Record<string, unknown[]>)[KIND_INFO[entity.kind].list]?.[entity.key as number]) as Record<string, unknown> | undefined;
+  const data = (entity.kind === "spawn" ? map.spawns?.[entity.key as string] : (map as unknown as Record<string, unknown[]>)[KIND_INFO[entity.kind].list]?.[entity.key as number]) as Record<string, unknown> | undefined;
   if (!data) return null;
   const set = (field: string, value: unknown, group?: string) => setIn([...base, field], value, `${KIND_INFO[entity.kind].label}: ${field}`, group && `${entity.kind}${entity.key}.${group}`);
   const ids = <T,>(m: Map<string, T>, name?: (t: T) => string) => [...m.entries()].map(([id, t]) => [id, name ? `${name(t)} (${id})` : id] as [string, string]);
@@ -53,18 +55,37 @@ export function EntityForm({ project, mapId, entity, onSelect }: { project: Proj
 
   const body = () => {
     switch (entity.kind) {
-      case "spawn":
+      case "spawn": {
+        const uses = arrivalUses(project, mapId, entity.key as string);
         return (
           <>
-            <Field label="Id" hint="Exits and teleports name it; renaming breaks those (the problems badge shows where).">
-              <SpawnRename project={project} file={file} id={entity.key as string} onRenamed={(id) => onSelect({ kind: "spawn", key: id })} />
+            <Field label="Name" hint="Renaming updates everything that leads here.">
+              <SpawnRename project={project} mapId={mapId} id={entity.key as string} onRenamed={(id) => onSelect({ kind: "spawn", key: id })} />
             </Field>
             {position}
             <Field label="Facing">
               <Select value={data.dir as string} options={DIRS} empty="S (default)" onChange={(v) => set("dir", v)} />
             </Field>
+            <Field label="Leads here">
+              {uses.length ? (
+                <ul class="uses">
+                  {uses.map((u, i) => (
+                    <li key={i}>{u.label}</li>
+                  ))}
+                </ul>
+              ) : (
+                <span class="bad-text">nothing – it can be deleted</span>
+              )}
+            </Field>
+            {arrivalRole(project, mapId, entity.key as string) === "quickplay" && (
+              <>
+                <h3>Quick Play</h3>
+                <QuickPlayForm project={project} mapId={mapId} />
+              </>
+            )}
           </>
         );
+      }
       case "exit": {
         const target = db.maps.get(data.to as string);
         return (
@@ -73,11 +94,8 @@ export function EntityForm({ project, mapId, entity, onSelect }: { project: Proj
             <Field label="Direction" hint="Which way the arrow points (the side of the map it leads off).">
               <Select value={data.dir as string} options={DIRS} onChange={(v) => set("dir", v ?? "N")} />
             </Field>
-            <Field label="To map">
-              <Select value={data.to as string} options={ids(db.maps, (m) => m.name)} onChange={(v) => set("to", v)} />
-            </Field>
-            <Field label="Arrive at">
-              <Select value={data.spawn as string} options={Object.keys(target?.spawns ?? {})} onChange={(v) => set("spawn", v)} />
+            <Field label="Leads to">
+              <TeleportTarget project={project} value={{ map: data.to as string, spawn: data.spawn as string }} fromMap={mapId} onPick={(d) => retargetExit(project, mapId, entity.key as number, d)} />
             </Field>
             <Field label="Label" hint="Shown when asking to travel.">
               <Text value={data.label as string} placeholder={target?.name} onChange={(v) => set("label", v, "label")} />
@@ -182,8 +200,6 @@ export function EntityForm({ project, mapId, entity, onSelect }: { project: Proj
             </Field>
           </>
         );
-      case "quickplay":
-        return <QuickPlayForm project={project} mapId={mapId} />;
       case "event":
         return <EventForm project={project} mapId={mapId} index={entity.key as number} db={db} />;
     }
@@ -197,9 +213,10 @@ export function EntityForm({ project, mapId, entity, onSelect }: { project: Proj
   );
 }
 
-function SpawnRename({ project, file, id, onRenamed }: { project: Project; file: string; id: string; onRenamed: (id: string) => void }) {
+function SpawnRename({ project, mapId, id, onRenamed }: { project: Project; mapId: string; id: string; onRenamed: (id: string) => void }) {
   const [name, setName] = useState(id);
-  const taken = Object.keys(project.data<MapDef>(file).spawns ?? {});
+  useEffect(() => setName(id), [id]);
+  const taken = Object.keys(project.data<MapDef>(mapFile(mapId)).spawns ?? {});
   const valid = /^[a-z0-9_]+$/i.test(name) && (name === id || !taken.includes(name));
   return (
     <div class="row">
@@ -207,12 +224,7 @@ function SpawnRename({ project, file, id, onRenamed }: { project: Project; file:
       <button
         disabled={!valid || name === id}
         onClick={() => {
-          project.edit(file, "Rename spawn", (doc) => {
-            const spawns = doc.get("spawns", true);
-            if (!isMap(spawns)) return;
-            const pair = spawns.items.find((p) => (isScalar(p.key) ? p.key.value : p.key) === id);
-            if (pair && isScalar(pair.key)) pair.key.value = name;
-          });
+          renameArrival(project, mapId, id, name);
           onRenamed(name);
         }}
       >
@@ -522,6 +534,7 @@ function InteractionForm({ it, set, db, mapId }: { it: Interaction; set: (v: Int
 
 /** Where the party wakes up after resting at the inn, and which way it faces (default: here, as it stood). */
 function WakeUpForm({ it, set, db, mapId }: { it: Extract<Interaction, { type: "inn" }>; set: (v: Interaction) => void; db: Database; mapId: string }) {
+  const project = useProjectContext();
   const wake = it.wakeAt;
   const target = wake ? db.maps.get(wake.map) : undefined;
   const spawnDir = wake ? (target?.spawns[wake.spawn]?.dir ?? "S") : undefined;
@@ -532,18 +545,26 @@ function WakeUpForm({ it, set, db, mapId }: { it: Extract<Interaction, { type: "
           type="checkbox"
           checked={!!wake}
           onChange={(e) => {
-            const m = db.maps.get(mapId)!;
-            set({ ...it, wakeAt: e.currentTarget.checked ? { map: mapId, spawn: Object.keys(m.spawns)[0] ?? "start" } : undefined });
+            set({ ...it, wakeAt: e.currentTarget.checked ? { map: mapId, spawn: "" } : undefined });
+            if (!e.currentTarget.checked && wake) cleanupArrival(project, wake.map, wake.spawn);
           }}
         />
         wake up somewhere else (e.g. by the beds upstairs)
       </label>
       {wake && (
         <>
-          <div class="row">
-            <Select value={wake.map} options={[...db.maps.entries()].map(([id, m]) => [id, m.name] as [string, string])} onChange={(v) => set({ ...it, wakeAt: { map: v ?? mapId, spawn: Object.keys(db.maps.get(v ?? mapId)?.spawns ?? {})[0] ?? "" } })} />
-            <Select value={wake.spawn} options={Object.keys(target?.spawns ?? {})} onChange={(v) => set({ ...it, wakeAt: { ...wake, spawn: v ?? "" } })} />
-          </div>
+          <TeleportTarget
+            project={project}
+            value={wake}
+            fromMap={mapId}
+            onPick={(d) =>
+              project.transaction("Inn wake-up", () => {
+                const spawn = ensureArrival(project, d, mapId);
+                set({ ...it, wakeAt: { ...wake, map: d.map, spawn } });
+                cleanupArrival(project, wake.map, wake.spawn);
+              })
+            }
+          />
           <div class="row">
             facing
             <Select value={wake.dir} options={DIRS} empty={`${spawnDir} (the spawn's)`} onChange={(v) => set({ ...it, wakeAt: { ...wake, dir: v as Dir | undefined } })} />

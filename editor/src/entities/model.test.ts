@@ -10,7 +10,7 @@ const load = (file: string) => {
 };
 
 describe("map entities (editor-design §6)", () => {
-  it("duplicates an entity onto another cell with a free id (not the Quick Play start)", () => {
+  it("duplicates an entity onto another cell with a free id (not an arrival)", () => {
     const { doc, map } = load("data/maps/elder_house.yaml");
     const before = map().events!.length;
     const ref = duplicateEntity(doc, map(), { kind: "event", key: 0 }, { x: 1, y: 4 });
@@ -18,10 +18,8 @@ describe("map entities (editor-design §6)", () => {
     expect(map().events!.length).toBe(before + 1);
     expect(copy).toMatchObject({ id: "elder_1", x: 1, y: 4 });
     expect(copy.pages).toEqual(map().events![0].pages);
-    const sp = duplicateEntity(doc, map(), { kind: "spawn", key: "from_town" }, { x: 2, y: 4 });
-    expect(sp).toEqual({ kind: "spawn", key: "from_town_1" });
-    expect(map().spawns.from_town_1).toMatchObject({ x: 2, y: 4 });
-    expect(duplicateEntity(doc, map(), { kind: "quickplay", key: 0 }, { x: 1, y: 1 })).toBeNull();
+    // arrivals come with what leads there – not copied
+    expect(duplicateEntity(doc, map(), { kind: "spawn", key: "from_town" }, { x: 2, y: 4 })).toBeNull();
   });
 
   it("lists everything placed on a map as entities", () => {

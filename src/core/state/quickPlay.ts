@@ -11,7 +11,7 @@ export const QUICK_PLAY_SPAWN = "__quickplay";
 
 /**
  * A new game that starts right on `mapId` for play-testing from the editor (editor-design §4):
- * the map's Quick Play entity (map.editor.quickPlay) sets position, party and levels, extra items,
+ * the map's Quick Play start (map.editor.quickPlay, on one of its arrivals) sets position, party and levels, extra items,
  * abilities, flags and gold; without one the start party stands on the walkable cell nearest to the
  * map's centre. No title, no start quest. The database is modified (a spawn is added): use a
  * database built for this run only.
@@ -35,8 +35,9 @@ export function quickPlay(db: Database, mapId: string, seed?: number): { game: G
   }
   if (qp.gold !== undefined) state.gold = qp.gold;
   for (const f of qp.flags ?? []) state.flags[f] = true;
-  const at = qp.x !== undefined && qp.y !== undefined ? { x: qp.x, y: qp.y } : centreCell(db, mapId);
-  map.spawns[QUICK_PLAY_SPAWN] = { x: at.x, y: at.y, dir: "S" };
+  const arrival = qp.spawn ? map.spawns[qp.spawn] : undefined;
+  const at = arrival ?? (qp.x !== undefined && qp.y !== undefined ? { x: qp.x, y: qp.y } : centreCell(db, mapId));
+  map.spawns[QUICK_PLAY_SPAWN] = { x: at.x, y: at.y, dir: arrival?.dir ?? "S" };
   const game = new Game(db, state);
   for (const [item, count] of Object.entries(qp.items ?? {})) addItem(game.ctx, item, count);
   const result = game.enter(mapId, QUICK_PLAY_SPAWN);

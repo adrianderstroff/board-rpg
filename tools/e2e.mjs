@@ -307,15 +307,26 @@ const scenarios = {
     const exits0 = (await data()).exits.length;
     await page.keyboard.press("3"); // entity mode
     await sleep(300);
-    // place a new exit and send it to Sandhollow's inn door
-    await page.locator(".add-grid").getByRole("button", { name: "Exit", exact: true }).click();
+    // place a new teleport: its exit here, then – in the destination window – Sandhollow's arrival by the inn
+    await page.locator(".add-grid").getByRole("button", { name: "Teleport", exact: true }).click();
     let p = await at(2, 7);
     await page.mouse.click(p.x, p.y);
+    await page.locator(".map-choice button", { hasText: "Sandhollow" }).first().click();
+    await sleep(500);
+    const sh = await page.evaluate(() => window.__editor.project.data("data/maps/sandhollow.yaml"));
+    const inn = sh.spawns.from_inn;
+    // the top view fits the map into the window: cell size and offset as GridCanvas computes them
+    const rows = sh.layers.terrain.split("\n").filter((r) => r.length);
+    const gw = Math.max(...rows.map((r) => r.length));
+    const box = await page.locator(".destination-canvas canvas").boundingBox();
+    const cell = Math.max(8, Math.min(48, Math.floor(Math.min((box.width - 40) / gw, (box.height - 40) / rows.length))));
+    const px = box.x + Math.round((box.width - gw * cell) / 2) + (inn.x + 0.5) * cell;
+    const py = box.y + Math.round((box.height - rows.length * cell) / 2) + (inn.y + 0.5) * cell;
+    await page.mouse.move(px, py);
+    await page.mouse.click(px, py);
     await sleep(300);
-    await page.locator(".entity-form select").nth(1).selectOption("sandhollow");
-    await page.locator(".entity-form select").nth(2).selectOption("from_inn");
     let m = await data();
-    d.expect(m.exits.length === exits0 + 1 && m.exits[exits0].to === "sandhollow" && m.exits[exits0].spawn === "from_inn", `new exit to sandhollow/from_inn (${JSON.stringify(m.exits[exits0])})`);
+    d.expect(m.exits.length === exits0 + 1 && m.exits[exits0].to === "sandhollow" && m.exits[exits0].spawn === "from_inn", `new teleport to sandhollow/from_inn (${JSON.stringify(m.exits[exits0])})`);
     await d.shot("exit");
     // drag the free cushion one cell over
     p = await at(5, 5);
@@ -467,9 +478,9 @@ const scenarios = {
     await page.mouse.click(qp.x, qp.y);
     await sleep(300);
     await page.getByRole("button", { name: "+ Hero" }).click();
-    const party = page.locator(".inspector select").first();
+    const party = page.locator(".inspector select").filter({ has: page.locator("option[value=tarek]") }).first();
     await party.selectOption("tarek");
-    await page.locator(".inspector input[type=number]").nth(3).fill("9"); // level (x, y, gold, level)
+    await page.locator(".inspector input[type=number]").nth(3).fill("9"); // level (the arrival's x, y, gold, level)
     await page.locator(".inspector input[placeholder^='e.g.']").fill("monks_trial");
     // an unsaved edit the play-test must see: other music
     await page.getByRole("button", { name: "Info", exact: true }).click();
@@ -495,7 +506,7 @@ const scenarios = {
     d.expect(st.level === 9, `level 9 (${st.level})`);
     d.expect(st.flag === true, "flag set");
     d.expect(st.music === "boss", "unsaved edit reached the game");
-    d.expect(st.at[0] === 5 && st.at[1] === 6, `started on the Quick Play entity (${st.at})`);
+    d.expect(st.at[0] === 5 && st.at[1] === 6, `started on the Quick Play start (${st.at})`);
     // nothing was written to disk: undo everything
     await page.bringToFront();
     await page.locator(".status").click(); // focus out of the form fields

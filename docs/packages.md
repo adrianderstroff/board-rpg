@@ -282,6 +282,33 @@ Layering (see also [architecture](../CLAUDE.md)):
 
 ---
 
+# Rework: entities & teleports (game-design §10.3, editor-design §6)
+
+## R1 · Teleports ☑
+- ☑ Teleport kind: exit + arrival; Add → Teleport, destination in floating windows (map list, then placing the arrival on the map); way back with arrivals in front of the exits
+- ☑ Exit form "leads to … Change…"; teleport actions pick their target the same way; icons per kind (exit, door, arrival, game start, Quick Play start)
+- ☑ Starts as arrival roles (game start, Quick Play start – `editor.quickPlay.spawn`); no Spawn / Quick Play kinds
+- ☑ Rename updates references; deleting cascades (exits to a deleted arrival, unused arrivals) as one undo step over several files; unknown teleport targets are problems
+- ☑ Project transactions: edits on several files as one undo step (also kept across reloads)
+
+## R2 · Wall signs in Decor mode ☐
+- ☐ Signs placed on a block face in Decor mode (face with A / D, block with W / S); no Wall sign entity
+
+## R3 · Script runner ☐
+- ☐ Sequential scripts with if / elif / else, choice (icons), wait, call, stop; pausable and saved (save games, undo); dialogs run as scripts
+
+## R4 · Entity states ☐
+- ☐ States (look, passability, hidden) saved per map; set state action, "in state" condition; pages → states + a map-loaded handler
+
+## R5 · Handlers & triggers ☐
+- ☐ Interact, enter, leave, pass over (stops moves), map loaded, condition becomes true, defeated; "heroes on a cell" condition; new actions (move, face, show / hide, damage / heal / status, camera, sound, fade, emote, party members)
+
+## R6 · Presets & migration ☐
+- ☐ Gate, floor switch, trap as entity presets; content migrated; `gates.ts` / map traps / switches removed; rule tests rewritten against entities
+
+## R7 · State and handler editor ☐
+- ☐ States list (look + passability + hidden) and handlers with a block editor (if / elif / else, choices) in the entity form
+
 # Editor (see [editor-design.md](editor-design.md))
 
 ## E1 · Editor foundation ☑

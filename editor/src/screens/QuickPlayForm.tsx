@@ -1,5 +1,4 @@
 import type { MapDef, QuickPlayDef } from "../../../src/core/data/types";
-import { centreCell } from "../../../src/core/state/quickPlay";
 import type { Project } from "../project";
 
 /**
@@ -34,20 +33,13 @@ export function QuickPlayForm({ project, mapId }: { project: Project; mapId: str
   const items = [...db.items.values()].sort((a, b) => a.name.localeCompare(b.name));
   const abilities = [...db.abilities.values()].filter((a) => a.type !== "Enemy").sort((a, b) => a.name.localeCompare(b.name));
   const party = qp.party ?? [];
-  const centre = centreCell(db, mapId);
   const num = (v: string) => (v === "" ? undefined : Number(v));
 
   return (
     <>
-      <p class="hint">▶ Quick Play starts right here. Empty fields use the defaults; the real game start is under Settings.</p>
+      <p class="hint">▶ Quick Play starts on this arrival. Empty fields use the defaults.</p>
 
       <div class="form" style={{ gridTemplateColumns: "70px 1fr" }}>
-        <label>Start at</label>
-        <div class="row">
-          x <input type="number" style={{ width: 56 }} value={qp.x ?? ""} placeholder={String(centre.x)} onInput={(e) => write({ ...qp, x: num(e.currentTarget.value) }, "Quick Play position", "qp-pos")} />
-          y <input type="number" style={{ width: 56 }} value={qp.y ?? ""} placeholder={String(centre.y)} onInput={(e) => write({ ...qp, y: num(e.currentTarget.value) }, "Quick Play position", "qp-pos")} />
-        </div>
-
         <label>Gold</label>
         <input type="number" value={qp.gold ?? ""} placeholder={String(db.config.start.gold)} onInput={(e) => write({ ...qp, gold: num(e.currentTarget.value) }, "Quick Play gold", "qp-gold")} />
       </div>
@@ -169,6 +161,7 @@ function PairList(props: {
 /** Drops empty fields so the map file only holds what was set. */
 function prune(qp: QuickPlayDef): QuickPlayDef {
   const out: QuickPlayDef = {};
+  if (qp.spawn) out.spawn = qp.spawn;
   if (qp.x !== undefined && !Number.isNaN(qp.x)) out.x = qp.x;
   if (qp.y !== undefined && !Number.isNaN(qp.y)) out.y = qp.y;
   if (qp.party?.length) out.party = qp.party.map((p) => (p.level ? { hero: p.hero, level: p.level } : { hero: p.hero }));

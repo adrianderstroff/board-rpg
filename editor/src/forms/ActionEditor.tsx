@@ -1,3 +1,6 @@
+import { TeleportTarget } from "../entities/TeleportTarget";
+import { cleanupArrival, ensureArrival } from "../entities/teleports";
+import { useProjectContext } from "../projectContext";
 import type { Database } from "../../../src/core/data/database";
 import type { Action } from "../../../src/core/data/types";
 import { ListEditor, Num, Select, Text } from "./fields";
@@ -29,7 +32,7 @@ const KINDS: [string, string][] = [
 
 export const actionKind = (a: Action) => Object.keys(a)[0];
 
-function defaultFor(kind: string, db: Database): Action {
+function defaultFor(kind: string, db: Database, mapId?: string): Action {
   const first = <T,>(m: Map<string, T>) => [...m.keys()][0] ?? "";
   switch (kind) {
     case "setVar":
@@ -57,8 +60,8 @@ function defaultFor(kind: string, db: Database): Action {
     case "healParty":
       return { healParty: true };
     case "teleport": {
-      const m = [...db.maps.values()][0];
-      return { teleport: { map: m.id, spawn: Object.keys(m.spawns)[0] ?? "start" } };
+      // the target is picked right after (the destination window); until then it is a problem
+      return { teleport: { map: mapId ?? "", spawn: "" } };
     }
     default:
       return { [kind]: "" } as Action;
@@ -66,6 +69,7 @@ function defaultFor(kind: string, db: Database): Action {
 }
 
 export function ActionEditor({ value, onChange, db, mapId }: { value: Action[] | undefined; onChange: (a: Action[]) => void; db: Database; mapId?: string }) {
+  const project = useProjectContext();
   const map = mapId ? db.maps.get(mapId) : undefined;
   const ids = <T,>(m: Map<string, T>, name?: (t: T) => string) => [...m.entries()].map(([id, t]) => [id, name ? `${name(t)} (${id})` : id] as [string, string]);
   return (
@@ -146,10 +150,18 @@ export function ActionEditor({ value, onChange, db, mapId }: { value: Action[] |
             case "teleport": {
               const o = v as { map: string; spawn: string };
               return (
-                <div class="row">
-                  <Select value={o.map} options={ids(db.maps, (m) => m.name)} onChange={(x) => set({ teleport: { map: x ?? "", spawn: Object.keys(db.maps.get(x ?? "")?.spawns ?? {})[0] ?? "" } })} />
-                  <Select value={o.spawn} options={Object.keys(db.maps.get(o.map)?.spawns ?? {})} onChange={(x) => set({ teleport: { ...o, spawn: x ?? "" } })} />
-                </div>
+                <TeleportTarget
+                  project={project}
+                  value={o}
+                  fromMap={mapId ?? ""}
+                  onPick={(d) =>
+                    project.transaction("Teleport target", () => {
+                      const spawn = ensureArrival(project, d, mapId ?? "script");
+                      set({ teleport: { map: d.map, spawn } });
+                      cleanupArrival(project, o.map, o.spawn);
+                    })
+                  }
+                />
               );
             }
             case "message":
@@ -160,7 +172,7 @@ export function ActionEditor({ value, onChange, db, mapId }: { value: Action[] |
         };
         return (
           <div class="row wrap">
-            <select value={kind} onChange={(e) => set(defaultFor(e.currentTarget.value, db))}>
+            <select value={kind} onChange={(e) => set(defaultFor(e.currentTarget.value, db, mapId))}>
               {KINDS.map(([k, label]) => (
                 <option key={k} value={k}>
                   {label}

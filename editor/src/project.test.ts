@@ -126,4 +126,19 @@ describe("editor project (editor-design §2)", () => {
     expect(b.dropped).toEqual(["data/maps/sandhollow.yaml"]);
     expect(b.canUndo).toBe(false);
   });
+
+  it("a transaction's edits on several files are one undo step", async () => {
+    const p = new Project(memoryApi(), null);
+    await p.load();
+    p.transaction("Two maps", () => {
+      p.edit("data/maps/sandhollow.yaml", "a", (d) => d.set("music", "boss"));
+      p.edit("data/maps/temple.yaml", "b", (d) => d.set("music", "boss"));
+    });
+    expect(p.dirtyPaths().sort()).toEqual(["data/maps/sandhollow.yaml", "data/maps/temple.yaml"]);
+    expect(p.undoLabel).toBe("Two maps");
+    p.undo();
+    expect(p.dirtyPaths()).toEqual([]);
+    p.redo();
+    expect(p.dirtyPaths().length).toBe(2);
+  });
 });

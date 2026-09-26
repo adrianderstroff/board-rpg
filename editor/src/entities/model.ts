@@ -7,7 +7,22 @@ import type { Dir, Pos } from "../../../src/core/util/grid";
  * stays in its own list in the map file.
  */
 
-export type EntityKind = "event" | "exit" | "spawn" | "enemy" | "gate" | "switch" | "trap" | "sign" | "quickplay";
+export type EntityKind = "event" | "exit" | "spawn" | "enemy" | "gate" | "switch" | "trap" | "sign";
+
+/** What the Add buttons place: entity kinds, a teleport (exit + arrival) and the starts (arrivals with a role). */
+export type AddKind = "event" | "teleport" | "enemy" | "gate" | "switch" | "trap" | "sign" | "start" | "quickplay";
+
+export const ADD_INFO: Record<AddKind, { label: string; icon: string; hint: string }> = {
+  event: { label: "Event", icon: "event", hint: "An NPC, an object or an invisible trigger – with pages of conditions and actions." },
+  teleport: { label: "Teleport", icon: "exit", hint: "An exit to another map; its arrival there is placed right after (and a way back, if wanted)." },
+  enemy: { label: "Enemy", icon: "enemy", hint: "An enemy piece (or party) on the map." },
+  gate: { label: "Gate", icon: "gate", hint: "Bars across a cell: open while a linked switch is pressed or its condition holds." },
+  switch: { label: "Floor switch", icon: "switch", hint: "A plate held down by standing heroes; opens gates." },
+  trap: { label: "Hidden trap", icon: "trap", hint: "Stops heroes walking over it until found with Discover." },
+  sign: { label: "Wall sign", icon: "sign", hint: "Lettering painted on one side of a block (shop signs)." },
+  start: { label: "Game start", icon: "start", hint: "Where a new game begins (one for the whole game – placing it again moves it)." },
+  quickplay: { label: "Quick Play start", icon: "quickplay", hint: "Where ▶ Quick Play starts on this map, with its party and items (editor only)." },
+};
 
 export interface EntityRef {
   kind: EntityKind;
@@ -24,14 +39,13 @@ export interface Entity extends EntityRef {
 
 export const KIND_INFO: Record<EntityKind, { label: string; list: string; editorOnly?: boolean; hint: string }> = {
   event: { label: "Event", list: "events", hint: "An NPC, an object or an invisible trigger – with pages of conditions and actions." },
-  exit: { label: "Exit", list: "exits", hint: "Walking onto it travels to a spawn point of another map (a teleport)." },
-  spawn: { label: "Spawn point", list: "spawns", editorOnly: true, hint: "Where heroes arrive through exits, teleports and the game start." },
+  exit: { label: "Teleport", list: "exits", hint: "Walking onto it travels to its arrival on another map." },
+  spawn: { label: "Arrival", list: "spawns", editorOnly: true, hint: "Where the party lands – it comes with the teleport, start or wake-up that leads here." },
   enemy: { label: "Enemy", list: "enemies", hint: "An enemy piece (or party) on the map." },
   gate: { label: "Gate", list: "gates", hint: "Bars across a cell: open while a linked switch is pressed or its condition holds." },
   switch: { label: "Floor switch", list: "switches", hint: "A plate held down by standing heroes; opens gates." },
   trap: { label: "Hidden trap", list: "traps", editorOnly: true, hint: "Stops heroes walking over it until found with Discover." },
   sign: { label: "Wall sign", list: "wallDecor", hint: "Lettering painted on one side of a block (shop signs)." },
-  quickplay: { label: "Quick Play start", list: "editor.quickPlay", editorOnly: true, hint: "Where ▶ Quick Play starts on this map (editor only)." },
 };
 
 /** Every entity on the map, in a stable order. */
@@ -45,15 +59,12 @@ export function listEntities(map: MapDef): Entity[] {
   (map.switches ?? []).forEach((s, i) => out.push({ kind: "switch", key: i, x: s.x, y: s.y, label: s.id }));
   (map.traps ?? []).forEach((t, i) => out.push({ kind: "trap", key: i, x: t.x, y: t.y, label: t.id }));
   (map.wallDecor ?? []).forEach((w, i) => out.push({ kind: "sign", key: i, x: w.x, y: w.y, label: `${w.sign} (${w.face})` }));
-  const qp = map.editor?.quickPlay;
-  if (qp?.x !== undefined && qp.y !== undefined) out.push({ kind: "quickplay", key: 0, x: qp.x, y: qp.y, label: "Quick Play" });
   return out;
 }
 
 /** YAML path of an entity in the map file. */
 export function entityPath(ref: EntityRef): (string | number)[] {
   if (ref.kind === "spawn") return ["spawns", ref.key];
-  if (ref.kind === "quickplay") return ["editor", "quickPlay"];
   return [KIND_INFO[ref.kind].list, ref.key];
 }
 
@@ -70,11 +81,6 @@ export function moveEntity(doc: Document, ref: EntityRef, to: Pos) {
 }
 
 export function deleteEntity(doc: Document, ref: EntityRef) {
-  if (ref.kind === "quickplay") {
-    doc.deleteIn(["editor", "quickPlay", "x"]);
-    doc.deleteIn(["editor", "quickPlay", "y"]);
-    return;
-  }
   doc.deleteIn(entityPath(ref));
 }
 
@@ -114,26 +120,15 @@ export function addEntity(doc: Document, map: MapDef, kind: EntityKind, at: Pos,
       doc.setIn(["spawns", id], doc.createNode({ x, y, dir: "S" }, { flow: true }));
       return { kind, key: id };
     }
-    case "quickplay":
-      doc.setIn(["editor", "quickPlay", "x"], x);
-      doc.setIn(["editor", "quickPlay", "y"], y);
-      return { kind, key: 0 };
   }
 }
 
 /**
- * Copies an entity onto another cell (ids made unique: `elder` → `elder_1`). The Quick Play start
- * is one per map and can't be copied.
+ * Copies an entity onto another cell (ids made unique: `elder` → `elder_1`). Arrivals aren't copied:
+ * they come with what leads there (editor-design §6.4).
  */
 export function duplicateEntity(doc: Document, map: MapDef, ref: EntityRef, at: Pos): EntityRef | null {
-  if (ref.kind === "quickplay") return null;
-  if (ref.kind === "spawn") {
-    const src = map.spawns?.[ref.key as string];
-    if (!src) return null;
-    const id = freeId(String(ref.key), Object.keys(map.spawns ?? {}));
-    doc.setIn(["spawns", id], doc.createNode({ ...structuredClone(src), x: at.x, y: at.y }, { flow: true }));
-    return { kind: "spawn", key: id };
-  }
+  if (ref.kind === "spawn") return null;
   const list = KIND_INFO[ref.kind].list;
   const items = (map as unknown as Record<string, Record<string, unknown>[] | undefined>)[list] ?? [];
   const src = items[ref.key as number];

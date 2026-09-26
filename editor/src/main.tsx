@@ -1,6 +1,7 @@
 import { render } from "preact";
 import { App } from "./App";
 import { Project } from "./project";
+import { ProjectContext } from "./projectContext";
 
 /** Board RPG editor (docs/editor-design.md). Runs on the Vite dev server: `npm run editor`. */
 const root = document.getElementById("app")!;
@@ -11,7 +12,12 @@ project
   .load()
   .then(() => {
     root.innerHTML = "";
-    render(<App project={project} />, root);
+    render(
+      <ProjectContext.Provider value={project}>
+        <App project={project} />
+      </ProjectContext.Provider>,
+      root,
+    );
     // handle for automated browser tests (tools/e2e.mjs), like the game's window.__game
     (window as unknown as { __editor: object }).__editor = { project };
   })

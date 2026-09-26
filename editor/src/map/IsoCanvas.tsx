@@ -4,7 +4,7 @@ import { getGrid } from "../../../src/core/board/grid";
 import type { Database } from "../../../src/core/data/database";
 import type { Pos } from "../../../src/core/util/grid";
 import { AxisGizmo, isoAxes } from "./Gizmo";
-import { isMarker, markerCanvas, markerKind } from "../entities/icons";
+import { isMarker, markerCanvas, markerIcon } from "../entities/icons";
 import { loadSheet } from "../../../src/engine/assets";
 import { isoToScreen, LAYER } from "../../../src/engine/iso";
 import { IsoMapView, type IsoMapSource } from "../../../src/engine/iso/IsoMapView";
@@ -399,7 +399,7 @@ class MapScene extends Phaser.Scene {
   private ensureMarker(key: string) {
     if (this.textures.exists(key)) return;
     const chip = getGrid(this.props.db, this.props.mapId).chipset;
-    this.textures.addCanvas(key, markerCanvas(markerKind(key), chip.tileWidth, chip.tileHeight, MARKER_RES));
+    this.textures.addCanvas(key, markerCanvas(markerIcon(key), chip.tileWidth, chip.tileHeight, MARKER_RES));
     this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
   }
 

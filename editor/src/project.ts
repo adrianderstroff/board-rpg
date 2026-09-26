@@ -20,10 +20,9 @@ interface FileEntry {
   js: unknown;
 }
 
+/** One undo step: the files it changed (usually one; a transaction can span several). */
 interface Change {
-  path: string;
-  before: string;
-  after: string;
+  files: { path: string; before: string; after: string }[];
   label: string;
   group?: string;
 }
@@ -36,7 +35,7 @@ export type SessionStore = Pick<Storage, "getItem" | "setItem" | "removeItem">;
  * every file they touch – restored only while the disk still has exactly that.
  */
 interface Session {
-  v: 1;
+  v: 2;
   files: Record<string, string>;
   bases: Record<string, string>;
   undo: Change[];
@@ -76,6 +75,8 @@ export class Project {
   /** Unsaved edits dropped at load because their file changed on disk meanwhile. */
   dropped: string[] = [];
   private persistTimer?: ReturnType<typeof setTimeout>;
+  /** The transaction being recorded (edits inside it become one undo step). */
+  private tx?: Change;
 
   constructor(
     private readonly api: FileApi = httpFileApi,
@@ -104,7 +105,7 @@ export class Project {
     } catch {
       s = null;
     }
-    if (!s || s.v !== 1) return;
+    if (!s || s.v !== 2) return;
     // a file that changed on disk since wins: its unsaved edits (and the history) are dropped
     const disk = (path: string) => this.files.get(path)?.saved ?? "";
     const changed = new Set(Object.keys(s.bases).filter((path) => disk(path) !== s.bases[path]));
@@ -132,16 +133,17 @@ export class Project {
     const undo = this.undoStack.slice(-SESSION_HISTORY);
     const redo = this.redoStack.slice(-SESSION_HISTORY);
     const bases: Record<string, string> = {};
-    for (const path of new Set([...Object.keys(files), ...undo.map((c) => c.path), ...redo.map((c) => c.path)])) bases[path] = this.files.get(path)?.saved ?? "";
+    const touched = [...undo, ...redo].flatMap((c) => c.files.map((f) => f.path));
+    for (const path of new Set([...Object.keys(files), ...touched])) bases[path] = this.files.get(path)?.saved ?? "";
     const write = (session: Session) => this.store!.setItem(SESSION_KEY, JSON.stringify(session));
     try {
       if (!Object.keys(bases).length) this.store.removeItem(SESSION_KEY);
-      else write({ v: 1, files, bases, undo, redo });
+      else write({ v: 2, files, bases, undo, redo });
     } catch {
       // too big for the storage: keep the files at least, without the history
       try {
         const fileBases = Object.fromEntries(Object.keys(files).map((p) => [p, bases[p]]));
-        write({ v: 1, files, bases: fileBases, undo: [], redo: [] });
+        write({ v: 2, files, bases: fileBases, undo: [], redo: [] });
       } catch {
         // nothing more to do – the work is still in this tab
       }
@@ -212,18 +214,47 @@ export class Project {
     const after = formatYaml(f.doc, before);
     f.text = after;
     f.js = f.doc.toJS();
-    const last = this.undoStack[this.undoStack.length - 1];
-    if (group && last?.group === group && last.path === path) last.after = after;
-    else this.undoStack.push({ path, before, after, label, group });
-    this.redoStack = [];
-    this.changed();
+    this.record(path, before, after, label, group);
   }
 
   /** Creates a new data file (e.g. a new map). */
   create(path: string, text: string) {
     if (this.files.has(path)) throw new Error(`${path} exists`);
     this.files.set(path, this.entry(text, ""));
-    this.undoStack.push({ path, before: "", after: text, label: `New ${path}` });
+    this.record(path, "", text, `New ${path}`);
+  }
+
+  /**
+   * Runs `fn`, whose edits – on any number of files – become one undo step (a delete that also
+   * removes things on other maps, a teleport with its arrival). Nested calls join the outer one.
+   */
+  transaction<T>(label: string, fn: () => T): T {
+    if (this.tx) return fn();
+    const tx: Change = { files: [], label };
+    this.tx = tx;
+    try {
+      return fn();
+    } finally {
+      this.tx = undefined;
+      if (tx.files.some((f) => f.before !== f.after)) {
+        this.undoStack.push(tx);
+        this.redoStack = [];
+        this.changed();
+      }
+    }
+  }
+
+  private record(path: string, before: string, after: string, label: string, group?: string) {
+    if (this.tx) {
+      const f = this.tx.files.find((x) => x.path === path);
+      if (f) f.after = after;
+      else this.tx.files.push({ path, before, after });
+      this.changed();
+      return;
+    }
+    const last = this.undoStack[this.undoStack.length - 1];
+    if (group && last?.group === group && last.files.length === 1 && last.files[0].path === path) last.files[0].after = after;
+    else this.undoStack.push({ files: [{ path, before, after }], label, group });
     this.redoStack = [];
     this.changed();
   }
@@ -241,7 +272,7 @@ export class Project {
   undo() {
     const c = this.undoStack.pop();
     if (!c) return;
-    this.setText(c.path, c.before);
+    for (const f of [...c.files].reverse()) this.setText(f.path, f.before);
     this.redoStack.push(c);
     this.changed();
   }
@@ -249,7 +280,7 @@ export class Project {
   redo() {
     const c = this.redoStack.pop();
     if (!c) return;
-    this.setText(c.path, c.after);
+    for (const f of c.files) this.setText(f.path, f.after);
     this.undoStack.push({ ...c, group: undefined });
     this.changed();
   }

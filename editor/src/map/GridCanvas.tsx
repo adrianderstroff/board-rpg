@@ -2,10 +2,10 @@ import { AxisGizmo, TOP_AXES } from "./Gizmo";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { getGrid } from "../../../src/core/board/grid";
 import type { Database } from "../../../src/core/data/database";
-import type { Pos } from "../../../src/core/util/grid";
+import { DIR_VEC, type Pos } from "../../../src/core/util/grid";
 import { CORNERS } from "../../../src/game/board/mapSource";
 import type { EntitySprite } from "../entities/visuals";
-import { drawEntityIcon } from "../entities/icons";
+import { drawEntityIcon, isMarker, markerIcon } from "../entities/icons";
 import type { CanvasHandlers, Ghost, Marker } from "./IsoCanvas";
 import { loadImage, terrainTops } from "./sprites";
 
@@ -22,7 +22,6 @@ const KIND_MARK: Record<string, [string, string]> = {
   switch: ["P", "#c0cbdc"],
   trap: ["T", "#2ce8f5"],
   sign: ["S", "#c0cbdc"],
-  quickplay: ["▶", "#63c74d"],
 };
 
 interface Props {
@@ -187,7 +186,21 @@ export function GridCanvas({ db, mapId, hideDecor, focus, markers, entities, gho
         g.fillRect(px, py, S, S);
         g.strokeStyle = e.blocked ? "#e43b44" : "#2ce8f5";
         g.strokeRect(px + 0.5, py + 0.5, S - 1, S - 1);
-        drawEntityIcon(g, e.kind, px + S / 2, py + S / 2, S * 0.6, "#ffffff");
+        drawEntityIcon(g, isMarker(e.texture) ? markerIcon(e.texture!) : e.kind, px + S / 2, py + S / 2, S * 0.6, "#ffffff");
+        if (e.dir) {
+          // which way it faces (or points): a small wedge at that side
+          const v = DIR_VEC[e.dir];
+          const cx = px + S / 2 + v.x * S * 0.42;
+          const cy = py + S / 2 + v.y * S * 0.42;
+          const k = S * 0.1;
+          g.fillStyle = e.blocked ? "#e43b44" : "#feae34";
+          g.beginPath();
+          g.moveTo(cx + v.x * k, cy + v.y * k);
+          g.lineTo(cx - v.x * k + v.y * k * 1.4, cy - v.y * k + v.x * k * 1.4);
+          g.lineTo(cx - v.x * k - v.y * k * 1.4, cy - v.y * k - v.x * k * 1.4);
+          g.closePath();
+          g.fill();
+        }
         continue;
       }
       const k = `${e.x},${e.y},${e.kind}`;

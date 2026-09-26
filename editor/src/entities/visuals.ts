@@ -3,7 +3,7 @@ import type { MapDef } from "../../../src/core/data/types";
 import { DIR_VEC, dirFromStep, type Dir } from "../../../src/core/util/grid";
 import { DIR_ROW, EXIT_FRAME, K } from "../../../src/game/keys";
 import { markerKey } from "./icons";
-import { listEntities, sameRef, type EntityKind, type EntityRef } from "./model";
+import { ADD_INFO, listEntities, sameRef, type AddKind, type EntityKind, type EntityRef } from "./model";
 
 /** How an entity is drawn on the editor canvas (a sprite from the game's sheets, or a label). */
 export interface EntitySprite {
@@ -25,6 +25,8 @@ export interface EntitySprite {
   preview?: boolean;
   /** The preview is on a cell that is already taken (can't be placed there). */
   blocked?: boolean;
+  /** Which way a preview faces or points (drawn as a wedge in the top view). */
+  dir?: Dir;
 }
 
 /** Charset frame of a character standing idle, facing `dir` in the view (rows by facing, column 1 = idle). */
@@ -65,7 +67,9 @@ export function entitySprites(db: Database, map: MapDef, rotation: number, selec
       }
       case "exit": {
         const ex = map.exits![e.key as number];
-        out.push({ ...base, texture: K.exitArrows, frame: EXIT_FRAME[rotateDir(ex.dir, rotation)], flat: true, label: labels ? e.label : undefined, editorOnly: ex.door });
+        // a door has no arrow in the game: the editor marks it with a door tile
+        if (ex.door) out.push({ ...base, texture: markerKey("door"), flat: true, label: labels ? e.label : undefined, editorOnly: true });
+        else out.push({ ...base, texture: K.exitArrows, frame: EXIT_FRAME[rotateDir(ex.dir, rotation)], flat: true, label: labels ? e.label : undefined });
         break;
       }
       case "gate":
@@ -80,18 +84,20 @@ export function entitySprites(db: Database, map: MapDef, rotation: number, selec
       case "sign":
         if (labels) out.push({ ...base, label: `sign: ${e.label}` });
         break;
-      case "spawn":
-        out.push({ ...base, texture: markerKey("spawn"), flat: true, label: labels ? e.label : undefined, editorOnly: true });
+      case "spawn": {
+        // arrivals, the game start and the Quick Play start each have their own icon
+        const role = db.config.start.map === map.id && db.config.start.spawn === e.key ? "start" : map.editor?.quickPlay?.spawn === e.key ? "quickplay" : "arrival";
+        const text = role === "start" ? "Game start" : role === "quickplay" ? "Quick Play" : e.label;
+        out.push({ ...base, texture: markerKey(role), flat: true, label: labels ? text : undefined, editorOnly: true });
         break;
-      case "quickplay":
-        out.push({ ...base, texture: markerKey("quickplay"), flat: true, label: labels ? "Quick Play" : undefined, editorOnly: true });
-        break;
+      }
     }
   }
   return out;
 }
 
-/** The placing preview: the kind's marker tile on the hovered cell. */
-export function placingSprite(kind: EntityKind, at: { x: number; y: number }): EntitySprite {
-  return { ref: { kind, key: "preview" }, kind, x: at.x, y: at.y, texture: markerKey(kind), flat: true, editorOnly: true, preview: true };
+/** The placing preview: the marker tile of what an Add button places, on the hovered cell. */
+export function placingSprite(add: AddKind, at: { x: number; y: number }): EntitySprite {
+  const kind: EntityKind = add === "teleport" ? "exit" : add === "start" || add === "quickplay" ? "spawn" : add;
+  return { ref: { kind, key: "preview" }, kind, x: at.x, y: at.y, texture: markerKey(ADD_INFO[add].icon), flat: true, editorOnly: true, preview: true };
 }

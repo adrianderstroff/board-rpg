@@ -137,6 +137,12 @@ Single cells marked with an **arrow pointing outwards**. Moving a hero onto an e
 
 **Doors** (`door: true`, also stairs inside buildings) are exits without arrow and without question: stepping into the open doorway enters. Inside, the party appears one cell in from the door; coming out it stands one cell in front of the door – never on an exit cell, so it can't bounce back and forth. Interiors are small maps cut away at the front (back walls only). The building continues **over** the doorway: the map's `overhead` layer (+ `overheadHeight`) adds purely visual blocks above a walkable cell, starting above a 4-level clearance (32 px, about a character's height), so a door is an opening with a lintel instead of a gap. Houses are 5 blocks tall, the two-storey inn 7.
 
+**Arrivals** (`spawns` in the map) are where a party lands: the end of an exit, of a teleport action,
+of the inn's wake-up, the game start. An arrival exists because something leads there – the editor
+creates it together with the exit or teleport and removes it with the last thing that uses it
+(editor-design §6.4). An exit's arrival never lies on an exit cell – one cell in front of it – or the
+party would bounce back and forth.
+
 **Split floors** (`together: true` exits, e.g. the Mirage Tower's stairs): a hero piece stepping onto one waits there ("waiting for the others"); only when **every standing hero piece** waits on a together-exit to the same map does the board change – each piece arrives at the spawn of the exit it stood on. So teams that were separated stay separated on the next floor.
 
 **Wall signs** (`wallDecor` in the map: cell, `sign`, `face` N/E/S/W, block `level`): flat lettering (a normal square image from `graphics.wallSigns`, e.g. "INN" or a potion bottle) painted onto one side face of a block. It is mapped onto that face at native pixel size, so it is isometrically distorted like the wall, turns with it and is only drawn while that side faces the camera – after rotating it never shows on the wrong side of a building. Shop names go above the door.
@@ -339,6 +345,35 @@ YAML objects: `flag`, `not`, `all`, `any`, `item {id,count}`, `gold`, `var {name
 
 ### 10.3 Map events (RPG-Maker style)
 An event is an object on a cell with **pages**. The last page whose condition holds is active and defines graphic, facing, movement behavior, trigger (`interact`, `step`, `auto` on map enter) and the interaction list. Used for NPCs, shopkeepers, chests, signs, hidden items and triggers.
+
+**Planned rework – entities with states and handlers** (packages R3–R7; decided with the user). Gates,
+floor switches and hidden traps are special kinds today only because events can't express what they
+do. Events get the missing pieces and replace them:
+- An **entity** has a cell, **states** and **handlers**.
+- A **state** bundles a look (character with facing and movement / object / keeper behind an object /
+  nothing), a **passability** (solid / stop here to interact / walk through) and hidden (found with
+  Discover). The current state is saved per map; actions change it. It replaces pages: what depends
+  on flags is set up by a *map loaded* handler.
+- A **handler** is a trigger, an optional condition and a script. Triggers: **interact**, **enter**
+  (a piece stops on it; heroes or anyone), **leave**, **pass over** (a hero moving across it – the
+  move stops there; flying pieces are not caught), **map loaded**, **condition becomes true**, and for
+  enemies **defeated**.
+- A **script** is a sequence of actions with blocks: **if / elif / else**, **choice** (options with
+  optional icons, each with its own actions), **wait** (a time, or until moves end), **call** a shared
+  script, **stop**. Actions: today's (§10.2) plus **set state** (of this or another entity), **move** an
+  entity or hero piece to a cell, **face**, **show / hide**, **damage / heal / status** (the triggering
+  piece, the party), **camera** focus, **sound / music**, screen **fade / flash / shake**, **emote**
+  balloon, **add / remove party member**, **enable / disable exit**. Targets can be "the piece that
+  triggered it" and "this entity".
+- New conditions: an entity **is in state**, **heroes stand on** a cell (with a weight).
+- **Dialogs become scripts** (a line of text is an action), so events, dialogs, quests and map entry
+  share one script language and one editor.
+- **Presets** replace the special kinds: a **gate** (closed: bars, solid / open: nothing, walk through;
+  a change to solid waits until nobody stands there), a **floor switch** (up / down: *enter* with
+  enough heroes → down and open its gates, *leave* with no hero left → up; latching = no leave
+  handler), a **trap** (armed and hidden / sprung: *pass over* → damage, *Stuck*, sprung).
+- Traps set during play (Snare, the Thief's Trap) stay a runtime list; **wall signs** become decor on
+  a block face (Decor mode). **Exits**, **arrivals** and **enemies** stay their own kinds.
 
 ### 10.4 Quest engine
 - A **quest** has a title, description, optional parent (**hierarchical**: a quest step can require sub-quests to be done), a `lockSwitch` flag and ordered **steps**.
@@ -647,3 +682,6 @@ Where the rough ideas were incomplete or conflicting, these rules were chosen:
 35. **Final boss placement**: the cave opens half-way up the mountain after the Holy Orb – Holy is the answer to an undead boss (§18).
 36. **Ships** (user request: "diagonal pieces instead of straight blocks and overhangs", "small walls on deck and a steering wheel") → shaped blocks: diagonal cuts, hull flare with water beneath, bulwarks open at the gangway; the wheel is decor (§5.9).
 37. **Enemy levels and equipment** (user request) → optional `growth` + a level per map entry; optional equipment slots using the hero equipment rules; rewards scale with level (§12.6).
+38. **Teleports** (user decision): arrivals (`spawns`) are never placed by themselves – they come with the exit or teleport action that leads there and go with the last one; exits are one-way by default, "way back" creates the return exit, and every arrival lies one cell in front of an exit so the party can't bounce back and forth (RPG Maker style). The game start and the Quick Play start are arrivals with a role (§5.3).
+39. **Entities with states and handlers** instead of pages and special kinds (user direction): gates, floor switches and hidden traps become entity presets; wall signs become decor; exits, arrivals and enemies stay kinds of their own (§10.3).
+40. **One entity per cell** in the editor: placing a new one or a copy only works on a free cell.

@@ -434,6 +434,9 @@ export interface GraphicsDb {
  * (editor-design §4, §6.3). Everything is optional.
  */
 export interface QuickPlayDef {
+  /** The arrival (spawn of this map) it starts on. */
+  spawn?: string;
+  /** Older files: the start cell itself. */
   x?: number;
   y?: number;
   party?: { hero: string; level?: number }[];

@@ -5,7 +5,11 @@ import { resize } from "../map/layers";
 import { MapEditor, type Brush, type EntitySelection, type Mode } from "../map/MapEditor";
 import { BoardPalette, DecorPalette } from "../map/Palettes";
 import { EntityForm } from "../entities/EntityForm";
-import { deleteEntity, KIND_INFO, listEntities, sameRef, type EntityKind, type EntityRef } from "../entities/model";
+import { ADD_INFO, KIND_INFO, listEntities, sameRef, type AddKind, type EntityKind, type EntityRef } from "../entities/model";
+import { removeEntity } from "../entities/remove";
+import { arrivalRole, createTeleport, nearestEdge } from "../entities/teleports";
+import { DestinationWindow } from "../entities/DestinationWindow";
+import type { Pos } from "../../../src/core/util/grid";
 import { ActionEditor } from "../forms/ActionEditor";
 import { fileSetter } from "../forms/fields";
 import { usePersistentState } from "../persist";
@@ -25,12 +29,14 @@ export function MapsScreen({ project, selected: mapSel, onSelect }: { project: P
   const [tab, setTab] = usePersistentState<"edit" | "info">("maps.tab", "edit");
   const [mode, setMode] = usePersistentState<Mode>("maps.mode", "board");
   const [selected, select] = usePersistentState<EntityRef | null>("maps.selected", null);
-  const [placing, setPlacing] = useState<EntityKind | null>(null);
+  const [placing, setPlacing] = useState<AddKind | null>(null);
+  // a teleport being placed: its exit cell, while the destination window is open
+  const [pendingTeleport, setPendingTeleport] = useState<Pos | null>(null);
   const [copying, setCopying] = useState<EntityRef | null>(null);
   const [brush, setBrush] = usePersistentState<Brush>("maps.brush", DEFAULT_BRUSH, (b) => ({ ...DEFAULT_BRUSH, ...b }));
   // a resize being prepared on the Info tab (columns / rows added or removed), previewed on the canvas
   const [resizeBy, setResizeBy] = usePersistentState("maps.resizeBy", { x: 0, y: 0 });
-  const entities = { selected, select, placing, setPlacing, copying, setCopying };
+  const entities = { selected, select, placing, setPlacing, copying, setCopying, startTeleport: setPendingTeleport };
   // another map: nothing selected, no resize pending (not on the first render: that's a reload)
   const shownMap = useRef(mapSel);
   useEffect(() => {
@@ -75,6 +81,20 @@ export function MapsScreen({ project, selected: mapSel, onSelect }: { project: P
           {mapSel ? <MapEditor project={project} mapId={mapSel} mode={mode} setMode={setMode} brush={brush} setBrush={setBrush} entities={entities} resizeBy={resizeBy} /> : <p class="placeholder">Select a map.</p>}
         </div>
       </main>
+      {pendingTeleport && mapSel && (
+        <DestinationWindow
+          project={project}
+          fromMap={mapSel}
+          wayBack
+          onPick={(dest) => {
+            const map = project.data<MapDef>(mapPath(mapSel));
+            const index = createTeleport(project, mapSel, { ...pendingTeleport, dir: nearestEdge(map, pendingTeleport) }, dest);
+            setPendingTeleport(null);
+            select({ kind: "exit", key: index });
+          }}
+          onClose={() => setPendingTeleport(null)}
+        />
+      )}
       <aside class={`inspector ${formShown ? "fill" : ""}`}>
         {mapSel && (
           <>
@@ -283,13 +303,18 @@ function EntitiesPanel({ project, mapId, entities }: { project: Project; mapId: 
   const { selected, select, placing, setPlacing, copying, setCopying } = entities;
   const map = project.data<MapDef>(mapPath(mapId));
   const list = listEntities(map);
-  const kinds = Object.keys(KIND_INFO) as EntityKind[];
+  const adds = Object.keys(ADD_INFO) as AddKind[];
+  const typeOf = (e: { kind: EntityKind; key: number | string }) => {
+    if (e.kind !== "spawn") return KIND_INFO[e.kind].label;
+    const role = arrivalRole(project, mapId, e.key as string);
+    return role === "start" ? "Game start" : role === "quickplay" ? "Quick Play start" : KIND_INFO.spawn.label;
+  };
   return (
     <div class="entities-panel">
       <div class="add-grid">
-        {kinds.map((k) => (
-          <button key={k} class={placing === k ? "on" : ""} title={`${KIND_INFO[k].hint} Click a cell to place it.`} onClick={() => (setCopying(null), setPlacing(placing === k ? null : k))}>
-            {KIND_INFO[k].label}
+        {adds.map((k) => (
+          <button key={k} class={placing === k ? "on" : ""} title={`${ADD_INFO[k].hint} Click a cell to place it.`} onClick={() => (setCopying(null), setPlacing(placing === k ? null : k))}>
+            {ADD_INFO[k].label}
           </button>
         ))}
       </div>
@@ -303,21 +328,19 @@ function EntitiesPanel({ project, mapId, entities }: { project: Project; mapId: 
             <span class="spacer" />
             <button
               class={copying ? "on" : ""}
-              disabled={selected.kind === "quickplay"}
-              title="Duplicate: click a free cell on the map for the copy (Esc: cancel)"
+              disabled={selected.kind === "spawn"}
+              title={selected.kind === "spawn" ? "Arrivals come with the teleport or start that leads here" : "Duplicate: click a free cell on the map for the copy (Esc: cancel)"}
               onClick={() => (setPlacing(null), setCopying(copying ? null : selected))}
             >
-              Duplicate {KIND_INFO[selected.kind].label.toLowerCase()}
+              Duplicate {typeOf(selected).toLowerCase()}
             </button>
             <button
               title="Delete (Del)"
               onClick={() => {
-                const ref = selected;
-                project.edit(mapPath(mapId), `Delete ${ref.kind}`, (doc) => deleteEntity(doc, ref));
-                select(null);
+                if (removeEntity(project, mapId, selected)) select(null);
               }}
             >
-              Delete {KIND_INFO[selected.kind].label.toLowerCase()}
+              Delete {typeOf(selected).toLowerCase()}
             </button>
           </div>
         </>
@@ -334,7 +357,7 @@ function EntitiesPanel({ project, mapId, entities }: { project: Project; mapId: 
             {list.map((e) => (
               <tr key={`${e.kind}:${e.key}`} onClick={() => select({ kind: e.kind, key: e.key })}>
                 <td>{e.label}</td>
-                <td>{KIND_INFO[e.kind].label}</td>
+                <td>{typeOf(e)}</td>
                 <td>
                   {e.x}, {e.y}
                 </td>

@@ -193,14 +193,17 @@ Like RPG Maker's events, but every kind maps onto a list the game already has.
 | Entity | Stored in | Marker in the editor | In the game |
 |---|---|---|---|
 | **Event** (NPC, object, trigger) | `events[]` | its NPC / decor graphic, or a marker tile (✦) if invisible | as its active page says |
-| **Exit / teleport** | `exits[]` | arrow + target map name | exit arrow (none for doors) |
-| **Spawn point** | `spawns{}` | marker tile with a flag + id | invisible |
+| **Teleport** (exit) | `exits[]` + its arrival on the target map | the game's arrow; a door marker for doors | exit arrow (none for doors) |
+| **Arrival** (not added by itself, §6.4) | `spawns{}` | marker tile: arrival icon – start icon for the game start, play icon for the Quick Play start | invisible |
 | **Enemy** | `enemies[]` | the enemy's charset (+ party size) | the enemy piece |
 | **Gate** | `gates[]` | bars + its condition / linked switches | bars while closed |
 | **Floor switch** | `switches[]` | plate + lines to the gates it opens | the plate |
 | **Hidden trap** | `traps[]` | trap icon | hidden until found |
 | **Wall sign** | `wallDecor[]` | the sign on its wall face | the painted sign |
-| **Quick Play** (editor only) | `editor.quickPlay` in the map file | marker tile with a play icon | nothing (ignored by the game) |
+| **Game start** / **Quick Play start** | an arrival with that role (§6.3) | start / play icon | the game start; Quick Play is editor only |
+
+Gates, floor switches and hidden traps become presets of the event (entity) with R6, wall signs move
+to Decor mode with R2 (game-design §10.3).
 
 A **marker tile** is a flat tile on the cell with the kind's icon (the same icons in the top view).
 **Entity panel** (Edit tab in Entity mode): the kinds as buttons (three rows; the tooltip explains
@@ -254,16 +257,17 @@ are shared by quests, dialogs, map events and exits (§10). The editor exposes e
 - A "where is this used" panel shows the dialogs, quests and flags an event touches, and which other
   events and quests read the same flags.
 
-### 6.3 The Quick Play entity
-One per map (placing a second moves the first); its form holds all Quick Play settings (party and
-levels, extra items and abilities, flags, gold) – there is no separate Quick Play panel. Stored in
-the map file under `editor:` so the game ignores it:
+### 6.3 Starts: the game start and the Quick Play start
+Both are **arrivals with a role**. The Add buttons *Game start* and *Quick Play start* place one
+(placing again moves it; the old arrival goes if nothing else uses it). The game start is one for
+the whole game (`config.start.map` / `spawn`); the Quick Play start is one per map, and its form holds
+all Quick Play settings (party and levels, extra items and abilities, flags, gold) – there is no
+separate Quick Play panel. Stored in the map file under `editor:` so the game ignores it:
 
 ```yaml
 editor:
   quickPlay:
-    x: 6
-    y: 9
+    spawn: quick_play            # the arrival it starts on
     party: [{ hero: aldric, level: 8 }, { hero: mira, level: 8 }]   # optional
     items: { potion: 5, token_serenity: 1 }                          # optional
     abilities: { mira: [thunder] }                                   # optional
@@ -271,7 +275,25 @@ editor:
     gold: 500                                                        # optional
 ```
 
-It is distinct from the real start (`config.start`, edited under Settings) and from spawn points.
+### 6.4 Teleports
+An exit and its arrival are one **Teleport** in the editor. Arrivals are never placed by themselves:
+- **Placing a Teleport** (Add → Teleport, click a free cell) puts the exit there and opens the
+  **destination** in a floating window: first the list of maps (with search), then the chosen map
+  (top view) – click the arrival cell (A / D: facing). Clicking an existing arrival uses that one.
+  **Way back** (off by default) instead places the *return exit* on the other map; each arrival then
+  lies one cell in front of its exit, never on it (the party would bounce back and forth). Cancelling
+  removes the new exit again.
+- The exit's form: *leads to* (map, arrival, cell) with **Change…** (the same windows), the arrow's
+  direction, door, together, label, enabled when. A **teleport action** in a script picks its target
+  the same way.
+- Arrival names are generated (`from_<map>`) and can be renamed; renaming updates everything that
+  points at it (exits, teleport actions, the inn's wake-up, the starts).
+- **Deleting** an arrival deletes the exits leading there, on any map, after a confirmation that lists
+  them; teleport actions, inn wake-ups or the game start pointing at it become problems (red, in the
+  problems badge) until pointed elsewhere. Deleting an exit or a start deletes its arrival when
+  nothing else uses it. Such a cascade is **one undo step** over every file it touches.
+- **Icons** tell the kinds apart on the canvas: exit (the arrow), door, arrival, game start, Quick
+  Play start.
 
 ---
 
@@ -430,6 +452,7 @@ Content the editor won't edit at first (read-only, edited in YAML/tools as today
 | E7 | Quests & dialogs | quest steps/endings/flow, dialog node editor with preview |
 | E8 | Abilities, shops, settings | remaining content screens |
 | E9 | References | rename id everywhere, "where used", delete protection |
+| R1–R7 | Entities & teleports rework | teleports, wall signs as decor, script runner, entity states, handlers, presets & migration, state / handler editor (packages.md) |
 
 Order: E1 → E2 → E3 → E4, then E5–E8 in any order, E9 alongside.
 
@@ -450,3 +473,7 @@ Order: E1 → E2 → E3 → E4, then E5–E8 in any order, E9 alongside.
 9. **Three map modes** – Board, Decor, Entity – each with its own tools; W / S raise and lower, A / D
    turn, right mouse erases (holes, no decor, delete); sections as icons in the top bar; inspector
    tabs Edit and Info; Quick Play edited only through its entity (user decisions).
+10. **Teleports** (user decisions): exit + arrival are one editor kind; arrivals come and go with what
+    leads there; one-way by default, "way back" optional, arrivals one cell in front of exits; the
+    starts are arrivals with a role (§6.3, §6.4).
+11. **One entity per cell**: placing and duplicating only on free cells; the preview turns red.

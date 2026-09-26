@@ -69,7 +69,11 @@ export function validateContent(db: Database): string[] {
       else if ("completeQuest" in a) has(db.quests, typeof a.completeQuest === "string" ? a.completeQuest : a.completeQuest.id, where, "quest");
       else if ("dialog" in a) has(db.dialogs, a.dialog, where, "dialog");
       else if ("shop" in a) has(db.shops, a.shop, where, "shop");
-      else if ("teleport" in a) has(db.maps, a.teleport.map, where, "map");
+      else if ("teleport" in a) {
+        const to = db.maps.get(a.teleport.map);
+        if (!to) has(db.maps, a.teleport.map, where, "map");
+        else if (!to.spawns[a.teleport.spawn]) err(where, `teleport to ${a.teleport.map}: unknown arrival "${a.teleport.spawn}"`);
+      }
     }
   };
 
@@ -195,6 +199,8 @@ export function validateContent(db: Database): string[] {
       if (grid && !grid.has({ x, y })) err(w, `${what} at ${x},${y} is outside the map`);
     };
     for (const [id, s] of Object.entries(m.spawns)) onGrid(s.x, s.y, `spawn ${id}`);
+    const qp = m.editor?.quickPlay?.spawn;
+    if (qp && !m.spawns[qp]) err(w, `Quick Play starts at unknown arrival "${qp}"`);
     for (const e of m.exits ?? []) {
       onGrid(e.x, e.y, "exit");
       const target = db.maps.get(e.to);
