@@ -6,7 +6,7 @@ import { DIR_VEC, type Pos } from "../../../src/core/util/grid";
 import { CORNERS } from "../../../src/game/board/mapSource";
 import type { EntitySprite } from "../entities/visuals";
 import { drawEntityIcon, isMarker, markerIcon } from "../entities/icons";
-import type { CanvasHandlers, Ghost, Marker } from "./IsoCanvas";
+import type { CanvasHandlers, Ghost, GrowBox, Marker } from "./IsoCanvas";
 import { loadImage, terrainTops } from "./sprites";
 
 const MARKER_COLORS = ["#0099db", "#e43b44", "#63c74d", "#feae34", "#ffffff", "#8b9bb4"];
@@ -25,6 +25,9 @@ interface Props {
   ghost: Ghost | null;
   showGrid: boolean;
   resizeTo?: { w: number; h: number } | null;
+  outside?: boolean;
+  growTo?: GrowBox | null;
+  shift?: { dx: number; dy: number; n: number } | null;
   handlers: CanvasHandlers;
 }
 
@@ -40,7 +43,7 @@ interface Camera {
  * square, height number, decor thumbnail, piece shape, facing; blocked cells darker. Wheel zooms
  * (around the cursor), middle drag or Space + drag pans; right mouse = the tool's eraser.
  */
-export function GridCanvas({ db, mapId, hideDecor, focus, markers, entities, ghost, showGrid, resizeTo, handlers }: Props) {
+export function GridCanvas({ db, mapId, hideDecor, focus, markers, entities, ghost, showGrid, resizeTo, outside, growTo, shift, handlers }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const [cam, setCam] = useState<Camera | null>(null);
@@ -73,6 +76,13 @@ export function GridCanvas({ db, mapId, hideDecor, focus, markers, entities, gho
     const cell = Math.max(8, Math.min(48, Math.floor(Math.min((size.w - 40) / grid.width, (size.h - 40) / grid.height))));
     setCam({ cell, x: Math.round((size.w - grid.width * cell) / 2), y: Math.round((size.h - grid.height * cell) / 2) });
   }, [mapId, size.w > 0 && size.h > 0]);
+
+  // the map grew to the left / top: its cells got new numbers – keep them where they are
+  useEffect(() => {
+    if (!shift || !cam) return;
+    setCam({ ...cam, x: cam.x - shift.dx * cam.cell, y: cam.y - shift.dy * cam.cell });
+    setHover((h) => h && { x: h.x + shift.dx, y: h.y + shift.dy });
+  }, [shift?.n]);
 
   // Space + drag pans
   useEffect(() => {
@@ -224,6 +234,18 @@ export function GridCanvas({ db, mapId, hideDecor, focus, markers, entities, gho
           g.strokeRect(px + 0.5, py + 0.5, S - 1, S - 1);
         }
     }
+    // beyond the edge: a temporary grid out to the cursor (painting there grows the map)
+    if (growTo) {
+      for (let y = growTo.y0; y <= growTo.y1; y++)
+        for (let x = growTo.x0; x <= growTo.x1; x++) {
+          if (x >= 0 && y >= 0 && x < grid.width && y < grid.height) continue;
+          const [px, py] = at(x, y);
+          g.lineWidth = 1.6;
+          g.strokeStyle = "rgba(139,155,180,0.6)";
+          g.strokeRect(px + 0.8, py + 0.8, S - 1.6, S - 1.6);
+          g.lineWidth = 1;
+        }
+    }
     // what the next click places
     for (const gc of ghost ? (ghost.cells ?? (hover ? [hover] : [])) : []) {
       if (!ghost) break;
@@ -273,14 +295,14 @@ export function GridCanvas({ db, mapId, hideDecor, focus, markers, entities, gho
       g.strokeRect(px + 1, py + 1, S - 2, S - 2);
       g.lineWidth = 1;
     }
-  }, [grid, tops, decorImg, cam, size, hover, markers, hideDecor, focus, entities, ghost, showGrid, resizeTo?.w, resizeTo?.h]);
+  }, [grid, tops, decorImg, cam, size, hover, markers, hideDecor, focus, entities, ghost, showGrid, resizeTo?.w, resizeTo?.h, JSON.stringify(growTo ?? null)]);
 
   const cellOf = (e: MouseEvent): Pos | null => {
     if (!cam) return null;
     const r = canvas.current!.getBoundingClientRect();
     const x = Math.floor((e.clientX - r.left - cam.x) / cam.cell);
     const y = Math.floor((e.clientY - r.top - cam.y) / cam.cell);
-    return x >= 0 && y >= 0 && x < grid.width && y < grid.height ? { x, y } : null;
+    return outside || (x >= 0 && y >= 0 && x < grid.width && y < grid.height) ? { x, y } : null;
   };
 
   return (

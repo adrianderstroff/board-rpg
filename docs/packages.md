@@ -309,7 +309,8 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ Interact (options or a script), enter, leave, pass over (stops hero moves, not flying ones), map loaded, condition becomes true; `once`; `heroesOn` condition; chained handlers settle in one go
 - ☐ Enemies' "defeated" handler; state-level hidden (Discover)
 - ☑ Damage / heal (with status, the heroes here or the party, a trap cue)
-- ☐ New actions: move an entity / hero piece, face, show / hide, camera, sound / music, fade / flash / shake, emote, add / remove party member, enable / disable exit
+- ☑ New actions: move an entity / hero piece, face, show / hide, camera, sound / music, fade / flash / shake, emote, add / remove party member, enable / disable exit
+- ☑ Enemies' *defeated* handlers (enemy form: Events)
 
 ## R6 · Presets & migration (◐)
 - ☑ Gate and floor switch: entity presets on the Add buttons; content migrated (13 gates, 6 plates); the gate / switch rules and lists removed; tests and e2e read entity states

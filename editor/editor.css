@@ -293,3 +293,6 @@ kbd { display: inline-block; min-width: 18px; padding: 0 4px; border: 1px solid 
 details.lintel { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 6px; }
 details.lintel summary { cursor: pointer; color: var(--dim); }
 .brush-height { margin: 4px 0 8px; gap: 8px; }
+/* no events yet: the + reads "+ Add event" */
+.page-tabs .add-page.add-first { width: auto; height: 30px; font-size: 13px; padding: 0 12px; }
+.step .row.wrap > select { min-width: 96px; }

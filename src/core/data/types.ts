@@ -376,7 +376,24 @@ export type Action =
   | { setState: { event: string; state: string } }
   /** Hurts heroes – those standing where the script's entity is (`here`, default) or the whole party; on the board they keep 1 HP. `cue: trap` shows a trap snapping. */
   | { damage: { amount: number; status?: string; target?: "here" | "party"; cue?: "trap" } }
-  | { heal: { amount: number; target?: "here" | "party" } };
+  | { heal: { amount: number; target?: "here" | "party" } }
+  /** Walks an entity, a hero (its piece) or the party ("party") to a cell of this map. */
+  | { move: { who: string; to: { x: number; y: number } } }
+  | { face: { who: string; dir: Dir } }
+  /** Takes an entity off the board / puts it back (unlike removeEvent, which is for good). */
+  | { hide: string }
+  | { show: string }
+  /** Points the camera at a cell or at someone; without either, back to the party. */
+  | { camera: { to?: { x: number; y: number }; who?: string } }
+  | { sound: string }
+  | { music: string }
+  | { screen: "fadeOut" | "fadeIn" | "flash" | "shake" }
+  /** A balloon over someone's head. */
+  | { emote: { who: string; icon: Emote } }
+  | { addMember: string }
+  | { removeMember: string }
+  /** Opens or closes the exit on a cell (overrides its `enabled` condition). */
+  | { setExit: { x: number; y: number; open: boolean } };
 
 // ---------- dialogs (§9) ----------
 
@@ -599,7 +616,7 @@ export interface EntityState {
 }
 
 /** When a handler runs (§10.3). */
-export type HandlerTrigger = "interact" | "enter" | "leave" | "pass" | "load" | "becomes" | "ability";
+export type HandlerTrigger = "interact" | "enter" | "leave" | "pass" | "load" | "becomes" | "ability" | "defeated";
 
 /** A trigger, a condition and what happens (§10.3). */
 export interface EntityHandler {
@@ -658,6 +675,8 @@ export interface MapEnemyDef {
   level?: number;
   when?: Condition;
   dir?: Dir;
+  /** What happens when this enemy (its whole party) is defeated (§10.3). */
+  on?: EntityHandler[];
 }
 
 export interface MapDef {
@@ -721,3 +740,7 @@ export interface ConfigDef {
   /** Free exploration: field effects advance one round every this many ms (§8.10). */
   exploreRoundMs?: number;
 }
+
+/** The emote balloons scripts can show (§10.2). */
+export const EMOTES = ["exclaim", "question", "silence", "surprise", "angry", "sleep", "love", "note"] as const;
+export type Emote = (typeof EMOTES)[number];

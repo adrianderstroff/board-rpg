@@ -12,7 +12,7 @@ import { placeStart } from "../entities/teleports";
 import type { Project } from "../project";
 import { GridCanvas } from "./GridCanvas";
 import { IsoCanvas, type CanvasHandlers, type Ghost, type Marker } from "./IsoCanvas";
-import { copyArea, floodArea, inRect, moveArea, paint, pasteArea, rectCells, rectOf, setFacing, setHeights, setOverhead, setWallSigns, writeCells, type Clip, type Rect } from "./layers";
+import { copyArea, floodArea, inRect, mapSize, moveArea, paint, resize, pasteArea, rectCells, rectOf, setFacing, setHeights, setOverhead, setWallSigns, writeCells, type Clip, type Rect } from "./layers";
 
 /**
  * Map canvas (editor-design §5): three modes – Board (terrain, pieces, lintels), Decor (objects)
@@ -135,16 +135,38 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
   };
   const chip = db ? getGrid(db, mapId).chipset : null;
 
+  // painting terrain beyond the map's edge grows the map (as far as the painted cells need)
+  const canGrow = mode === "board" && brush.board === "terrain" && (tool === "pencil" || tool === "rect");
+  const [shift, setShift] = useState<{ dx: number; dy: number; n: number } | null>(null);
+  const inMap = (c: Pos) => {
+    const { w, h } = mapSize(project.data<MapDef>(path));
+    return c.x >= 0 && c.y >= 0 && c.x < w && c.y < h;
+  };
+
   /** Paints (or with `erase` removes) with the brush of the current mode. */
   const apply = (cells: Pos[], erase: boolean, group?: string) => {
-    if (!cells.length) return;
     const brush = brushRef.current; // the latest brush, even right after a key press
+    // cells beyond the edge: new rows / columns for terrain; anything else only paints inside
+    const grow = !erase && mode === "board" && brush.board === "terrain" && cells.some((c) => !inMap(c));
+    if (!grow) cells = cells.filter(inMap);
+    if (!cells.length) return;
     const what = mode === "decor" ? (brush.decorKind === "sign" ? "wall sign" : "decor") : brush.board;
+    let moved = { dx: 0, dy: 0 };
     project.edit(
       path,
       `${erase ? "Erase" : "Paint"} ${what}`,
       (doc) => {
-        const map = doc.toJS() as MapDef;
+        let map = doc.toJS() as MapDef;
+        if (grow) {
+          const { w, h } = mapSize(map);
+          const xs = cells.map((c) => c.x);
+          const ys = cells.map((c) => c.y);
+          const delta = { left: Math.max(0, -Math.min(...xs)), top: Math.max(0, -Math.min(...ys)), right: Math.max(0, Math.max(...xs) - (w - 1)), bottom: Math.max(0, Math.max(...ys) - (h - 1)) };
+          resize(doc, map, delta);
+          map = doc.toJS() as MapDef;
+          moved = { dx: delta.left, dy: delta.top };
+          cells = cells.map((c) => ({ x: c.x + delta.left, y: c.y + delta.top }));
+        }
         if (mode === "decor" && brush.decorKind === "sign") setWallSigns(doc, map, cells, erase ? null : brush.sign, brush.signFace, brush.signLevel ?? undefined);
         else if (mode === "decor") {
           paint(doc, map, "decor", cells, erase ? null : brush.decor);
@@ -159,6 +181,17 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
       },
       group,
     );
+    if (moved.dx || moved.dy) {
+      // the map grew to the left / top: every cell got new numbers – the stroke and the views follow
+      const s = stroke.current;
+      if (s) {
+        s.start = { x: s.start.x + moved.dx, y: s.start.y + moved.dy };
+        s.done = new Set([...s.done].map((k) => k.split(",").map(Number)).map(([x, y]) => `${x + moved.dx},${y + moved.dy}`));
+      }
+      const h = hoverRef.current;
+      if (h) setHover({ x: h.x + moved.dx, y: h.y + moved.dy });
+      setShift((old) => ({ ...moved, n: (old?.n ?? 0) + 1 }));
+    }
   };
 
   const pick = (c: Pos) => {
@@ -311,7 +344,7 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
     const a = areaRef.current;
     const h = hoverRef.current;
     if (a && (!h || inRect(a, h))) return rectCells({ x: a.x, y: a.y }, { x: a.x + a.w - 1, y: a.y + a.h - 1 });
-    return h ? [h] : [];
+    return h && inMap(h) ? [h] : [];
   };
 
   /** A/D in entity mode: turn the selected entity (spawn, exit, enemy, NPC, wall sign). */
@@ -508,7 +541,17 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
   const focus = mode;
   // the Info tab's pending resize, previewed on the canvas
   const resizeTo = resizeBy.x || resizeBy.y ? { w: grid.width + resizeBy.x, h: grid.height + resizeBy.y } : null;
-  const canvasProps = { db, mapId, hideDecor, focus, markers, entities: sprites, ghost, showGrid, resizeTo, handlers };
+  // beyond the edge: a temporary grid from the map out to the cursor (and the rectangle being dragged)
+  const beyond = canGrow ? [...(hover ? [hover] : []), ...preview].filter((c) => !grid.has(c) && (c.x < 0 || c.y < 0 || c.x >= grid.width || c.y >= grid.height)) : [];
+  const growTo = beyond.length
+    ? {
+        x0: Math.min(0, ...beyond.map((c) => c.x)),
+        y0: Math.min(0, ...beyond.map((c) => c.y)),
+        x1: Math.max(grid.width - 1, ...beyond.map((c) => c.x)),
+        y1: Math.max(grid.height - 1, ...beyond.map((c) => c.y)),
+      }
+    : null;
+  const canvasProps = { db, mapId, hideDecor, focus, markers, entities: sprites, ghost, showGrid, resizeTo, outside: canGrow, growTo, shift, handlers };
   // the flat view marks entities with letters – only useful in entity mode
   const gridProps = { ...canvasProps, entities: mode === "entity" ? sprites : [] };
 

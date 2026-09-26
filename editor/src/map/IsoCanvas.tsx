@@ -76,7 +76,21 @@ interface Props {
   wallPreview?: { x: number; y: number; sign: string; face: Dir; level?: number }[] | null;
   /** A pending resize: the new size – added cells are marked green, dropped ones red. */
   resizeTo?: { w: number; h: number } | null;
+  /** Cells beyond the map's edge can be pointed at (painting there grows the map). */
+  outside?: boolean;
+  /** A temporary grid out to the cursor beyond the edge: the cells painting there would add. */
+  growTo?: GrowBox | null;
+  /** The map just grew to the left / top by dx, dy: the view moves along so nothing jumps. */
+  shift?: { dx: number; dy: number; n: number } | null;
   handlers: CanvasHandlers;
+}
+
+/** A box of cells (may reach beyond the map, also to negative coordinates). */
+export interface GrowBox {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
 }
 
 class MapScene extends Phaser.Scene {
@@ -88,6 +102,8 @@ class MapScene extends Phaser.Scene {
   private pan?: { x: number; y: number; sx: number; sy: number };
   private painting = false;
   private entityObjects: Phaser.GameObjects.GameObject[] = [];
+  /** The entities' labels and their cells: they stay up and follow the map while it turns. */
+  private entityLabels: { t: Phaser.GameObjects.Text; x: number; y: number; dy: number }[] = [];
   private ghostImages: Phaser.GameObjects.Image[] = [];
   /** A terrain ghost: a one-cell map view (so pieces are cut exactly like on the board), see-through. */
   private ghostView?: IsoMapView;
@@ -97,7 +113,7 @@ class MapScene extends Phaser.Scene {
    * Grid lines: one thin, smooth outline per cell (holes at ground level) – drawn in the cell's place
    * in the drawing order, so blocks in front cover them; kept up to date while the view turns.
    */
-  private gridLines: { x: number; y: number; hole: boolean; state: "keep" | "add" | "drop"; g: Phaser.GameObjects.Graphics }[] = [];
+  private gridLines: { x: number; y: number; hole: boolean; state: "keep" | "add" | "drop" | "grow"; g: Phaser.GameObjects.Graphics }[] = [];
   /** Tells the component the view's (continuous) angle – for the axis gizmo. */
   onAngle?: (quarters: number) => void;
   private space = false;
@@ -204,7 +220,31 @@ class MapScene extends Phaser.Scene {
 
   private cellAt(p: Phaser.Input.Pointer): Pos | null {
     const w = this.cameras.main.getWorldPoint(p.x, p.y);
-    return this.view?.cellAt(w.x, w.y) ?? this.holeAt(w.x, w.y);
+    return this.view?.cellAt(w.x, w.y) ?? this.holeAt(w.x, w.y) ?? (this.props.outside ? this.beyondAt(w.x, w.y) : null);
+  }
+
+  /** A cell beyond the map's edge under a world point, at ground level. */
+  private beyondAt(wx: number, wy: number): Pos | null {
+    const g = getGrid(this.props.db, this.props.mapId);
+    const a = wx / (g.chipset.tileWidth / 2);
+    const b = wy / (g.chipset.tileHeight / 2);
+    const c = rotateContinuous((a + b) / 2, (b - a) / 2, -this.shownRotation);
+    const x = Math.round(c.x);
+    const y = Math.round(c.y);
+    return x < 0 || y < 0 || x >= g.width || y >= g.height ? { x, y } : null;
+  }
+
+  /** The map grew by dx, dy to the left / top: its cells got new numbers – keep them where they are on screen. */
+  shiftBy(dx: number, dy: number) {
+    const chip = getGrid(this.props.db, this.props.mapId).chipset;
+    const v = rotateContinuous(dx, dy, this.shownRotation);
+    const d = isoToScreen({ tileWidth: chip.tileWidth, tileHeight: chip.tileHeight, blockHeight: chip.blockHeight }, v.x, v.y, 0);
+    const cam = this.cameras.main;
+    cam.scrollX += d.x;
+    cam.scrollY += d.y;
+    if (this.hover) this.hover = { x: this.hover.x + dx, y: this.hover.y + dy };
+    this.drawMarkers();
+    this.drawGhost();
   }
 
   /** A cell of the map without a block (a hole) under a world point, at ground level – holes can be painted too. */
@@ -271,11 +311,17 @@ class MapScene extends Phaser.Scene {
     this.gridLines = [];
     const grid = getGrid(this.props.db, this.props.mapId);
     const r = this.props.resizeTo;
-    const w = Math.max(grid.width, r?.w ?? 0);
-    const h = Math.max(grid.height, r?.h ?? 0);
-    for (let y = 0; y < h; y++)
-      for (let x = 0; x < w; x++) {
-        const state = x >= grid.width || y >= grid.height ? "add" : r && (x >= r.w || y >= r.h) ? "drop" : "keep";
+    const grow = this.props.growTo;
+    const x0 = Math.min(0, grow?.x0 ?? 0);
+    const y0 = Math.min(0, grow?.y0 ?? 0);
+    const w = Math.max(grid.width, r?.w ?? 0, (grow?.x1 ?? 0) + 1);
+    const h = Math.max(grid.height, r?.h ?? 0, (grow?.y1 ?? 0) + 1);
+    for (let y = y0; y < h; y++)
+      for (let x = x0; x < w; x++) {
+        const outside = x < 0 || y < 0 || x >= grid.width || y >= grid.height;
+        if (outside && !(r && x < r.w && y < r.h) && !(grow && x >= grow.x0 && x <= grow.x1 && y >= grow.y0 && y <= grow.y1)) continue;
+        // a pending resize adds green cells; the grid out to the cursor is plain grey lines
+        const state = outside ? (r && x >= 0 && y >= 0 && x < r.w && y < r.h ? "add" : "grow") : r && (x >= r.w || y >= r.h) ? "drop" : "keep";
         this.gridLines.push({ x, y, hole: !grid.has({ x, y }), state, g: this.add.graphics() });
       }
     this.drawGrid();
@@ -293,6 +339,11 @@ class MapScene extends Phaser.Scene {
       if (!shown) continue;
       l.g.setDepth(view.depthOf(l.x, l.y, LAYER.block, 0.9));
       const pts = view.topCorners(l.x, l.y).map((c) => new Phaser.Math.Vector2(c.x, c.y));
+      if (l.state === "grow") {
+        l.g.lineStyle(width, 0x8b9bb4, 0.6);
+        l.g.strokePoints(pts, true, true);
+        continue;
+      }
       if (l.state !== "keep") {
         // the resize preview: cells it adds green, cells it drops red
         const color = l.state === "add" ? 0x63c74d : 0xe43b44;
@@ -332,7 +383,9 @@ class MapScene extends Phaser.Scene {
     const cam = this.cameras.main;
     const start = view.cellTop(pivot.x, pivot.y);
     const offset = { x: cam.midPoint.x - start.x, y: cam.midPoint.y - start.y };
-    for (const o of this.entityObjects) (o as unknown as { setVisible: (v: boolean) => void }).setVisible(false);
+    // the sprites hide while the map turns; their labels ride along (above everything)
+    for (const o of this.entityObjects) if (!this.entityLabels.some((l) => l.t === o)) (o as unknown as { setVisible: (v: boolean) => void }).setVisible(false);
+    for (const l of this.entityLabels) l.t.setDepth(1e9);
     for (const im of this.ghostImages) im.setVisible(false);
     this.ghostView?.destroy();
     this.ghostView = undefined;
@@ -353,6 +406,10 @@ class MapScene extends Phaser.Scene {
         const c = view.cellTop(pivot.x, pivot.y);
         cam.centerOn(c.x + offset.x, c.y + offset.y);
         this.drawGrid(); // the grid turns with the map
+        for (const l of this.entityLabels) {
+          const top = view.cellTop(l.x, l.y);
+          l.t.setPosition(top.x, top.y - l.dy);
+        }
         this.onAngle?.(q);
       },
       onComplete: () => {
@@ -374,6 +431,7 @@ class MapScene extends Phaser.Scene {
   drawEntities() {
     for (const o of this.entityObjects) o.destroy();
     this.entityObjects = [];
+    this.entityLabels = [];
     const view = this.view;
     if (!view) return;
     for (const e of this.props.entities) {
@@ -394,8 +452,9 @@ class MapScene extends Phaser.Scene {
         this.entityObjects.push(img);
       }
       if (e.label) {
+        const dy = e.texture && !e.flat ? 30 : 4;
         const t = this.add
-          .text(top.x, top.y - (e.texture && !e.flat ? 30 : 4), e.label, {
+          .text(top.x, top.y - dy, e.label, {
             fontFamily: "system-ui, sans-serif",
             fontSize: "7px",
             color: e.selected ? "#181425" : e.editorOnly ? "#2ce8f5" : "#ffffff",
@@ -406,6 +465,7 @@ class MapScene extends Phaser.Scene {
           .setResolution(6)
           .setDepth(view.depthOf(e.x, e.y, LAYER.marker + 1, 0));
         this.entityObjects.push(t);
+        this.entityLabels.push({ t, x: e.x, y: e.y, dy });
       }
     }
   }
@@ -554,7 +614,13 @@ export function IsoCanvas(props: Props) {
       s.props = latest.current;
       s.buildGrid();
     }
-  }, [props.resizeTo?.w, props.resizeTo?.h]);
+  }, [props.resizeTo?.w, props.resizeTo?.h, JSON.stringify(props.growTo ?? null)]);
+
+  // the map grew to the left / top: move the view along (after the redraw)
+  useEffect(() => {
+    const sh = props.shift;
+    if (sh && scene.current?.view) scene.current.shiftBy(sh.dx, sh.dy);
+  }, [props.shift?.n]);
 
   useEffect(() => {
     const s = scene.current;

@@ -125,4 +125,53 @@ describe("entities: states and handlers (§10.3)", () => {
     expect(problems.some((p) => p.includes('has no state "on"'))).toBe(true);
     expect(problems.some((p) => p.includes('no entity "nope"'))).toBe(true);
   });
+
+  it("script actions move and turn entities and heroes, hide / show them, open exits, change the party", () => {
+    const npc: MapEventDef = { id: "guide", x: 1, y: 1, states: { here: { npc: "elder" } } };
+    const ctx = world([npc]);
+    expect(board(ctx).pieces["n:guide"]).toBeDefined();
+    let out = runActions(ctx, [{ move: { who: "guide", to: { x: 1, y: 4 } } }, { face: { who: "guide", dir: "E" } }]);
+    const walk = out.events.find((e) => e.type === "move");
+    expect(walk && walk.type === "move" && walk.mode).toBe("walk");
+    expect(board(ctx).pieces["n:guide"]).toMatchObject({ x: 1, y: 4, facing: "E" });
+    expect(ctx.state.maps.arena.positions?.guide).toEqual({ x: 1, y: 4 }); // remembered for the next visit
+    runActions(ctx, [{ move: { who: "party", to: { x: 5, y: 3 } } }]);
+    expect(mustPieceOf(ctx, "aldric")).toMatchObject({ x: 5, y: 3 });
+
+    runActions(ctx, [{ hide: "guide" }]);
+    expect(board(ctx).pieces["n:guide"]).toBeUndefined();
+    runActions(ctx, [{ show: "guide" }]);
+    expect(board(ctx).pieces["n:guide"]).toMatchObject({ x: 1, y: 4 });
+
+    out = runActions(ctx, [{ camera: { who: "guide" } }, { emote: { who: "guide", icon: "exclaim" } }, { sound: "chest" }, { screen: "shake" }]);
+    expect(out.requests.map((r) => r.type)).toEqual(["camera", "emote", "sound", "screen"]);
+
+    runActions(ctx, [{ removeMember: "tarek" }]);
+    expect(ctx.state.roster).not.toContain("tarek");
+    expect(Object.values(board(ctx).pieces).some((p) => p.members.includes("tarek"))).toBe(false);
+    runActions(ctx, [{ addMember: "tarek" }]);
+    expect(ctx.state.roster).toContain("tarek");
+    expect(mustPieceOf(ctx, "tarek").faction).toBe("hero");
+  });
+
+  it("setExit opens and closes an exit; a placed enemy's defeated handler runs once", async () => {
+    const { exitEnabled } = await import("../core/board/board");
+    const ctx = arenaCtx({
+      ...arena({ enemies: [{ id: "boss", enemy: "sand_scorpion", x: 5, y: 5, on: [{ on: "defeated", do: [{ setFlag: "boss_down" }, { giveGold: 5 }] }] }] }),
+      exits: [{ x: 0, y: 3, dir: "W", to: "arena", spawn: "start", enabled: { flag: "never" } }],
+    });
+    const exit = ctx.db.map("arena").exits![0];
+    expect(exitEnabled(ctx, exit)).toBe(false);
+    runActions(ctx, [{ setExit: { x: 0, y: 3, open: true } }]);
+    expect(exitEnabled(ctx, exit)).toBe(true);
+
+    entityTriggers(ctx);
+    expect(ctx.state.flags.boss_down).toBeUndefined();
+    const gold = ctx.state.gold;
+    ctx.state.maps.arena.defeated.push("boss");
+    entityTriggers(ctx);
+    entityTriggers(ctx);
+    expect(ctx.state.flags.boss_down).toBe(true);
+    expect(ctx.state.gold).toBe(gold + 5);
+  });
 });

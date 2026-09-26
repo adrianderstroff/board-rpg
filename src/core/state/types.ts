@@ -129,6 +129,10 @@ export interface MapMemory {
   became?: Record<string, boolean>;
   /** `once` handlers that have run ("event#index"). */
   ranOnce?: string[];
+  /** Entities a script moved: where they stand now. */
+  positions?: Record<string, { x: number; y: number }>;
+  /** Exits a script opened (true) or closed (false), by cell "x,y". */
+  exits?: Record<string, boolean>;
   /** Abilities used on entities, waiting for their handlers (run when things settle). */
   abilityHits?: { event: string; ability: string }[];
 }

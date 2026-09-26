@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { Database } from "../../../src/core/data/database";
-import type { EventPageDef, Interaction, MapDef } from "../../../src/core/data/types";
+import type { EntityHandler, EventPageDef, Interaction, MapDef } from "../../../src/core/data/types";
 import type { Dir } from "../../../src/core/util/grid";
 import { ActionEditor } from "../forms/ActionEditor";
 import { ConditionEditor } from "../forms/ConditionEditor";
@@ -11,7 +11,7 @@ import type { Project } from "../project";
 import { entityPath, KIND_INFO, type EntityRef } from "./model";
 import { QuickPlayForm } from "../screens/QuickPlayForm";
 import { LookPicker, type LookPick } from "./LookPicker";
-import { EntityEventForm } from "./EntityEventForm";
+import { ENEMY_TRIGGERS, EntityEventForm, HandlerTabs } from "./EntityEventForm";
 import { TeleportTarget } from "./TeleportTarget";
 import { arrivalRole, arrivalUses, cleanupArrival, ensureArrival, mapFile, renameArrival, retargetExit } from "./teleports";
 import { pageLayers, SpriteView } from "./LookPreview";
@@ -129,6 +129,8 @@ export function EntityForm({ project, mapId, entity, onSelect }: { project: Proj
               <Select value={data.dir as string} options={DIRS} empty="S (default)" onChange={(v) => set("dir", v)} />
             </Field>
             {cond("when", "Appears when")}
+            <h3 title="What happens when this enemy is defeated (a boss drops a key, a door opens…)">Events</h3>
+            <HandlerTabs project={project} file={file} path={[...base, "on"]} handlers={(data.on as EntityHandler[]) ?? []} triggers={ENEMY_TRIGGERS} db={db} mapId={mapId} resetKey={`${mapId}/enemy/${entity.key}`} />
           </>
         );
       case "event":

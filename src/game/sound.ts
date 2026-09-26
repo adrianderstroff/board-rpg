@@ -6,13 +6,9 @@ import type { Database } from "../core/data/database";
 import type { GameEvent } from "../core/events";
 import type { Ctx } from "../core/context";
 
-/** Sound effect names available under public/assets/audio/sfx/<name>.wav. */
-export const SFX = [
-  "cursor", "confirm", "cancel", "buzzer", "step", "hit", "crit", "miss", "magic_fire", "magic_ice", "magic_thunder",
-  "heal", "status", "ko", "levelup", "victory", "defeat", "coin", "travel", "chest", "trap", "freeze", "burn",
-  "encounter", "escape", "save", "dialog_blip", "party", "sleep", "zap", "gate", "splash", "grow", "cut", "gulp", "spit",
-] as const;
-export type SfxName = (typeof SFX)[number];
+import { SFX, type SfxName } from "./sfxNames";
+
+export { SFX, type SfxName };
 
 export const sfxKey = (n: string) => `sfx:${n}`;
 export const musicKey = (n: string) => `music:${n}`;

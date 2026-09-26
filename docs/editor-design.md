@@ -168,7 +168,11 @@ strings stay readable in the YAML.
 Pencil (B), rectangle (R), fill (G, by terrain / decor), pick (I), select area (M) – copy / paste
 (also into another map) / move / clear a block of cells across all board layers; moving takes the
 entities standing in it along and leaves the terrain brush behind. Right mouse is the eraser of the
-current tool. Resize (columns on the right, rows at the bottom) is on the Info tab.
+current tool. Resize (columns on the right, rows at the bottom) is on the Info tab. Painting terrain
+beyond the edge (pencil, rectangle) grows the map: while the cursor is out there a grey temporary
+grid reaches out to it, and a click adds only the rows / columns the painted cells need – on the
+left / top too (everything placed moves along, the view stays put). While the view turns, the
+entities' labels stay up and turn with it.
 
 ### 5.4 Map properties
 The Info tab is a table – labels left, values right: name, size (−x / +x and −y / +y buttons take away or
@@ -177,7 +181,10 @@ the part that grows in green, the part that shrinks in red – and the canvas ma
 green and the ones it drops red; new cells are empty, painted afterwards), kind (Peace / Wild
 switch = `peaceful` / `wild`), chipset, **music** (picker with a ▶ button to listen), battle
 background (picker, its picture below in a full-width row). Below the table: the **Events** – the
-map's own handlers (map loaded, becomes true) with the same tabs as an entity's.
+map's own handlers (map loaded, becomes true) with the same tabs as an entity's. With none yet the
+tab strip's + reads "+ Add event". A placed enemy's form has Events too (trigger: *defeated*).
+The script editor offers every action of game-design §10.2 – the staging ones pick *who* from the
+party, the heroes and the map's entities, cells as x / y.
 
 ---
 

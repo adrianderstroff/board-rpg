@@ -5,6 +5,18 @@ import type { Database } from "../../../src/core/data/database";
 import type { Action, ChoiceOption, Condition, Script, Step } from "../../../src/core/data/types";
 import { ConditionEditor } from "./ConditionEditor";
 import { ListEditor, Num, Select, Text } from "./fields";
+import { EMOTES } from "../../../src/core/data/types";
+import { SFX } from "../../../src/game/sfxNames";
+
+/** A cell: x and y. */
+function CellInput({ value, onChange }: { value: { x: number; y: number }; onChange: (p: { x: number; y: number }) => void }) {
+  return (
+    <span class="row">
+      <Num value={value.x} min={0} width={44} onChange={(n) => onChange({ ...value, x: n ?? 0 })} />
+      <Num value={value.y} min={0} width={44} onChange={(n) => onChange({ ...value, y: n ?? 0 })} />
+    </span>
+  );
+}
 
 /**
  * Script editor (editor-design §6.2, game-design §10.2): what events, dialogs and quests do – the
@@ -43,7 +55,22 @@ const KINDS: [string, string][] = [
   ["setState", "Set an entity's state"],
   ["damage", "Damage heroes"],
   ["heal", "Heal heroes"],
+  ["move", "Move someone"],
+  ["face", "Turn someone"],
+  ["hide", "Hide an entity"],
+  ["show", "Show an entity again"],
+  ["emote", "Emote balloon"],
+  ["camera", "Camera"],
+  ["sound", "Play a sound"],
+  ["music", "Change the music"],
+  ["screen", "Screen effect"],
+  ["addMember", "Add a party member"],
+  ["removeMember", "Remove a party member"],
+  ["setExit", "Open / close an exit"],
 ];
+
+const DIRS: [string, string][] = [["N", "north"], ["E", "east"], ["S", "south"], ["W", "west"]];
+const SCREEN: [string, string][] = [["fadeOut", "fade out"], ["fadeIn", "fade in"], ["flash", "flash"], ["shake", "shake"]];
 
 /** A step's kind: its first key (blocks are recognised by their defining key). */
 export const actionKind = (a: Step) => {
@@ -62,6 +89,28 @@ function defaultFor(kind: string, db: Database, mapId?: string): Step {
 function defaultAction(kind: string, db: Database, mapId?: string): Action {
   if (kind === "damage") return { damage: { amount: 10 } };
   if (kind === "heal") return { heal: { amount: 20 } };
+  const heroFirst = [...db.heroes.keys()][0] ?? "";
+  switch (kind) {
+    case "move":
+      return { move: { who: "party", to: { x: 0, y: 0 } } };
+    case "face":
+      return { face: { who: "party", dir: "S" } };
+    case "emote":
+      return { emote: { who: "party", icon: "exclaim" } };
+    case "camera":
+      return { camera: {} };
+    case "sound":
+      return { sound: "confirm" };
+    case "screen":
+      return { screen: "shake" };
+    case "addMember":
+    case "removeMember":
+      return { [kind]: heroFirst } as Action;
+    case "setExit": {
+      const ex = (mapId ? db.maps.get(mapId)?.exits : undefined)?.[0];
+      return { setExit: { x: ex?.x ?? 0, y: ex?.y ?? 0, open: true } };
+    }
+  }
   if (kind === "setState") {
     const ev = (mapId ? db.maps.get(mapId)?.events : undefined)?.find((e) => e.states);
     return { setState: { event: ev?.id ?? "", state: Object.keys(ev?.states ?? {})[0] ?? "" } };
@@ -105,6 +154,8 @@ export function ActionEditor({ value, onChange, db, mapId }: { value: Script | u
   const project = useProjectContext();
   const map = mapId ? db.maps.get(mapId) : undefined;
   const ids = <T,>(m: Map<string, T>, name?: (t: T) => string) => [...m.entries()].map(([id, t]) => [id, name ? `${name(t)} (${id})` : id] as [string, string]);
+  // who a script moves / turns / points at: the party, a hero, or an entity of this map
+  const whoOptions: [string, string][] = [["party", "the party"], ...ids(db.heroes, (h) => h.name), ...(map?.events ?? []).map((e) => [e.id, `entity ${e.id}`] as [string, string])];
   return (
     <ListEditor
       items={value ?? []}
@@ -280,6 +331,60 @@ export function ActionEditor({ value, onChange, db, mapId }: { value: Script | u
                       <input type="checkbox" checked={o.cue === "trap"} onChange={(e) => put({ ...o, cue: e.currentTarget.checked ? "trap" : undefined })} /> trap
                     </label>
                   )}
+                </div>
+              );
+            }
+            case "move":
+            case "face":
+            case "emote":
+            case "camera": {
+              const o = v as { who?: string; to?: { x: number; y: number }; dir?: string; icon?: string };
+              const put = (next: typeof o) => set({ [kind]: next } as Action);
+              // the camera: a cell, someone, or (neither) back to the party
+              const aim = kind === "camera" ? (o.who ? "who" : o.to ? "cell" : "party") : "who";
+              return (
+                <div class="row wrap">
+                  {kind === "camera" && (
+                    <Select
+                      value={aim}
+                      options={[["party", "back to the party"], ["who", "on someone"], ["cell", "on a cell"]]}
+                      onChange={(x) => put(x === "who" ? { who: "party" } : x === "cell" ? { to: { x: 0, y: 0 } } : {})}
+                    />
+                  )}
+                  {aim === "who" && <Select value={o.who} options={whoOptions} onChange={(x) => put({ ...o, who: x ?? "party" })} />}
+                  {kind === "move" && "to"}
+                  {(kind === "move" || aim === "cell") && <CellInput value={o.to ?? { x: 0, y: 0 }} onChange={(to) => put({ ...o, to })} />}
+                  {kind === "face" && <Select value={o.dir} options={DIRS} onChange={(x) => put({ ...o, dir: x ?? "S" })} />}
+                  {kind === "emote" && <Select value={o.icon} options={EMOTES.map((e) => [e, e] as [string, string])} onChange={(x) => put({ ...o, icon: x ?? "exclaim" })} />}
+                </div>
+              );
+            }
+            case "hide":
+            case "show":
+              return <Select value={v as string} options={(map?.events ?? []).map((e) => e.id)} onChange={(x) => set({ [kind]: x ?? "" } as Action)} />;
+            case "sound":
+              return <Select value={v as string} options={[...SFX]} onChange={(x) => set({ sound: x ?? "confirm" })} />;
+            case "music":
+              return <Select value={v as string} options={project.music} onChange={(x) => set({ music: x ?? "" })} />;
+            case "screen":
+              return <Select value={v as string} options={SCREEN} onChange={(x) => set({ screen: (x ?? "shake") as "shake" })} />;
+            case "addMember":
+            case "removeMember":
+              return <Select value={v as string} options={ids(db.heroes, (h) => h.name)} onChange={(x) => set({ [kind]: x ?? "" } as Action)} />;
+            case "setExit": {
+              const o = v as { x: number; y: number; open: boolean };
+              return (
+                <div class="row">
+                  <Select value={o.open ? "open" : "close"} options={[["open", "open"], ["close", "close"]]} onChange={(x) => set({ setExit: { ...o, open: x !== "close" } })} />
+                  the exit at
+                  <Select
+                    value={`${o.x},${o.y}`}
+                    options={(map?.exits ?? []).map((e) => [`${e.x},${e.y}`, `${e.x},${e.y} → ${db.maps.get(e.to)?.name ?? e.to}`] as [string, string])}
+                    onChange={(x) => {
+                      const [ex, ey] = (x ?? "0,0").split(",").map(Number);
+                      set({ setExit: { ...o, x: ex, y: ey } });
+                    }}
+                  />
                 </div>
               );
             }

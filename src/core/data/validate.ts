@@ -1,6 +1,6 @@
 import { BoardGrid } from "../board/grid";
 import type { Database } from "./database";
-import type { Action, BattleUse, BoardUse, Condition, DialogNode, EffectDef, GraphicsRef, PatternRef, Script } from "./types";
+import { EMOTES, type Action, type BattleUse, type BoardUse, type Condition, type DialogNode, type EffectDef, type GraphicsRef, type PatternRef, type Script } from "./types";
 
 /**
  * Cross-reference check of all content. Returns human readable problems (empty = OK).
@@ -94,6 +94,9 @@ export function validateContent(db: Database): string[] {
       else if ("dialog" in a) has(db.dialogs, a.dialog, where, "dialog");
       else if ("shop" in a) has(db.shops, a.shop, where, "shop");
       else if ("damage" in a && a.damage.status) has(db.statuses, a.damage.status, where, "status");
+      else if ("addMember" in a) has(db.heroes, a.addMember, where, "hero");
+      else if ("removeMember" in a) has(db.heroes, a.removeMember, where, "hero");
+      else if ("emote" in a && !(EMOTES as readonly string[]).includes(a.emote.icon)) err(where, `unknown emote "${a.emote.icon}"`);
       else if ("teleport" in a) {
         const to = db.maps.get(a.teleport.map);
         if (!to) has(db.maps, a.teleport.map, where, "map");
@@ -240,6 +243,9 @@ export function validateContent(db: Database): string[] {
           if (!states) err(where, `no entity "${ref.event}" with states on this map`);
           else if (name !== undefined && !states.has(name)) err(where, `entity ${ref.event} has no state "${name}"`);
         }
+        // who a script moves, turns, shows or points at: an entity of this map, a hero, or "party"
+        const who = [(o.move as { who?: string })?.who, (o.face as { who?: string })?.who, (o.emote as { who?: string })?.who, (o.camera as { who?: string })?.who, o.hide, o.show];
+        for (const id of who) if (typeof id === "string" && id !== "party" && !db.heroes.has(id) && !(m.events ?? []).some((e) => e.id === id)) err(where, `no entity or hero "${id}"`);
         const on = o.heroesOn as { event?: string } | undefined;
         if (on && typeof on === "object" && on.event && !(m.events ?? []).some((e) => e.id === on.event)) err(where, `heroesOn: no event "${on.event}"`);
         Object.values(o).forEach(walk);
@@ -304,6 +310,16 @@ export function validateContent(db: Database): string[] {
       actions(h.do, `${w} on ${h.on}`);
     }
     stateRefs(m.on, w);
+    // placed enemies' handlers: only "defeated"
+    for (const e of m.enemies ?? []) {
+      for (const h of e.on ?? []) {
+        const hw = `${w} enemy ${e.id} on ${h.on}`;
+        if (h.on !== "defeated") err(hw, `an enemy can only react to "defeated"`);
+        condition(h.when, hw);
+        actions(h.do, hw);
+      }
+      stateRefs(e.on, `${w} enemy ${e.id}`);
+    }
   }
   // config
   const s = db.config.start;

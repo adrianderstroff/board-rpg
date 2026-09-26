@@ -23,6 +23,7 @@ import { getChar, type Ctx } from "../../core/context";
 import type { GameEvent } from "../../core/events";
 import type { EnterResult, Game } from "../../core/game";
 import type { GameState } from "../../core/state/types";
+import type { Emote } from "../../core/data/types";
 import { itemCount } from "../../core/items/inventory";
 import { merge, restParty, type ScriptResult, type UiRequest } from "../../core/script/actions";
 import { autoTriggers, interactionsFor, performInteraction, stepTriggers, type InteractionOutcome } from "../../core/script/interact";
@@ -44,7 +45,10 @@ import { CLOSE_UP, CloseUp } from "../ui/closeUp";
 import { openMainMenu } from "../ui/mainMenu";
 import { openShop } from "../ui/shop";
 import { showStats } from "../ui/stats";
-import { music, sfx, sfxForEvent } from "../sound";
+import { music, sfx, sfxForEvent, type SfxName } from "../sound";
+
+/** Emote balloons (the script action `emote`, EMOTES in core). */
+const EMOTE_TEXT: Record<Emote, string> = { exclaim: "!", question: "?", silence: "...", surprise: "!?", angry: "#", sleep: "zZ", love: "<3", note: "~" };
 
 type CellPick = Pos | null | "menu";
 
@@ -471,6 +475,37 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
       case "teleport":
         await this.travelTo(req.map, req.spawn);
         break;
+      case "camera": {
+        // a cell, or back to the party
+        const to = req.x !== undefined && req.y !== undefined ? { x: req.x, y: req.y } : heroPieces(this.ctx)[0];
+        if (to) {
+          const t = this.view.cellTop(to);
+          this.cameras.main.pan(t.x, t.y, 400, "Sine.easeInOut");
+          await wait(this, 450);
+        }
+        break;
+      }
+      case "sound":
+        sfx(req.id as SfxName);
+        break;
+      case "music":
+        music(req.id, this);
+        break;
+      case "screen": {
+        const cam = this.cameras.main;
+        if (req.effect === "fadeOut") await fadeOut(this, 500);
+        else if (req.effect === "fadeIn") await fadeIn(this, 500);
+        else if (req.effect === "flash") cam.flash(250, 255, 255, 255);
+        else cam.shake(400, 0.008);
+        if (req.effect === "flash" || req.effect === "shake") await wait(this, 400);
+        break;
+      }
+      case "emote": {
+        const t = this.view.cellTop(req);
+        popup(this, t.x, t.y - 34, EMOTE_TEXT[req.icon as Emote] ?? req.icon, COLORS.highlight, UI_DEPTH - 5);
+        await wait(this, 800);
+        break;
+      }
     }
   }
 

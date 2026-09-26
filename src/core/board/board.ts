@@ -107,7 +107,9 @@ export function exitAt(ctx: Ctx, p: Pos): ExitDef | undefined {
 }
 
 export function exitEnabled(ctx: Ctx, exit: ExitDef): boolean {
-  return check(ctx, exit.enabled);
+  // a script may have opened or closed it (setExit)
+  const set = ctx.state.board ? mapMemory(ctx, board(ctx).mapId).exits?.[`${exit.x},${exit.y}`] : undefined;
+  return set ?? check(ctx, exit.enabled);
 }
 
 // ---------- events → pieces (§10.3) ----------
@@ -162,8 +164,7 @@ export function syncEvents(ctx: Ctx): GameEvent[] {
         id: pid,
         faction: "npc",
         members,
-        x: ev.x,
-        y: ev.y,
+        ...(mapMemory(ctx, b.mapId).positions?.[ev.id] ?? { x: ev.x, y: ev.y }),
         facing: page!.dir ?? "S",
         sourceId: ev.id,
         home: { x: ev.x, y: ev.y },

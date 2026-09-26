@@ -347,7 +347,18 @@ While **no living enemy is on the board** (peaceful maps, or a wild map once eve
 YAML objects: `flag`, `not`, `all`, `any`, `item {id,count}`, `gold`, `var {name, op, value}`, `talkedTo`, `defeated {enemy|piece, count}`, `defeatedAllOn {map}`, `onMap`, `questActive`, `questDone`, `questStep`, `partyHas`, `level`.
 
 ### 10.2 Actions and scripts
-`setFlag`, `clearFlag`, `setVar`, `addVar`, `giveItem`, `takeItem`, `giveGold`, `takeGold`, `startQuest`, `completeQuest`, `setQuestStep`, `dialog`, `shop`, `inn`, `healParty`, `spawnEnemy`, `removeEvent`, `teleport`, `message`, `reveal`.
+`setFlag`, `clearFlag`, `setVar`, `addVar`, `giveItem`, `takeItem`, `giveGold`, `takeGold`, `startQuest`, `completeQuest`, `setQuestStep`, `dialog`, `shop`, `inn`, `healParty`, `spawnEnemy`, `removeEvent`, `teleport`, `message`, `reveal`,
+`setState`, `damage`, `heal`, and for staging scenes:
+- `move: { who, to }` – walks an entity, a hero (their piece) or `party` to a cell of the map (a
+  scripted walk: no traps or field effects on the way; without a free way it warps). Entities keep
+  the cell they were moved to (map memory).
+- `face: { who, dir }`, `emote: { who, icon }` (a balloon: exclaim, question, silence, surprise,
+  angry, sleep, love, note).
+- `hide` / `show: <entity>` – off the board and back (unlike `removeEvent`, which is for good).
+- `camera: { who }` or `{ to: {x, y} }`; `{}` = back to the party.
+- `sound: <sfx>`, `music: <track>`, `screen: fadeOut | fadeIn | flash | shake`.
+- `addMember` / `removeMember: <hero>` – joins the party piece / leaves it (the last hero stays).
+- `setExit: { x, y, open }` – opens or closes the exit on a cell, over its `enabled` condition.
 
 Wherever actions go – event pages, close-up options, map entry, quest steps, dialogs – they form a
 **script**: steps run one after another. Besides actions a step can be a block:
@@ -394,7 +405,8 @@ instead have states and handlers (the engine supports both; content moves over w
   interact handler whose condition holds is the one used – list the more specific ones first),
   **enter** (a hero stops on it), **leave**, **pass over** (a hero moving across it – the move stops
   there; flying pieces are not caught), **map loaded**, **condition becomes true** (also when it
-  already holds as the party arrives on the map), and for enemies **defeated** (planned). `once`
+  already holds as the party arrives on the map), and for placed enemies **defeated** (the enemy's
+  `on` list; runs once when its whole party is beaten). `once`
   handlers run a single time.
 - **Abilities and entities:** a board ability (or item) used on cells sets off the *ability used*
   handlers (`on: ability`, `ability: <id>`) of the entities there – Discover reaches the hidden ones
@@ -738,3 +750,4 @@ Where the rough ideas were incomplete or conflicting, these rules were chosen:
 44. **Every event is an entity** (R6): the 81 paged events were converted once (`editor/src/entities/convertPages.ts`): a look per state (switched by "becomes" handlers where pages changed it), interact pages as interact handlers (the most recent first), step pages as enter handlers, auto pages as "becomes" handlers; run-once handlers keep the pages' old keys (`onceKey`) so saves don't replay scenes. Map-load handlers run after the map's `onEnter` script.
 45. **Map-level handlers** (user decision): `onEnter` and the 23 invisible "controller" entities that only held map-wide scripts were moved into the map's own `on` list (run-once keys kept); the map's load handlers run before the entities'.
 46. **Traps are entities; abilities reach entities** (user decision): the three ancient traps were migrated to the Hidden trap preset; Discover and Defuse work through a generic "ability used" handler; hidden states, trap marks and *avoid* passability were added; old saves keep found / spent traps. Traps the Thief sets during play (Snare, Trap) stay a runtime list for now (todo.md).
+47. **Staging actions** (R5): move / face / hide / show / emote / camera / sound / music / screen effects / party members / exits, and enemies' *defeated* handlers. Scripted moves don't set off traps or field effects; moved entities keep their cell per map.

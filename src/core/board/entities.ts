@@ -17,6 +17,11 @@ export function isEntity(ev: MapEventDef): boolean {
   return !!ev.states && !ev.pages;
 }
 
+/** Where an entity stands – where a script moved it, else its own cell. */
+export function entityPos(ctx: Ctx, ev: MapEventDef): Pos {
+  return (ctx.state.board && mapMemory(ctx, board(ctx).mapId).positions?.[ev.id]) || { x: ev.x, y: ev.y };
+}
+
 /** The state an entity is in on `mapId`. */
 export function currentState(ctx: Ctx, mapId: string, ev: MapEventDef): string | undefined {
   if (!ev.states) return undefined;
@@ -63,7 +68,7 @@ export function setEntityState(ctx: Ctx, id: string, state: string): GameEvent[]
   const ev = entity(ctx, id);
   if (!ev.states?.[state]) throw new Error(`Entity "${id}" has no state "${state}"`);
   const mem = mapMemory(ctx, board(ctx).mapId);
-  if (ev.states[state].pass === "solid" && someoneOn(ctx, ev)) {
+  if (ev.states[state].pass === "solid" && someoneOn(ctx, entityPos(ctx, ev))) {
     (mem.pendingStates ??= {})[id] = state;
     return [];
   }
@@ -78,7 +83,7 @@ export function solidCells(ctx: Ctx): Pos[] {
   const mapId = board(ctx).mapId;
   return eventsOf(ctx)
     .filter((ev) => !mapMemory(ctx, mapId).removedEvents.includes(ev.id) && ev.states?.[currentState(ctx, mapId, ev) ?? ""]?.pass === "solid")
-    .map((ev) => ({ x: ev.x, y: ev.y }));
+    .map((ev) => entityPos(ctx, ev));
 }
 
 /** Cells where a hero's move stops: entities with a `pass` handler that applies right now. */
@@ -86,7 +91,7 @@ export function passCells(ctx: Ctx): Pos[] {
   if (!ctx.state.board) return [];
   return eventsOf(ctx)
     .filter((ev) => (ev.on ?? []).some((h) => h.on === "pass" && check(ctx, h.when)))
-    .map((ev) => ({ x: ev.x, y: ev.y }));
+    .map((ev) => entityPos(ctx, ev));
 }
 
 const key = (ev: MapEventDef, i: number) => `${ev.id}#${i}`;
@@ -102,7 +107,7 @@ function run(ctx: Ctx, ev: MapEventDef, i: number, h: EntityHandler, out: Script
   if (h.once) (mem.ranOnce ??= []).push(k);
   // its dialogs are spoken by whoever it shows (a villager, a keeper); "here" is its cell
   const st = ev.states?.[currentState(ctx, board(ctx).mapId, ev) ?? ""];
-  merge(out, runActions(ctx, h.do, st?.npc ?? st?.keeper, ev === MAP ? undefined : { x: ev.x, y: ev.y }));
+  merge(out, runActions(ctx, h.do, st?.npc ?? st?.keeper, ev === MAP ? undefined : entityPos(ctx, ev)));
   return true;
 }
 
@@ -114,7 +119,8 @@ const stateNow = (ctx: Ctx, ev: MapEventDef) => ev.states?.[currentState(ctx, bo
 export function recordAbility(ctx: Ctx, ability: string, cells: Pos[]) {
   const mem = mapMemory(ctx, board(ctx).mapId);
   for (const ev of eventsOf(ctx)) {
-    if (!cells.some((c) => c.x === ev.x && c.y === ev.y)) continue;
+    const at = entityPos(ctx, ev);
+    if (!cells.some((c) => c.x === at.x && c.y === at.y)) continue;
     if ((ev.on ?? []).some((h) => h.on === "ability" && h.ability === ability)) (mem.abilityHits ??= []).push({ event: ev.id, ability });
   }
 }
@@ -128,24 +134,29 @@ export function hiddenEntities(ctx: Ctx): MapEventDef[] {
 export function avoidCells(ctx: Ctx): Pos[] {
   return eventsOf(ctx)
     .filter((ev) => stateNow(ctx, ev)?.pass === "avoid")
-    .map((ev) => ({ x: ev.x, y: ev.y }));
+    .map((ev) => entityPos(ctx, ev));
 }
 
 /** Cells with a trap mark (known dangers). */
 export function markCells(ctx: Ctx): Pos[] {
   return eventsOf(ctx)
     .filter((ev) => stateNow(ctx, ev)?.mark === "trap")
-    .map((ev) => ({ x: ev.x, y: ev.y }));
+    .map((ev) => entityPos(ctx, ev));
 }
 
 /** An entity on `p` that Defuse can take apart: seen, with a defuse handler that applies now. */
 export function defusableAt(ctx: Ctx, p: Pos): MapEventDef | undefined {
-  return eventsOf(ctx).find((ev) => ev.x === p.x && ev.y === p.y && !stateNow(ctx, ev)?.hidden && (ev.on ?? []).some((h) => h.on === "ability" && h.ability === "defuse" && check(ctx, h.when)));
+  return eventsOf(ctx).find((ev) => entityPos(ctx, ev).x === p.x && entityPos(ctx, ev).y === p.y && !stateNow(ctx, ev)?.hidden && (ev.on ?? []).some((h) => h.on === "ability" && h.ability === "defuse" && check(ctx, h.when)));
 }
 
 /** The map's handlers and every entity's, each with who holds it. */
 function holders(ctx: Ctx): { ev: MapEventDef; on: EntityHandler[] }[] {
   return [{ ev: MAP, on: ctx.db.map(board(ctx).mapId).on ?? [] }, ...eventsOf(ctx).map((ev) => ({ ev, on: ev.on ?? [] }))];
+}
+
+/** Placed enemies with handlers ("defeated"). */
+function enemyHolders(ctx: Ctx) {
+  return (ctx.db.map(board(ctx).mapId).enemies ?? []).filter((e) => e.on?.length).map((e) => ({ ev: { id: `enemy:${e.id}`, x: e.x, y: e.y } as MapEventDef, id: e.id, on: e.on! }));
 }
 
 /** `load` handlers – when the party arrives on the map (states that depend on flags are set up here). */
@@ -159,7 +170,7 @@ export function loadTriggers(ctx: Ctx): ScriptResult {
   for (const id of mem.sprung ?? []) if (has(id)) (mem.states ??= {})[id] = "sprung";
   // arriving doesn't count as stepping onto anything
   mem.occupied = eventsOf(ctx)
-    .filter((ev) => heroWeightOn(ctx, ev) > 0)
+    .filter((ev) => heroWeightOn(ctx, entityPos(ctx, ev)) > 0)
     .map((ev) => ev.id);
   // the map's own first (what used to be its onEnter), then the entities'
   for (const { ev, on } of holders(ctx)) on.forEach((h, i) => h.on === "load" && check(ctx, h.when) && run(ctx, ev, i, h, out));
@@ -191,12 +202,12 @@ export function entityTriggers(ctx: Ctx): ScriptResult {
     }
     for (const ev of eventsOf(ctx)) {
       const pending = mem.pendingStates?.[ev.id];
-      if (pending && !someoneOn(ctx, ev)) {
+      if (pending && !someoneOn(ctx, entityPos(ctx, ev))) {
         delete mem.pendingStates![ev.id];
         (mem.states ??= {})[ev.id] = pending;
         out.events.push({ type: "state", event: ev.id, state: pending }, { type: "pieces" });
       }
-      const here = heroWeightOn(ctx, ev) > 0;
+      const here = heroWeightOn(ctx, entityPos(ctx, ev)) > 0;
       const was = (mem.occupied ?? []).includes(ev.id);
       if (here !== was) {
         mem.occupied = here ? [...(mem.occupied ?? []), ev.id] : (mem.occupied ?? []).filter((id) => id !== ev.id);
@@ -205,6 +216,18 @@ export function entityTriggers(ctx: Ctx): ScriptResult {
           if (fits && check(ctx, h.when) && run(ctx, ev, i, h, out)) ran = true;
         });
       }
+    }
+    // enemies that were defeated (their "defeated" handlers run once)
+    for (const { ev, id, on } of enemyHolders(ctx)) {
+      if (!mem.defeated.includes(id)) continue;
+      on.forEach((h, i) => {
+        if (h.on !== "defeated" || (mem.ranOnce ?? []).includes(key(ev, i))) return;
+        (mem.ranOnce ??= []).push(key(ev, i));
+        if (check(ctx, h.when)) {
+          merge(out, runActions(ctx, h.do));
+          ran = true;
+        }
+      });
     }
     // conditions that turned true – the map's and the entities'
     for (const { ev, on } of holders(ctx))

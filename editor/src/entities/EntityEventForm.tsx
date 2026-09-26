@@ -27,11 +27,13 @@ const TRIGGERS: [HandlerTrigger, string, string][] = [
   ["load", "Map loaded", "The party arrives on this map – set up states that depend on flags here."],
   ["becomes", "Becomes true", "Its condition turns true (checked after every change) – or holds when the party arrives."],
   ["ability", "Ability used", "An ability or item is used on its cell – Discover (also on hidden ones in reach), Defuse, a fire spell…"],
+  ["defeated", "Defeated", "The enemy (its whole party) is defeated – runs once."],
 ];
 const triggerLabel = (t: HandlerTrigger) => TRIGGERS.find((x) => x[0] === t)?.[1] ?? t;
 /** What entities react to; the map itself only to "map loaded" and "becomes true". */
 export const ENTITY_TRIGGERS: HandlerTrigger[] = ["interact", "enter", "pass", "leave", "load", "becomes", "ability"];
 export const MAP_TRIGGERS: HandlerTrigger[] = ["load", "becomes"];
+export const ENEMY_TRIGGERS: HandlerTrigger[] = ["defeated"];
 
 const PASS: [Passability, string, string][] = [
   ["solid", "Solid", "Nobody enters its cell (a closed gate, a wall)."],
@@ -273,19 +275,20 @@ export function HandlerTabs({ project, file, path, handlers, triggers, db, mapId
       group && `${path.join(".")}.${hi}.${group}`,
     );
   const choices = TRIGGERS.filter(([t]) => triggers.includes(t));
+  const addHandler = () => {
+    setHandlers([...handlers, { on: triggers[0], do: [] }], "Add event");
+    setHandlerNo(handlers.length);
+  };
   return (
       <div class="pages">
         <div class="page-tabs">
           <Tabs labels={handlers.map((x) => triggerLabel(x.on))} active={hi} onPick={setHandlerNo} title="What it does – each a trigger, a condition and a script" />
           <button
-            class="icon-button add-page"
-            title="Add a handler"
-            onClick={() => {
-              setHandlers([...handlers, { on: triggers[0], do: [] }], "Add handler");
-              setHandlerNo(handlers.length);
-            }}
+            class={handlers.length ? "icon-button add-page" : "add-page add-first"}
+            title={`Add an event (${choices.map(([, l]) => l.toLowerCase()).join(", ")})`}
+            onClick={addHandler}
           >
-            +
+            {handlers.length ? "+" : "+ Add event"}
           </button>
         </div>
         {h ? (
@@ -341,7 +344,7 @@ export function HandlerTabs({ project, file, path, handlers, triggers, db, mapId
                       <Text value={h.label} placeholder="Examine" onChange={(v) => setHandler({ label: v }, "Label", "label")} />
                     </Field>
                   </>
-                ) : (
+                ) : h.on === "defeated" ? null : (
                   <Field label="Once">
                     <Check value={h.once} label="only the first time" onChange={(v) => setHandler({ once: v }, "Once")} />
                   </Field>
@@ -352,9 +355,7 @@ export function HandlerTabs({ project, file, path, handlers, triggers, db, mapId
               </div>
             </div>
           </div>
-        ) : (
-          <p class="hint">No handlers yet – + adds one ({choices.map(([, l]) => l.toLowerCase()).join(", ")}).</p>
-        )}
+        ) : null}
       </div>
   );
 }
