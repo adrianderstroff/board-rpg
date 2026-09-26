@@ -87,6 +87,13 @@ export function occupancyFor(ctx: Ctx, mover: Piece): (p: Pos) => Occupancy {
       return "stop";
     }
     const npc = others.find((o) => o.faction === "npc");
+    // an entity says how its cell can be crossed (§10.3)
+    const pass = npc && pageOfPiece(ctx, npc)?.pass;
+    if (npc && pass && others.every((o) => o.faction === "npc" || o.faction === mover.faction)) {
+      if (pass === "walk") return others.some((o) => o.faction === mover.faction) ? "pass" : "free";
+      if (pass === "solid") return "block";
+      return mover.faction === "hero" && !others.some((o) => o.faction === mover.faction) ? "stop" : "block";
+    }
     if (npc) {
       const allies = others.some((o) => o.faction === mover.faction);
       // Objects (chests, signs) stay solid; villagers can be walked through.
@@ -143,7 +150,10 @@ function classify(ctx: Ctx, piece: Piece, r: Reach): MoveOption {
   const others = piecesAt(ctx, r.pos).filter((p) => p.id !== piece.id);
   const exit = exitAt(ctx, r.pos);
   if (exit && !others.length) return { ...r, kind: "exit", exit };
-  if (!others.length) return { ...r, kind: "move" };
+  // entities one can walk onto (a floor plate, an open gate) are no one to meet (§10.3)
+  const standOn = others.filter((o) => !(o.faction === "npc" && pageOfPiece(ctx, o)?.pass === "walk"));
+  if (!standOn.length) return { ...r, kind: "move" };
+  others.splice(0, others.length, ...standOn);
   const hostile = others.filter((o) => o.faction !== piece.faction && o.faction !== "npc");
   if (hostile.length) return { ...r, kind: "engage", targets: hostile.map((h) => h.id) };
   const npc = others.find((o) => o.faction === "npc");

@@ -4,6 +4,7 @@ import type { Database } from "./data/database";
 import type { ExitDef } from "./data/types";
 import { emptyResult, merge, runActions, type ScriptResult } from "./script/actions";
 import { autoTriggers, type InteractionOutcome } from "./script/interact";
+import { loadTriggers } from "./board/entities";
 import { evaluateQuests, startQuest } from "./script/quests";
 import { newGameState } from "./state/newGame";
 import type { GameState } from "./state/types";
@@ -48,6 +49,7 @@ export class Game {
   enter(mapId: string, spawn: string, facing?: Dir): EnterResult {
     const out: EnterResult = { ...emptyResult(), dialogs: [] };
     out.events.push(...enterMap(this.ctx, mapId, spawn, undefined, facing));
+    merge(out, loadTriggers(this.ctx));
     merge(out, runActions(this.ctx, this.db.map(mapId).onEnter));
     for (const r of autoTriggers(this.ctx)) collect(out, r);
     merge(out, evaluateQuests(this.ctx));
@@ -58,6 +60,7 @@ export class Game {
   enterGroups(mapId: string, groups: { members: string[]; spawn: string }[]): EnterResult {
     const out: EnterResult = { ...emptyResult(), dialogs: [] };
     out.events.push(...enterMap(this.ctx, mapId, groups[0].spawn, groups));
+    merge(out, loadTriggers(this.ctx));
     merge(out, runActions(this.ctx, this.db.map(mapId).onEnter));
     for (const r of autoTriggers(this.ctx)) collect(out, r);
     merge(out, evaluateQuests(this.ctx));

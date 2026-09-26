@@ -225,9 +225,49 @@ export function validateContent(db: Database): string[] {
       if (dormant && !chip.decor[dormant.decor]) err(w, `enemy ${e.id}: dormant decor "${dormant.decor}" not in chipset ${chip.id}`);
       condition(e.when, `${w} enemy ${e.id}`);
     }
+    // entities (§10.3): their states' looks, the handlers' scripts, and every state they name
+    const entityStates = new Map((m.events ?? []).filter((e) => e.states).map((e) => [e.id, new Set(Object.keys(e.states!))]));
+    const stateRefs = (data: unknown, where: string) => {
+      const walk = (v: unknown) => {
+        if (Array.isArray(v)) return v.forEach(walk);
+        if (!v || typeof v !== "object") return;
+        const o = v as Record<string, unknown>;
+        const ref = (o.setState ?? o.state) as { event?: string; state?: string; is?: string } | undefined;
+        if (ref && typeof ref === "object" && typeof ref.event === "string") {
+          const states = entityStates.get(ref.event);
+          const name = ref.state ?? ref.is;
+          if (!states) err(where, `no entity "${ref.event}" with states on this map`);
+          else if (name !== undefined && !states.has(name)) err(where, `entity ${ref.event} has no state "${name}"`);
+        }
+        const on = o.heroesOn as { event?: string } | undefined;
+        if (on && typeof on === "object" && on.event && !(m.events ?? []).some((e) => e.id === on.event)) err(where, `heroesOn: no event "${on.event}"`);
+        Object.values(o).forEach(walk);
+      };
+      walk(data);
+    };
     for (const ev of m.events ?? []) {
       onGrid(ev.x, ev.y, `event ${ev.id}`);
-      for (const p of ev.pages) {
+      const ew = `${w} event ${ev.id}`;
+      if (ev.pages && ev.states) err(ew, "has both pages and states – use one of them");
+      if (!ev.pages && !ev.states) err(ew, "needs pages or states");
+      if (ev.state && ev.states && !ev.states[ev.state]) err(ew, `starts in unknown state "${ev.state}"`);
+      for (const [name, st] of Object.entries(ev.states ?? {})) {
+        has(db.npcs, st.npc, `${ew} state ${name}`, "npc");
+        has(db.npcs, st.keeper, `${ew} state ${name}`, "npc");
+        if (st.decor && !chip.decor[st.decor]) err(`${ew} state ${name}`, `unknown decor "${st.decor}"`);
+      }
+      for (const h of ev.on ?? []) {
+        const hw = `${ew} on ${h.on}`;
+        condition(h.when, hw);
+        actions(h.do, hw);
+        for (const i of h.options ?? []) {
+          if (i.type === "talk") has(db.dialogs, i.dialog, hw, "dialog");
+          if (i.type === "shop") has(db.shops, i.shop, hw, "shop");
+          if (i.type === "examine") actions(i.actions, hw);
+        }
+      }
+      stateRefs(ev.on, ew);
+      for (const p of ev.pages ?? []) {
         const pw = `${w} event ${ev.id}`;
         condition(p.when, pw);
         has(db.npcs, p.npc, pw, "npc");

@@ -251,10 +251,10 @@ function EventForm({ project, mapId, index, db }: { project: Project; mapId: str
     if (!tab || !strip) return;
     if (tab.offsetLeft < strip.scrollLeft) strip.scrollLeft = tab.offsetLeft;
     else if (tab.offsetLeft + tab.offsetWidth > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = tab.offsetLeft + tab.offsetWidth - strip.clientWidth;
-  }, [pageNo, ev?.pages.length]);
+  }, [pageNo, ev?.pages?.length]);
   const setIn = fileSetter(project, file);
   if (!ev) return null;
-  const pages = ev.pages;
+  const pages = ev.pages ?? [];
   const p = Math.min(pageNo, pages.length - 1);
   const page = pages[p];
   const chip = db.chipsets.get(map.chipset);

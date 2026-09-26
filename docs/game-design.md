@@ -360,9 +360,22 @@ end within the scene – the game is saved before or after one, never in the mid
 ### 10.3 Map events (RPG-Maker style)
 An event is an object on a cell with **pages**. The last page whose condition holds is active and defines graphic, facing, movement behavior, trigger (`interact`, `step`, `auto` on map enter) and the interaction list. Used for NPCs, shopkeepers, chests, signs, hidden items and triggers.
 
-**Planned rework – entities with states and handlers** (packages R3–R7; decided with the user). Gates,
-floor switches and hidden traps are special kinds today only because events can't express what they
-do. Events get the missing pieces and replace them:
+**Entities with states and handlers** (packages R3–R7; decided with the user). Gates, floor switches
+and hidden traps were special kinds only because events couldn't express what they do. An event can
+instead have states and handlers (the engine supports both; content moves over with R6):
+
+```yaml
+- id: plate
+  x: 3
+  y: 5
+  states:                                   # the first is where it starts (or `state:`)
+    up:   { decor: switch_up, pass: walk }
+    down: { decor: switch_down, pass: walk }
+  on:
+    - { on: enter, when: { heroesOn: { event: plate, weight: 1 } }, do: [{ setState: { event: plate, state: down } }] }
+    - { on: leave, do: [{ setState: { event: plate, state: up } }] }
+```
+
 - An **entity** has a cell, **states** and **handlers**.
 - A **state** bundles a look (character with facing and movement / object / keeper behind an object /
   nothing), a **passability** (solid / stop here to interact / walk through) and hidden (found with

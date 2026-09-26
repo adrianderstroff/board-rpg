@@ -26,6 +26,7 @@ import type { GameState } from "../../core/state/types";
 import { itemCount } from "../../core/items/inventory";
 import { merge, restParty, type ScriptResult, type UiRequest } from "../../core/script/actions";
 import { autoTriggers, interactionsFor, performInteraction, stepTriggers, type InteractionOutcome } from "../../core/script/interact";
+import { entityTriggers } from "../../core/board/entities";
 import { evaluateQuests } from "../../core/script/quests";
 import { key, samePos, type Dir, type Pos } from "../../core/util/grid";
 import { InputRouter, type InputAction } from "../../engine/input";
@@ -484,6 +485,7 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
   /** After any state change: event pages, quests, auto events. */
   private async afterChange() {
     const out: ScriptResult = { events: syncEvents(this.ctx), requests: [] };
+    merge(out, entityTriggers(this.ctx));
     merge(out, evaluateQuests(this.ctx));
     const autos = autoTriggers(this.ctx);
     for (const a of autos) merge(out, a);

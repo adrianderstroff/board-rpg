@@ -321,9 +321,12 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
       (doc) => {
         const base = entityPath(sel);
         if (sel.kind === "event") {
-          map.events?.[sel.key as number]?.pages.forEach((p, i) => {
+          const ev = map.events?.[sel.key as number];
+          ev?.pages?.forEach((p, i) => {
             if (p.npc) doc.setIn([...base, "pages", i, "dir"], turnDir(p.dir ?? "S", by));
           });
+          // an entity: every state showing a character turns
+          for (const [name, st] of Object.entries(ev?.states ?? {})) if (st.npc) doc.setIn([...base, "states", name, "dir"], turnDir(st.dir ?? "S", by));
         }
         else if (sel.kind === "spawn" || sel.kind === "exit" || sel.kind === "enemy") doc.setIn([...base, "dir"], turnDir((doc.getIn([...base, "dir"]) as Dir) ?? "S", by));
       },

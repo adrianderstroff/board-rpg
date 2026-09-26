@@ -6,6 +6,7 @@ import { addItem, removeItem } from "../items/inventory";
 import { board, mapMemory, reconcile, spawnMapEnemy } from "../board/board";
 import { completeQuest, setQuestStep, startQuest } from "./quests";
 import { ScriptRunner } from "./runner";
+import { setEntityState } from "../board/entities";
 
 import type { Dir } from "../util/grid";
 
@@ -101,6 +102,8 @@ export function runAction(ctx: Ctx, a: Action): ScriptResult {
     }
   } else if ("spawnEnemy" in a) {
     if (s.board) out.events.push(...spawnMapEnemy(ctx, (a as { spawnEnemy: string }).spawnEnemy));
+  } else if ("setState" in a) {
+    if (s.board) out.events.push(...setEntityState(ctx, a.setState.event, a.setState.state));
   } else if ("reveal" in a) {
     if (!s.records.revealed.includes(a.reveal)) s.records.revealed.push(a.reveal);
   } else throw new Error(`Unknown action ${JSON.stringify(a)}`);

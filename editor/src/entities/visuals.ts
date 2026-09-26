@@ -49,8 +49,8 @@ export function entitySprites(db: Database, map: MapDef, rotation: number, selec
     switch (e.kind) {
       case "event": {
         const ev = map.events![e.key as number];
-        // the look of its first page that shows something
-        const page = ev.pages.find((p) => p.npc || p.decor || p.keeper) ?? ev.pages[0];
+        // the look of its first page that shows something – for an entity, the state it starts in
+        const page = ev.states ? ev.states[ev.state ?? Object.keys(ev.states)[0]] : (ev.pages?.find((p) => p.npc || p.decor || p.keeper) ?? ev.pages?.[0]);
         const npc = page?.npc ?? page?.keeper;
         const tex = npc ? charset(db.npcs.get(npc)?.charset) : undefined;
         if (tex) out.push({ ...base, texture: tex, frame: idleFrame(rotateDir(page?.dir ?? "S", rotation)), originY: 1, label: labels ? ev.id : undefined });

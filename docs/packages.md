@@ -300,11 +300,15 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ Script editor: blocks (say, question with options, if / else, wait) with nested steps
 - ☑ Game: text, pauses and questions (icons) from scripts; effects inside dialogs are played
 
-## R4 · Entity states ☐
-- ☐ States (look, passability, hidden) saved per map; set state action, "in state" condition; pages → states + a map-loaded handler
+## R4 · Entity states ☑
+- ☑ States (look, passability) saved per map; `setState` action, `state` condition; the current state is the event's page for the board (pieces, close-ups, occupancy)
+- ☑ Walk-through entities are stood on (no close-up); a solid state waits until its cell is free
+- ☑ Validation: looks, handler scripts, state names and entities named in conditions / actions
 
-## R5 · Handlers & triggers ☐
-- ☐ Interact, enter, leave, pass over (stops moves), map loaded, condition becomes true, defeated; "heroes on a cell" condition; new actions (move, face, show / hide, damage / heal / status, camera, sound, fade, emote, party members)
+## R5 · Handlers & triggers (◐)
+- ☑ Interact (options or a script), enter, leave, pass over (stops hero moves, not flying ones), map loaded, condition becomes true; `once`; `heroesOn` condition; chained handlers settle in one go
+- ☐ Enemies' "defeated" handler; state-level hidden (Discover)
+- ☐ New actions: move an entity / hero piece, face, show / hide, damage / heal / status, camera, sound / music, fade / flash / shake, emote, add / remove party member, enable / disable exit
 
 ## R6 · Presets & migration ☐
 - ☐ Gate, floor switch, trap as entity presets; content migrated; `gates.ts` / map traps / switches removed; rule tests rewritten against entities

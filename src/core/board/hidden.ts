@@ -10,6 +10,7 @@ import { chebyshev, key, samePos } from "../util/grid";
 import { movePatternOf } from "../chars/character";
 import { aliveMembers, board, grid, mapMemory, mustPieceOf, pieceReach, pieces, reconcile, syncEvents } from "./board";
 import { occupancyFor } from "./moves";
+import { passCells } from "./entities";
 import { resolveMoves, resolvePatternRef } from "./patterns";
 
 /**
@@ -86,7 +87,7 @@ export function canReach(ctx: Ctx, sleeper: Piece, target: Pos): boolean {
 export function interruptionAt(ctx: Ctx, piece: Piece, path: Pos[], mode: string, flying: boolean): number {
   if (!path.length || piece.faction === "npc") return -1;
   const hero = piece.faction === "hero";
-  const traps: Pos[] = flying ? [] : hero ? armedTraps(ctx) : board(ctx).traps;
+  const traps: Pos[] = flying ? [] : hero ? [...armedTraps(ctx), ...passCells(ctx)] : board(ctx).traps;
   const sleepers = hero ? dormantPieces(ctx) : [];
   if (!traps.length && !sleepers.length) return -1;
   const first = mode === "leap" ? path.length - 1 : 0;

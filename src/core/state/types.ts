@@ -122,6 +122,16 @@ export interface MapMemory {
   sprung?: string[];
   /** Latching switches pressed for good (§5.8). */
   latched?: string[];
+  /** Entities' current states by event id (§10.3). */
+  states?: Record<string, string>;
+  /** Solid states waiting for their cell to become free. */
+  pendingStates?: Record<string, string>;
+  /** Entities heroes stood on after the last change (for enter / leave). */
+  occupied?: string[];
+  /** Last value of each `becomes` handler's condition ("event#index"). */
+  became?: Record<string, boolean>;
+  /** `once` handlers that have run ("event#index"). */
+  ranOnce?: string[];
 }
 
 export interface Records {

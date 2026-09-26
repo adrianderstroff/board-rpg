@@ -17,6 +17,7 @@ import type { Dir, Pos } from "../util/grid";
 import { ALL_DIRS, add, samePos } from "../util/grid";
 import { getGrid, LiveGrid } from "./grid";
 import { updateGates } from "./gates";
+import { isEntity, pageFromState } from "./entities";
 import { resolvePatternRef } from "./patterns";
 
 // ---------- access ----------
@@ -114,8 +115,10 @@ export function exitEnabled(ctx: Ctx, exit: ExitDef): boolean {
 
 export function activePage(ctx: Ctx, mapId: string, ev: MapEventDef): EventPageDef | undefined {
   if (mapMemory(ctx, mapId).removedEvents.includes(ev.id)) return undefined;
+  // an entity (§10.3): its current state, seen as a page
+  if (isEntity(ev)) return pageFromState(ctx, mapId, ev);
   let page: EventPageDef | undefined;
-  for (const p of ev.pages) if (check(ctx, p.when)) page = p;
+  for (const p of ev.pages ?? []) if (check(ctx, p.when)) page = p;
   return page;
 }
 

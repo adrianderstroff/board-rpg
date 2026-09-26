@@ -96,7 +96,7 @@ function triggered(ctx: Ctx, trigger: "step" | "auto", where: (ev: { x: number; 
     if (!where(ev)) continue;
     const page = activePage(ctx, b.mapId, ev);
     if (!page || page.trigger !== trigger) continue;
-    const pageIndex = ev.pages.indexOf(page);
+    const pageIndex = (ev.pages ?? []).indexOf(page);
     const tag = `${ev.id}#${pageIndex}`;
     if ((page.once ?? true) && mem.triggered.includes(tag)) continue;
     mem.triggered.push(tag);

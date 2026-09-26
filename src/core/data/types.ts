@@ -345,7 +345,11 @@ export type Condition =
   | { questStepsDone: string }
   | { partyHas: string }
   | { level: number }
-  | { always: boolean };
+  | { always: boolean }
+  /** An entity (event) of the current map is in a state (§10.3). */
+  | { state: { event: string; is: string } }
+  /** Living heroes standing on an entity's cell – at least `weight` of them (default 1). */
+  | { heroesOn: { event: string; weight?: number } };
 
 export type Action =
   | { setFlag: string }
@@ -367,7 +371,9 @@ export type Action =
   | { spawnEnemy: string }
   | { teleport: { map: string; spawn: string } }
   | { message: string }
-  | { reveal: string };
+  | { reveal: string }
+  /** Puts an entity of the current map into a state (§10.3); a solid state waits until its cell is free. */
+  | { setState: { event: string; state: string } };
 
 // ---------- dialogs (§9) ----------
 
@@ -539,7 +545,12 @@ export type Interaction =
   | { type: "inn"; price?: number; label?: string; wakeAt?: { map: string; spawn: string; dir?: Dir } }
   | { type: "examine"; dialog?: string; actions?: Script; label?: string };
 
+/** How an entity's cell can be crossed (§10.3). */
+export type Passability = "solid" | "stop" | "walk";
+
 export interface EventPageDef {
+  /** Entities: how its cell can be crossed (legacy pages: from the look). */
+  pass?: Passability;
   when?: Condition;
   npc?: string;
   /** For objects like a shop counter: the npc standing behind it (speaker, close-up figure). */
@@ -559,11 +570,50 @@ export interface EventPageDef {
   once?: boolean;
 }
 
+/**
+ * A state of an entity (§10.3): what it looks like and how its cell can be crossed. Nothing drawn
+ * and `walk` = it isn't on the board at all (an open gate, a sprung trap).
+ */
+export interface EntityState {
+  npc?: string;
+  /** For objects like a shop counter: the npc standing behind it. */
+  keeper?: string;
+  decor?: string;
+  dir?: Dir;
+  move?: "static" | "wander";
+  wanderRadius?: number;
+  sign?: string;
+  /** solid: nobody enters; stop: heroes stop there to interact (default when drawn); walk: anyone walks through or stands on it. */
+  pass?: Passability;
+}
+
+/** When a handler runs (§10.3). */
+export type HandlerTrigger = "interact" | "enter" | "leave" | "pass" | "load" | "becomes";
+
+/** A trigger, a condition and what happens (§10.3). */
+export interface EntityHandler {
+  on: HandlerTrigger;
+  /** It only runs while this holds (for `becomes`: runs when this turns true). */
+  when?: Condition;
+  /** interact: the close-up's options (talk / shop / inn / examine). */
+  options?: Interaction[];
+  /** The script; for interact it is one more close-up option (`label`, default "Examine"). */
+  do?: Script;
+  label?: string;
+  /** Runs only the first time. */
+  once?: boolean;
+}
+
 export interface MapEventDef {
   id: string;
   x: number;
   y: number;
-  pages: EventPageDef[];
+  /** RPG-Maker style pages (the last whose condition holds is active) – or states and handlers. */
+  pages?: EventPageDef[];
+  /** The state it starts in (default: the first). */
+  state?: string;
+  states?: Record<string, EntityState>;
+  on?: EntityHandler[];
   /** Invisible until uncovered with Discover (§7.5). */
   hidden?: boolean;
 }
