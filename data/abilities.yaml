@@ -63,7 +63,7 @@ fire:
   group: Attack
   mp: 4
   icon: fire
-  description: "Battle: fire damage. Board: sets a cell ablaze for 3 rounds."
+  description: "Battle: fire damage. Board: sets a cell ablaze for 3 rounds; burns flowers and grass, melts ice."
   battle:
     target: enemy
     effects:
@@ -80,17 +80,50 @@ ice:
   group: Attack
   mp: 5
   icon: ice
-  description: "Battle: ice damage. Board: freezes a cross of cells for 3 rounds."
+  description: "Battle: ice damage. Board: on water freezes the water around the target (3x3), elsewhere a line of 3 cells. 4 rounds."
   battle:
     target: enemy
     effects:
       - { type: damage, kind: magical, power: 1.0, element: ice }
   board:
     range: range3
-    area: cross1
     targets: [anyCell]
     effects:
-      - { type: fieldEffect, effect: frozen, rounds: 3 }
+      - { type: freezeArea, effect: frozen, rounds: 4, size: 3 }
+
+ice2:
+  name: Ice 2
+  type: Magic
+  group: Attack
+  mp: 9
+  icon: ice
+  description: "Battle: strong ice damage. Board: on water freezes 5x5 of water, elsewhere a line of 5 cells. 5 rounds."
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: magical, power: 1.6, element: ice }
+  board:
+    range: range3
+    targets: [anyCell]
+    effects:
+      - { type: freezeArea, effect: frozen, rounds: 5, size: 5 }
+
+ice3:
+  name: Ice 3
+  type: Magic
+  group: Attack
+  mp: 15
+  icon: ice
+  description: "Battle: ice damage to all enemies. Board: on water freezes 7x7 of water, elsewhere a line of 7 cells. 6 rounds."
+  battle:
+    target: allEnemies
+    effects:
+      - { type: damage, kind: magical, power: 1.3, element: ice }
+  board:
+    range: range3
+    targets: [anyCell]
+    effects:
+      - { type: freezeArea, effect: frozen, rounds: 6, size: 7 }
 
 thunder:
   name: Thunder
@@ -98,11 +131,39 @@ thunder:
   group: Attack
   mp: 8
   icon: thunder
-  description: Lightning strikes all enemies.
+  description: "Battle: lightning strikes all enemies. Board: a bolt on one cell – in water it runs through everything connected (4 steps)."
   battle:
     target: allEnemies
     effects:
       - { type: damage, kind: magical, power: 0.8, element: thunder }
+  board:
+    range: range3
+    targets: [anyCell]
+    effects:
+      - { type: shock, power: 0.9, reach: 4 }
+
+holy:
+  name: Holy
+  type: Ki
+  mp: 12
+  icon: holy
+  description: "Sacred light. Huge damage to one enemy – the undead and the dark take double."
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: magical, power: 2.4, element: holy }
+
+cut:
+  name: Cut
+  type: Sword Art
+  mp: 0
+  icon: type_swordart
+  description: "Board: cut down a bramble or bush next to you."
+  board:
+    range: adjacent
+    targets: [plant]
+    effects:
+      - { type: cut }
 
 venom_mist:
   name: Venom Mist
@@ -214,6 +275,31 @@ trap:
     targets: [emptyCell]
     effects:
       - { type: placeTrap, damage: 15, status: stuck }
+
+discover:
+  name: Discover
+  type: Skill
+  mp: 1
+  icon: star
+  description: "Board: reveals everything hidden within 3 cells – traps, hidden objects, lurking enemies."
+  board:
+    range: self
+    area: square3
+    targets: [self]
+    effects:
+      - { type: discover, radius: 3 }
+
+defuse:
+  name: Defuse
+  type: Skill
+  mp: 0
+  icon: type_skill
+  description: "Board: takes apart a visible trap next to you. You keep it as a Snare."
+  board:
+    range: adjacent
+    targets: [trap]
+    effects:
+      - { type: defuse, item: snare }
 
 mug:
   name: Mug
@@ -365,6 +451,215 @@ sandstorm:
       - { type: damage, kind: magical, power: 0.6, base: 6, element: earth }
       - { type: applyStatus, status: blind, chance: 0.25 }
 
+bone_rattle:
+  name: Bone Rattle
+  type: Enemy
+  mp: 0
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: physical, power: 0.7 }
+      - { type: applyStatus, status: slow, chance: 0.4, turns: 2 }
+
+spear_jab:
+  name: Spear Jab
+  type: Enemy
+  mp: 0
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: physical, power: 1.2 }
+
+bubble:
+  name: Bubble
+  type: Enemy
+  mp: 0
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: magical, power: 0.6, base: 4 }
+      - { type: applyStatus, status: slow, chance: 0.4, turns: 2 }
+
+tongue_lash:
+  name: Tongue Lash
+  type: Enemy
+  mp: 0
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: physical, power: 1.1 }
+
+croak:
+  name: Croak
+  type: Enemy
+  mp: 0
+  battle:
+    target: allEnemies
+    effects:
+      - { type: applyStatus, status: sleep, chance: 0.3, turns: 2 }
+
+mirage_touch:
+  name: Mirage Touch
+  type: Enemy
+  mp: 0
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: magical, power: 0.9 }
+      - { type: applyStatus, status: blind, chance: 0.4 }
+
+sand_blade:
+  name: Sand Blade
+  type: Enemy
+  mp: 0
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: physical, power: 1.6, element: earth }
+
+mirage_storm:
+  name: Mirage Storm
+  type: Enemy
+  mp: 0
+  battle:
+    target: allEnemies
+    effects:
+      - { type: damage, kind: magical, power: 0.7, base: 6, element: earth }
+      - { type: applyStatus, status: blind, chance: 0.3 }
+
+splat:
+  name: Splat
+  type: Enemy
+  mp: 0
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: physical, power: 1.1 }
+
+sour_spray:
+  name: Sour Spray
+  type: Enemy
+  mp: 0
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: magical, power: 0.7 }
+      - { type: applyStatus, status: blind, chance: 0.5 }
+
+body_slam:
+  name: Body Slam
+  type: Enemy
+  mp: 0
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: physical, power: 1.4 }
+
+hot_pepper:
+  name: Hot Pepper
+  type: Enemy
+  mp: 0
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: magical, power: 1.2, element: fire }
+
+vine_lash:
+  name: Vine Lash
+  type: Enemy
+  mp: 0
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: physical, power: 1.5 }
+      - { type: applyStatus, status: slow, chance: 0.3, turns: 2 }
+
+harvest_moon:
+  name: Harvest Moon
+  type: Enemy
+  mp: 0
+  battle:
+    target: allEnemies
+    effects:
+      - { type: damage, kind: magical, power: 0.8, base: 6 }
+
+shadow_strike:
+  name: Shadow Strike
+  type: Enemy
+  mp: 0
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: physical, power: 1.4 }
+
+dark_wave:
+  name: Dark Wave
+  type: Enemy
+  mp: 0
+  battle:
+    target: allEnemies
+    effects:
+      - { type: damage, kind: magical, power: 0.7, base: 5 }
+
+# The Grave Toad and its acolytes (§12.7)
+bad_breath:
+  name: Bad Breath
+  type: Enemy
+  mp: 0
+  battle:
+    target: allEnemies
+    effects:
+      - { type: damage, kind: magical, power: 0.35, base: 4 }
+      - { type: applyStatus, status: poison, chance: 0.8 }
+
+swallow:
+  name: Swallow
+  type: Enemy
+  mp: 0
+  description: Gulps a foe down whole, digests it and spits it out two rounds later.
+  offensive: true
+  battle:
+    target: enemy
+    effects: []
+    swallow: { hp: 0.5, mp: 0.3 }
+
+raise_dead:
+  name: Raise Dead
+  type: Enemy
+  mp: 0
+  description: Pays the grave its due and raises two new acolytes.
+  battle:
+    target: self
+    effects: []
+    summon: { enemies: [bone_acolyte, bone_acolyte], cost: 120 }
+
+dark_blessing:
+  name: Dark Blessing
+  type: Enemy
+  mp: 6
+  battle:
+    target: ally
+    effects:
+      - { type: applyStatus, status: empowered }
+
+bone_ward:
+  name: Bone Ward
+  type: Enemy
+  mp: 6
+  battle:
+    target: ally
+    effects:
+      - { type: applyStatus, status: bolstered }
+
+bone_bolt:
+  name: Bone Bolt
+  type: Enemy
+  mp: 0
+  battle:
+    target: enemy
+    effects:
+      - { type: damage, kind: magical, power: 1.0, base: 4 }
+
 # ---------------- Enemy board abilities (used by board AI, see enemies.yaml boardAi.abilities) ----------------
 venom_spit:
   name: Venom Spit
@@ -399,3 +694,51 @@ quake:
     targets: [hero]
     effects:
       - { type: fieldEffect, effect: sticky, rounds: 3 }
+
+water_spit:
+  name: Water Spit
+  type: Enemy
+  mp: 0
+  description: Soaks the ground around a hero – water conducts lightning.
+  board:
+    range: range3
+    area: square1
+    targets: [hero]
+    effects:
+      - { type: fieldEffect, effect: soaked, rounds: 3 }
+
+zap:
+  name: Zap
+  type: Enemy
+  mp: 0
+  description: A bolt on one cell – in water (or on soaked ground) it runs on to the heroes standing in it.
+  board:
+    range: range3
+    targets: [anyCell]
+    effects:
+      - { type: shock, power: 0.8, reach: 4 }
+
+seed_ring:
+  name: Seed Ring
+  type: Enemy
+  mp: 0
+  description: Plants seeds around a hero; a round later brambles wall them in.
+  board:
+    range: range3
+    area: ring1
+    targets: [hero]
+    effects:
+      - { type: fieldEffect, effect: seeds, rounds: 1 }
+
+flame_spit:
+  name: Flame Spit
+  type: Enemy
+  mp: 0
+  description: Sets the ground around a hero ablaze.
+  board:
+    range: range3
+    area: cross1
+    targets: [hero]
+    effects:
+      - { type: fieldEffect, effect: burning, rounds: 2 }
+

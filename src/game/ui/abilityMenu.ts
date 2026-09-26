@@ -13,6 +13,9 @@ export interface AbilityMenuOptions {
   usable: (a: AbilityDef) => boolean;
   /** Called with the highlighted ability in the final list, or null when leaving it. */
   onHighlight?: (a: AbilityDef | null) => void;
+  /** One plain list without the type/group levels (the board), scrolling beyond `maxRows`. */
+  flat?: boolean;
+  maxRows?: number;
 }
 
 /**
@@ -20,6 +23,20 @@ export interface AbilityMenuOptions {
  * Levels with a single entry are skipped; cancel goes back one level. Shared by board and battle.
  */
 export async function pickAbility(scene: Phaser.Scene, input: InputRouter, abilities: AbilityDef[], o: AbilityMenuOptions): Promise<AbilityDef | null> {
+  if (o.flat) {
+    const items: MenuItem[] = abilities.map((a) => ({ label: a.name, right: a.mp ? `${a.mp} MP` : "", icon: icon(a.icon), disabled: !o.usable(a) }));
+    const r = await pick(scene, input, items, {
+      x: o.x,
+      y: o.y,
+      anchorBottom: o.anchorBottom,
+      maxRows: o.maxRows ?? 5,
+      title: o.title,
+      initial: Math.max(0, abilities.findIndex((a) => o.usable(a))),
+      onHighlight: (i) => o.onHighlight?.(abilities[i]),
+    });
+    o.onHighlight?.(null);
+    return r === null ? null : abilities[r];
+  }
   const types = [...new Set(abilities.map((a) => a.type))];
   const step = 10;
   for (;;) {

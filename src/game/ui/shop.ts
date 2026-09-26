@@ -1,5 +1,6 @@
 import type Phaser from "phaser";
 import { canEquip } from "../../core/chars/character";
+import { equipCompare } from "./compare";
 import type { Ctx } from "../../core/context";
 import { buy, canSell, inventoryList, itemCount, sell, sellPrice } from "../../core/items/inventory";
 import type { InputRouter } from "../../engine/input";
@@ -39,10 +40,13 @@ function infoPanel(scene: Phaser.Scene, ctx: Ctx, itemId: string): Panel {
   p.text(8, 6, it.description ?? it.category, { maxWidth: 400 });
   if (it.equip) {
     const heroes = ctx.state.roster.map((id) => ctx.state.heroes[id]);
+    // per hero: can they use it, and is it stronger (green) or weaker (red) than what they wear?
     heroes.forEach((h, i) => {
       const ok = canEquip(ctx.db, h, itemId);
-      const equipped = Object.values(h.equipment).includes(itemId);
-      p.text(8 + i * 110, 30, `${h.name}${equipped ? " (E)" : ""}`, { color: ok ? COLORS.good : COLORS.disabled });
+      const slot = it.equip!.slot;
+      const cmp = equipCompare(ctx, itemId, h.equipment[slot], 1);
+      p.text(8 + i * 114, 30, h.name, { color: ok ? COLORS.text : COLORS.disabled });
+      if (ok) p.text(8 + i * 114 + 44, 30, cmp.text, { color: cmp.color });
     });
   }
   p.text(456, 6, `Own ${itemCount(ctx, itemId)}`, { align: "right", color: COLORS.dim });

@@ -20,13 +20,15 @@ elder_report:
     then: elder_report_bonus
   - say: "Take this for your trouble. Sandhollow will not forget you."
   - do: [{ giveGold: 200 }, { giveItem: hi_potion }, { setFlag: reported_to_elder }]
+  - say: "The road east is open again. It leads to *Temple Mountain* – the monks up there have been\nasking for travelers who can fight. Few come back down unchanged."
 
 elder_report_bonus:
   - say: "And not a single scorpion or condor left?| [rainbow]Remarkable![/rainbow]\nTake this as well – my old *Flame Blade*."
   - do: [{ giveGold: 200 }, { giveItem: hi_potion }, { giveItem: flame_blade }, { setFlag: reported_to_elder }]
+  - say: "The road east is open again. It leads to *Temple Mountain* – the monks up there have been\nasking for travelers who can fight. Few come back down unchanged."
 
 elder_after:
-  - say: "The road beyond the dunes is still long.|\nRest well before you go on. [c=grey](End of the demo – thank you for playing!)[/c]"
+  - say: "The road beyond the dunes leads east to *Temple Mountain*.|\nRest well before you go on – the climb is long."
 
 guard_closed:
   - say: "The *east gate* is closed. Orders of the Elder.\nNobody goes into the dunes while the ^Emperor^ lives."
@@ -122,3 +124,32 @@ trader_reward:
 
 trader_after:
   - say: "Safe travels! I'll tell the whole bazaar about you."
+
+# Searchable jars and barrels
+search_dates:
+  - speaker: ""
+    say: "A clay jar of dried dates. Sweet – and a little sandy."
+search_water:
+  - speaker: ""
+    say: "Under the lid, wrapped in oilcloth: an *Antidote*!"
+after_water:
+  - speaker: ""
+    say: "Warm, stale water. Nobody would drink that willingly."
+search_elder_jar:
+  - speaker: ""
+    say: "Fragrant tea leaves. The Elder's favourite, no doubt."
+search_inn_jar:
+  - speaker: ""
+    say: "Clean towels and a sprig of dried lavender."
+search_rainwater:
+  - speaker: ""
+    say: "Rainwater, gone warm in the sun. Nothing else."
+search_empty_jar:
+  - speaker: ""
+    say: "Empty. Only a little sand at the bottom."
+search_spice_crate:
+  - speaker: ""
+    say: "An empty crate. It still smells faintly of cinnamon and cumin."
+search_lamp_oil:
+  - speaker: ""
+    say: "Lamp oil. Better not drink that."

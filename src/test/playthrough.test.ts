@@ -10,7 +10,7 @@ import { finishBattle, nextBattleTurn, performAction } from "../core/battle/batt
 import { interactionsFor, performInteraction } from "../core/script/interact";
 import { evaluateQuests } from "../core/script/quests";
 import { chebyshev, type Pos } from "../core/util/grid";
-import { testDb } from "./helpers";
+import { villageGame } from "./helpers";
 
 /** Runs a battle with AI on both sides and applies it to the board. */
 function autoBattle(game: Game, start: () => ReturnType<typeof engage>) {
@@ -57,18 +57,20 @@ function playRound(game: Game, goal: Pos) {
 
 describe("scripted playthrough", () => {
   it("village → talk to elder → dunes → fight", () => {
-    const { game } = Game.create(testDb(), 1234);
+    const game = villageGame(1234);
     const ctx = game.ctx;
     expect(ctx.state.board!.mapId).toBe("sandhollow");
 
-    // Talk to the elder (as if the party walked up to him).
-    const talk = interactionsFor(ctx, "aldric", "n:elder").find((o) => o.interaction.type === "talk")!;
-    performInteraction(ctx, "aldric", "n:elder", talk);
-    evaluateQuests(ctx);
+    // Visit the elder in his house and talk to him (as if the party walked up to him).
+    game.enter("elder_house", "from_town");
+    const talk = interactionsFor(game.ctx, "aldric", "n:elder").find((o) => o.interaction.type === "talk")!;
+    performInteraction(game.ctx, "aldric", "n:elder", talk);
+    evaluateQuests(game.ctx);
     expect(ctx.state.flags.gate_open).toBe(true);
+    game.enter("sandhollow", "from_elder");
 
     // Travel through the east exit.
-    const exit = exitAt(ctx, { x: 13, y: 5 })!;
+    const exit = exitAt(game.ctx, { x: 13, y: 5 })!;
     game.travel(exit);
     expect(game.ctx.state.board!.mapId).toBe("scorpion_dunes");
     expect(pieces(game.ctx).filter((p) => p.faction === "enemy").length).toBe(6);

@@ -1,0 +1,54 @@
+# Old Mora's house on the Verdant Isle (§18.11).
+name: Mora's House
+kind: peaceful
+chipset: desert
+battleback: interior
+music: island
+
+legend:
+  terrain:
+    W: bamboo_wall
+    f: floorboards
+    r: rug
+    O: doorway
+  decor:
+    b: bed
+    t: table
+    j: pot
+
+layers:
+  terrain: |
+    WWWWWW
+    Wfffff
+    Wfrrff
+    Wfrrff
+    Wfffff
+    WffOff
+  height: |
+    333333
+    300000
+    300000
+    300000
+    300000
+    300000
+  decor: |
+    ......
+    .b..t.
+    ......
+    .....j
+    ......
+    ......
+
+spawns:
+  from_garden: { x: 3, y: 4, dir: N }
+
+exits:
+  - { x: 3, y: 5, dir: S, to: grove_garden, spawn: from_house, label: Grove Garden, door: true }
+
+events:
+  - id: mora
+    x: 3
+    y: 2
+    pages:
+      - { npc: islander, dir: S, dialog: mora_thanks }
+      - { when: { flag: mora_token }, npc: islander, dir: S, dialog: mora_after }

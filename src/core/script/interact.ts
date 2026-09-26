@@ -1,7 +1,8 @@
 import { getChar, type Ctx } from "../context";
 import type { EventPageDef, Interaction } from "../data/types";
 import { steal } from "../effects/effects";
-import { activePage, board, mapMemory, pageOfPiece, syncEvents } from "../board/board";
+import { activePage, board, isExploring, mapMemory, pageOfPiece, pieceOf, syncEvents } from "../board/board";
+import { isAlive } from "../chars/character";
 import { canStealFromNpc } from "../board/actions";
 import { markAbilityUsed } from "../board/turns";
 import { innPrice } from "../items/inventory";
@@ -11,6 +12,8 @@ import { emptyResult, merge, runActions, type ScriptResult } from "./actions";
 export interface InteractionOption {
   label: string;
   interaction: Interaction | { type: "steal" };
+  /** Party member who performs it, when not the actor (stealing while exploring, §8.10). */
+  by?: string;
 }
 
 function pageInteractions(page: EventPageDef): Interaction[] {
@@ -29,6 +32,12 @@ export function interactionsFor(ctx: Ctx, actorId: string, npcPieceId: string): 
   if (!page) return [];
   const opts: InteractionOption[] = pageInteractions(page).map((i) => ({ label: i.label ?? LABELS[i.type], interaction: i }));
   if (canStealFromNpc(ctx, actorId, npcPieceId)) opts.push({ label: LABELS.steal, interaction: { type: "steal" } });
+  else if (isExploring(ctx)) {
+    // No turns while exploring: whoever in the party can steal does it.
+    const own = pieceOf(ctx, actorId);
+    const thief = own?.members.find((m) => m !== actorId && isAlive(getChar(ctx, m)) && canStealFromNpc(ctx, m, npcPieceId));
+    if (thief) opts.push({ label: `${LABELS.steal} (${getChar(ctx, thief).name})`, interaction: { type: "steal" }, by: thief });
+  }
   return opts;
 }
 
@@ -38,7 +47,7 @@ export function performInteraction(ctx: Ctx, actorId: string, npcPieceId: string
   const piece = board(ctx).pieces[npcPieceId];
   const out: InteractionOutcome = emptyResult();
   const npcChar = piece?.members[0] ? getChar(ctx, piece.members[0]) : undefined;
-  const speaker = npcChar?.def;
+  const speaker = npcChar?.def ?? (piece ? pageOfPiece(ctx, piece)?.keeper : undefined);
   const i = option.interaction;
   switch (i.type) {
     case "talk": {
@@ -51,7 +60,7 @@ export function performInteraction(ctx: Ctx, actorId: string, npcPieceId: string
       out.requests.push({ type: "shop", id: i.shop });
       break;
     case "inn":
-      out.requests.push({ type: "inn", price: innPrice(ctx, i.price) });
+      out.requests.push({ type: "inn", price: innPrice(ctx, i.price), ...(i.wakeAt ? { wakeAt: i.wakeAt } : {}) });
       break;
     case "examine":
       if (i.dialog) out.dialog = { id: i.dialog, speaker };
@@ -59,8 +68,9 @@ export function performInteraction(ctx: Ctx, actorId: string, npcPieceId: string
       break;
     case "steal":
       if (npcChar) {
-        out.events.push(...steal(ctx, getChar(ctx, actorId), npcChar));
-        markAbilityUsed(ctx, actorId);
+        const thief = option.by ?? actorId;
+        out.events.push(...steal(ctx, getChar(ctx, thief), npcChar));
+        markAbilityUsed(ctx, thief);
       }
       break;
   }

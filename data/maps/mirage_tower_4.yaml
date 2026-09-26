@@ -1,0 +1,73 @@
+# Mirage Tower F4 (§18.10): Mirage Phantoms on both sides; the stairs open when all are gone.
+name: Mirage Tower 4F
+kind: wild
+chipset: desert
+battleback: mirage
+music: mirage
+
+legend:
+  terrain:
+    f: tower_floor
+    W: tower_wall
+    i: ice
+    O: doorway
+  decor:
+    M: mirage_crystal
+    U: stairs_up
+    o: rubble
+
+layers:
+  terrain: |
+    WWWWWWWWWWWWW
+    WfffffWfffffW
+    WWWfWWWWWfWWW
+    WfffffWfffffW
+    WfffffWfffffW
+    WfffffWfffffW
+    WfffffWfffffW
+    WfffffWfffffW
+    WfffffWfffffW
+    WfffffWfffffW
+    WfffffWfffffW
+  height: |
+    4444443444444
+    4000003000004
+    4330333330334
+    4000003000004
+    4000003000004
+    4000003000004
+    4000003000004
+    4000003000004
+    4000003000004
+    4000003000004
+    4000003000004
+  decor: |
+    .............
+    ...U.....U...
+    .............
+    .............
+    .............
+    .M.........M.
+    .............
+    ....o........
+    .............
+    .............
+    .............
+
+spawns:
+  west: { x: 3, y: 9, dir: N }
+  east: { x: 9, y: 9, dir: N }
+
+exits:
+  - { x: 3, y: 1, dir: N, to: mirage_tower_5, spawn: west, label: Upstairs, door: true, together: true }
+  - { x: 9, y: 1, dir: N, to: mirage_tower_5, spawn: east, label: Upstairs, door: true, together: true }
+
+gates:
+  - { id: west_stairs, x: 3, y: 2, openWhen: { defeatedAllOn: mirage_tower_4 } }
+  - { id: east_stairs, x: 9, y: 2, openWhen: { defeatedAllOn: mirage_tower_4 } }
+
+enemies:
+  - { id: phantom_w1, enemy: mirage_phantom, x: 2, y: 4, dir: S }
+  - { id: phantom_w2, enemy: mirage_phantom, x: 4, y: 5, dir: S }
+  - { id: phantom_e1, enemy: mirage_phantom, x: 8, y: 5, dir: S }
+  - { id: phantom_e2, enemy: mirage_phantom, x: 10, y: 4, dir: S }

@@ -10,5 +10,7 @@
   "hidden": 8,
   "stuck": 9,
   "flying": 10,
-  "defend": 11
+  "defend": 11,
+  "empower": 12,
+  "bolster": 13
 }

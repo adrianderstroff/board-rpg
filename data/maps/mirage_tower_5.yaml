@@ -1,0 +1,120 @@
+# Mirage Tower F5 (§18.10): the teams enter the boss room from two sides. The Mirage Djinn guards
+# the Token of Foresight; the tower is left through the door behind it.
+name: Mirage Tower 5F
+kind: wild
+chipset: desert
+battleback: mirage
+music: boss
+
+legend:
+  terrain:
+    f: tower_floor
+    W: tower_wall
+    i: ice
+    O: doorway
+  decor:
+    M: mirage_crystal
+    U: stairs_up
+    o: rubble
+
+layers:
+  terrain: |
+    WWWWWWOWWWWWW
+    WfffffffffffW
+    WfffffffffffW
+    WfffffffffffW
+    WfffffffffffW
+    WfffffffffffW
+    WfffffffffffW
+    WffffWWWffffW
+    WffffWWWffffW
+    WffffWWWffffW
+    WffffWWWffffW
+    WffffWWWffffW
+  overhead: |
+    ......W......
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+  overheadHeight: |
+    ......3......
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+  height: |
+    3333330333333
+    3000000000003
+    3000000000003
+    3000000000003
+    3000000000003
+    3000000000003
+    3000000000003
+    3000033300003
+    3000033300003
+    3000033300003
+    3000033300003
+    3000033300003
+  decor: |
+    .............
+    .............
+    ..M.......M..
+    .............
+    .............
+    .............
+    .M.........M.
+    .............
+    .............
+    .............
+    .............
+    .............
+
+spawns:
+  west: { x: 2, y: 10, dir: N }
+  east: { x: 10, y: 10, dir: N }
+
+exits:
+  - { x: 6, y: 0, dir: N, to: mirage_sands, spawn: from_tower, label: Leave the tower, door: true }
+
+gates:
+  - { id: way_out, x: 6, y: 0, openWhen: { defeated: { enemy: mirage_djinn } } }
+
+enemies:
+  - { id: djinn, enemy: mirage_djinn, x: 6, y: 3, dir: S }
+  - { id: phantom_a, enemy: mirage_phantom, x: 3, y: 5, dir: S }
+  - { id: phantom_b, enemy: mirage_phantom, x: 9, y: 5, dir: S }
+
+events:
+  - id: f5_intro
+    x: 2
+    y: 10
+    pages:
+      - { trigger: auto, dialog: tower_f5 }
+  - id: foresight_chest
+    x: 4
+    y: 1
+    pages:
+      - { trigger: none }
+      - when: { defeated: { enemy: mirage_djinn } }
+        decor: chest_closed
+        interactions:
+          - type: examine
+            label: Open
+            dialog: tower_chest
+            actions: [{ giveItem: token_foresight }, { setFlag: tower_token_found }]
+      - { when: { flag: tower_token_found }, decor: chest_open, trigger: none }

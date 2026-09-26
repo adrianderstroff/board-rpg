@@ -5,13 +5,15 @@ import type { GameEvent } from "../events";
 import type { Character, Piece } from "../state/types";
 import { hashNoise } from "../util/rng";
 import { aliveMembers, board, pageOfPiece, pieceOf, pieceSpeed, pieces, reconcile } from "./board";
-import { cellEffects } from "./moves";
+import { anchorOf, cellEffects } from "./moves";
+import { tickFieldEffects } from "./terrain";
 
 const FACTION_ORDER = { hero: 0, enemy: 1, npc: 2 } as const;
 
 /** Pieces that take turns: heroes, enemies, and NPCs that wander. */
 function takesTurns(ctx: Ctx, p: Piece): boolean {
-  if (p.fallen || !p.members.length) return false;
+  if (p.fallen || p.dormant || !p.members.length) return false;
+  if (p.waitRound !== undefined && p.waitRound >= board(ctx).turn.round) return false; // just uncovered (§7.5)
   if (p.faction !== "npc") return true;
   return pageOfPiece(ctx, p)?.move === "wander";
 }
@@ -61,10 +63,11 @@ export function nextTurn(ctx: Ctx): TurnStart {
     b.turn.current = actor;
     const c = getChar(ctx, actor);
     events.push({ type: "turnStart", actor, round: b.turn.round });
-    // The cell's field effects hit the whole piece once, when its first member starts its turn.
+    // The cell's field effects hit the whole piece once per round, at the start of its anchor's
+    // turn: the member who moved it there (so a party isn't hit twice in a row, §7.4).
     const piece = pieceOf(ctx, actor);
     const ticked = (b.turn.cellTicked ??= []);
-    if (piece && !ticked.includes(piece.id)) {
+    if (piece && actor === anchorOf(ctx, piece) && !ticked.includes(piece.id)) {
       ticked.push(piece.id);
       events.push(...cellEffects(ctx, piece), ...reconcile(ctx));
       if (!isAlive(c)) {
@@ -82,18 +85,14 @@ export function nextTurn(ctx: Ctx): TurnStart {
   throw new Error("Turn loop did not settle");
 }
 
-function startRound(ctx: Ctx): GameEvent[] {
+export function startRound(ctx: Ctx, opts: { fieldEffects?: boolean } = {}): GameEvent[] {
   const b = board(ctx);
   b.turn.round++;
   b.turn.acted = [];
   b.turn.moved = [];
   b.turn.abilityUsed = [];
   b.turn.cellTicked = [];
-  const expired = b.fieldEffects.filter((f) => f.rounds <= 1);
-  b.fieldEffects = b.fieldEffects.filter((f) => f.rounds > 1).map((f) => ({ ...f, rounds: f.rounds - 1 }));
-  const events: GameEvent[] = [{ type: "round", round: b.turn.round }];
-  for (const f of expired) events.push({ type: "fieldEffect", x: f.x, y: f.y, effect: f.effect, rounds: 0 });
-  return events;
+  return [{ type: "round", round: b.turn.round }, ...(opts.fieldEffects === false ? [] : tickFieldEffects(ctx))];
 }
 
 /** Ends a character's board turn: cell effects, status ticks & durations (§4.2, §7.4). */

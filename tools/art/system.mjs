@@ -222,8 +222,99 @@ function trap() {
   c.outline(A(P.ink, 220));
   return c;
 }
+// "sensed hidden thing" marker: floating ? above the cell + faint dashed diamond ring
+const QMARK = [
+  '.YYYY.',
+  'YY..YY',
+  'YY..YY',
+  '....YY',
+  '...GG.',
+  '..GG..',
+  '..GG..',
+  '......',
+  '..GG..',
+  '..GG..',
+];
+function sensed() {
+  const ring = new Canvas(32, 24);
+  for (let y = 8; y < 24; y++)
+    for (let x = 0; x < 32; x++) {
+      if (!inDiamond(x, y, 8)) continue;
+      const w = rowHalf(y - 8);
+      const edge = x - (16 - w) < 2 || 16 + w - 1 - x < 2;
+      if (edge && Math.floor((x + 1) / 3) % 2 === 0) ring.set(x, y, A(P.yellow, 150));
+    }
+  const q = new Canvas(32, 24);
+  QMARK.forEach((row, j) => [...row].forEach((ch, i) => {
+    const col = ch === 'Y' ? (j < 2 ? P.yellow : P.gold) : ch === 'G' ? P.gold : ch === 'W' ? P.white : null;
+    if (col != null) q.set(13 + i, 1 + j, col);
+  }));
+  q.set(15, 1, P.white); q.set(14, 1, P.white);
+  q.outline(P.ink);
+  ring.blit(q, 0, 0);
+  return ring;
+}
+// water puddle: translucent blue sheen, expanding ripple rings, falling droplets
+function soaked(f) {
+  const c = diamondAt((x, y, u, v) => {
+    const n = Math.sin(u * 0.8 + 1) * Math.cos(v * 0.7) * 0.18 + Math.hypot(u - 8, v - 8) / 8;
+    if (n > 0.9) return null;
+    if (n > 0.8) return A(P.blueDark, 150); // wet rim
+    const sheen = Math.sin((u - v) * 0.55 + f * (Math.PI / 2)) > 0.9 && n < 0.7;
+    return sheen ? A(mix(P.cyan, P.white, 0.3), 190) : A(n < 0.45 ? P.blue : mix(P.blue, P.blueDark, 0.5), 160);
+  });
+  // ripple rings (screen-space ellipses, 2:1) growing and fading over the loop
+  const ripples = [[12, 15, 0], [20, 18, 2]];
+  ripples.forEach(([rx, ry, ph]) => {
+    const k = (f + ph) % 4, R = 0.8 + k * 0.9, a = Math.round(235 - k * 40);
+    const seen = new Set();
+    for (let i = 0; i < 48; i++) {
+      const t = (i / 48) * Math.PI * 2;
+      const x = Math.round(rx + Math.cos(t) * R * 2), y = Math.round(ry + Math.sin(t) * R);
+      if (seen.has(x + ',' + y) || !inDiamond(x, y, 8)) continue;
+      seen.add(x + ',' + y);
+      c.set(x, y, A(Math.sin(t) < 0 ? P.white : P.cyan, a));
+    }
+  });
+  // droplets: one falling, one splashing
+  const drops = [[18, 12], [11, 19], [23, 15], [15, 20]];
+  const [dx, dy] = drops[f];
+  c.set(dx, dy - 5, A(P.cyan, 220)); c.set(dx, dy - 6, A(P.white, 200));
+  c.set(dx - 1, dy - 1, A(P.white, 200)); c.set(dx + 1, dy - 1, A(P.white, 200));
+  const [gx, gy] = [[16, 16], [9, 14], [21, 21], [13, 11]][f];
+  c.set(gx, gy, P.white); c.set(gx + 1, gy, A(P.white, 160));
+  return c;
+}
+// freshly sown seeds: soil furrows, seeds, tiny sprouts swaying
+function seeds(f) {
+  const soil = mix(P.brown, P.darkBrown, 0.3);
+  const c = diamondAt((x, y, u, v) => {
+    const d = Math.hypot(u - 8, v - 8) / 8;
+    if (d > 0.92) return null;
+    const row = (((u + 1) % 5) + 5) % 5;
+    if (row < 1.2) return A(P.darkBrown, 200); // furrow
+    return A(soil, d > 0.8 ? 120 : 170);
+  });
+  const light = mix(P.green, P.yellow, 0.35);
+  const spots = [[9, 14], [15, 12], [21, 15], [12, 18], [18, 19], [24, 18], [15, 22]];
+  spots.forEach(([x, y], i) => {
+    if (i % 3 === 1) { // seed
+      c.set(x, y, P.ink); c.set(x + 1, y, P.darkBrown); c.set(x, y - 1, A(X.sandPale, 200));
+      return;
+    }
+    const sway = Math.round(Math.sin((f + i) * (Math.PI / 2)) * 1);
+    const h = 2 + (i % 2);
+    c.set(x, y, P.greenDark);
+    for (let k = 1; k < h; k++) c.set(x + (k === h - 1 ? sway : 0), y - k, P.green);
+    const tx = x + sway, ty = y - h;
+    c.set(tx - 1, ty, light); c.set(tx + 1, ty, light);
+    c.set(tx - 2, ty + (f + i) % 2, A(light, 220)); c.set(tx + 2, ty + (f + i + 1) % 2, A(light, 220));
+    c.set(tx, ty, P.greenDark);
+  });
+  return c;
+}
 export function fieldEffects() {
-  const c = new Canvas(32 * 8, 24 * 5);
+  const c = new Canvas(32 * 8, 24 * 7);
   for (let f = 0; f < 4; f++) {
     c.blit(burning(f), f * 32, 0);
     c.blit(poisonous(f), f * 32, 24);
@@ -231,6 +322,11 @@ export function fieldEffects() {
     c.blit(sticky(f), f * 32, 72);
   }
   c.blit(trap(), 0, 96);
+  c.blit(sensed(), 32, 96);
+  for (let f = 0; f < 4; f++) {
+    c.blit(soaked(f), f * 32, 120);
+    c.blit(seeds(f), f * 32, 144);
+  }
   return c;
 }
 
@@ -265,4 +361,57 @@ export function shadow() {
       if (d < 1) c.set(x, y, A(P.ink, Math.round(d < 0.6 ? 120 : 120 - (d - 0.6) * 200)));
     }
   return c;
+}
+
+// ---------------------------------------------------------------- wall signs (48x14 x2)
+// Flat artwork the board paints onto a wall face (isometrically distorted there):
+// 0 "INN" in small capitals, 1 a potion bottle (the spell shop).
+// Small capitals, 7 rows: [row offset, rows].
+const GLYPHS = {
+  I: [0, ['###', '.#.', '.#.', '.#.', '.#.', '.#.', '###']],
+  N: [0, ['#...#', '##..#', '#.#.#', '#.#.#', '#..##', '#...#', '#...#']],
+};
+function drawWord(c, word, x0, y0, fill, shade) {
+  let x = x0;
+  for (const ch of word) {
+    const [dy, rows] = GLYPHS[ch];
+    rows.forEach((row, y) => [...row].forEach((p, dx) => { if (p === '#') c.set(x + dx, y0 + dy + y, dy + y > 3 ? shade : fill); }));
+    x += rows[0].length + 1;
+  }
+}
+const wordWidth = (word) => [...word].reduce((w, ch) => w + GLYPHS[ch][1][0].length + 1, -1);
+/** A round potion flask with glowing violet liquid, centred in a W×H frame. */
+function potionSign(W, H) {
+  const c = new Canvas(W, H);
+  const cx = W / 2;
+  // cork and neck
+  for (let x = -1; x <= 0; x++) c.set(Math.floor(cx) + x, 0, P.tan);
+  for (let y = 1; y <= 3; y++) for (let x = -1; x <= 0; x++) c.set(Math.floor(cx) + x, y, x < 0 ? P.grey1 : P.grey2);
+  // round body (rows 4..12), liquid below row 7, glass above
+  const r = 5, cy = 8.5;
+  for (let y = 4; y <= 13; y++)
+    for (let x = 0; x < W; x++) {
+      const d = Math.hypot(x + 0.5 - cx, (y + 0.5 - cy) * 1.05);
+      if (d > r) continue;
+      let col = y < 7 ? P.grey1 : d > r - 1.2 ? X.purpleDark : x + 0.5 < cx - 1 ? P.magenta : P.purple;
+      if (y === 7 && d < r - 0.5) col = P.pink; // liquid surface
+      c.set(x, y, col);
+    }
+  c.set(Math.floor(cx) - 3, 5, P.white); // glint on the glass
+  c.set(Math.floor(cx) - 3, 9, P.pink);
+  c.set(Math.floor(cx) - 2, 10, P.pink);
+  c.outline(P.ink);
+  return c;
+}
+
+export function wallSigns() {
+  const W = 48, H = 14;
+  const out = new Canvas(W * 2, H);
+  const inn = new Canvas(W, H);
+  drawWord(inn, 'INN', Math.floor((W - wordWidth('INN')) / 2), 3, P.yellow, P.gold);
+  inn.outline(P.ink);
+  const magic = potionSign(W, H);
+  out.blit(inn, 0, 0);
+  out.blit(magic, W, 0);
+  return out;
 }

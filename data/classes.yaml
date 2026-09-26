@@ -26,7 +26,6 @@ magician:
   abilities:
     - { level: 1, ability: fire }
     - { level: 1, ability: heal }
-    - { level: 2, ability: ice }
     - { level: 4, ability: sleep }
     - { level: 7, ability: thunder }
 
@@ -42,6 +41,8 @@ thief:
   abilities:
     - { level: 1, ability: steal }
     - { level: 1, ability: hide }
+    - { level: 1, ability: discover }
+    - { level: 1, ability: defuse }
     - { level: 3, ability: trap }
     - { level: 6, ability: mug }
 

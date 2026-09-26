@@ -20,6 +20,7 @@ legend:
     A: adobe
     W: adobe_window
     D: adobe_door
+    O: doorway
   decor:
     P: palm
     W: well
@@ -30,38 +31,48 @@ legend:
     b: barrel
     j: pot
     L: lamp_post
+    I: inn_sign
 
 layers:
   terrain: |
     rrrrrrrrrrrrrr
     rAAssAAAsAAAsr
-    rDWssWDWsWDWsr
+    rDWssWOWsWOWsr
     rsspppppppppsr
     rssszzzzzsspsr
     rssszzzzzssppp
     rsspzzzzzpppsr
-    rsspsssssssssr
+    psspsssssssssr
     rAApsssssssssr
     rDWpssgggssssr
     rsspsgwwgssssr
     rrrrrggggrrrrr
+  # lintels above the doors (the house continues over the doorway)
+  overhead: |
+    ..............
+    ..............
+    ......A...A...
+  overheadHeight: |
+    ..............
+    ..............
+    ......5...7...
   height: |
     22222222222222
-    23300333033302
-    23300333033302
+    25500555077702
+    25500505070702
     20000000000002
     20001111100002
     20001111100000
     20001111100002
-    20000000000002
-    23300000000002
-    23300000000002
+    00000000000002
+    25500000000002
+    25500000000002
     20000000000002
     22222000022222
   decor: |
     ..............
-    ...b........x.
-    ....j.......j.
+    ..............
+    ..............
     ..............
     .P............
     ......W.......
@@ -72,23 +83,25 @@ layers:
     ....P....P....
     ..............
 
+# INN is painted on the wall above the inn's door, facing the street (only visible from that side).
+wallDecor:
+  - { x: 10, y: 2, sign: inn, face: S, level: 7 }
+
 spawns:
   start: { x: 3, y: 4, dir: E }
+  from_ruins: { x: 1, y: 7, dir: E }
+  from_elder: { x: 6, y: 3, dir: S }
+  from_inn: { x: 10, y: 3, dir: S }
   from_dunes: { x: 12, y: 5, dir: W }
 
 exits:
+  - { x: 0, y: 7, dir: W, to: sunken_ruins, spawn: from_sandhollow, label: Sunken Ruins }
+  # doors: stepping into the doorway enters (no arrow, no question)
+  - { x: 6, y: 2, dir: N, to: elder_house, spawn: from_town, label: Elder's House, door: true }
+  - { x: 10, y: 2, dir: N, to: sandhollow_inn, spawn: from_town, label: The Sleeping Camel, door: true }
   - { x: 13, y: 5, dir: E, to: scorpion_dunes, spawn: from_village, label: Scorpion Dunes, enabled: { flag: gate_open } }
 
 events:
-  - id: elder
-    x: 6
-    y: 3
-    pages:
-      - { npc: elder, dir: S, dialog: elder_intro }
-      - { when: { questStep: { quest: road_to_oasis, step: clear } }, npc: elder, dir: S, dialog: elder_waiting }
-      - { when: { questStep: { quest: road_to_oasis, step: report } }, npc: elder, dir: S, dialog: elder_report }
-      - { when: { questDone: road_to_oasis }, npc: elder, dir: S, dialog: elder_after }
-
   - id: smith
     x: 6
     y: 8
@@ -121,17 +134,6 @@ events:
         interactions:
           - { type: shop, shop: sandhollow_magic, label: Buy/Sell }
           - { type: talk, dialog: mage_talk }
-
-  - id: innkeeper
-    x: 10
-    y: 3
-    pages:
-      - npc: innkeeper
-        dir: S
-        sign: sign_inn
-        interactions:
-          - { type: inn, label: Rest }
-          - { type: talk, dialog: inn_talk }
 
   - id: nia
     x: 7
@@ -169,3 +171,57 @@ events:
       - decor: sign_post
         interactions:
           - { type: examine, label: Read, dialog: sign_east }
+
+  # Searchable jars and barrels (§18)
+  - id: jar_dates
+    x: 12
+    y: 8
+    pages:
+      - decor: pot
+        interactions:
+          - { type: examine, label: Search, dialog: search_dates }
+
+  - id: barrel_water
+    x: 2
+    y: 4
+    pages:
+      - decor: barrel
+        interactions:
+          - { type: examine, label: Search, dialog: search_water, actions: [{ giveItem: antidote }, { setFlag: searched_barrel_water }] }
+      - when: { flag: searched_barrel_water }
+        decor: barrel
+        interactions:
+          - { type: examine, label: Search, dialog: after_water }
+
+  # Jars, barrels and crates along the houses: nothing (useful) inside, but they can be searched.
+  - id: barrel_rain
+    x: 3
+    y: 1
+    pages:
+      - decor: barrel
+        interactions:
+          - { type: examine, label: Search, dialog: search_rainwater }
+
+  - id: jar_empty_west
+    x: 4
+    y: 2
+    pages:
+      - decor: pot
+        interactions:
+          - { type: examine, label: Search, dialog: search_empty_jar }
+
+  - id: crate_spice
+    x: 12
+    y: 1
+    pages:
+      - decor: crate
+        interactions:
+          - { type: examine, label: Search, dialog: search_spice_crate }
+
+  - id: jar_oil
+    x: 12
+    y: 2
+    pages:
+      - decor: pot
+        interactions:
+          - { type: examine, label: Search, dialog: search_lamp_oil }

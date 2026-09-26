@@ -14,7 +14,8 @@ import { check } from "../script/conditions";
 import type { BoardState, Character, MapMemory, Piece } from "../state/types";
 import type { Pos } from "../util/grid";
 import { ALL_DIRS, add, samePos } from "../util/grid";
-import { getGrid, type BoardGrid } from "./grid";
+import { getGrid, LiveGrid } from "./grid";
+import { updateGates } from "./gates";
 import { resolvePatternRef } from "./patterns";
 
 // ---------- access ----------
@@ -24,8 +25,15 @@ export function board(ctx: Ctx): BoardState {
   return ctx.state.board;
 }
 
-export function grid(ctx: Ctx): BoardGrid {
-  return getGrid(ctx.db, board(ctx).mapId);
+/** The current board's cells, including terrain changes and ice bridges (§5.4). */
+export function grid(ctx: Ctx): LiveGrid {
+  const b = board(ctx);
+  const mem = mapMemory(ctx, b.mapId);
+  const bridged = (p: Pos) =>
+    b.fieldEffects.some((f) => f.x === p.x && f.y === p.y && ctx.db.fieldEffect(f.effect).bridges);
+  const gates = ctx.db.map(b.mapId).gates ?? [];
+  const closed = new Set(gates.filter((g) => b.gates && !b.gates[g.id]).map((g) => `${g.x},${g.y}`));
+  return new LiveGrid(getGrid(ctx.db, b.mapId), mem.terrain ?? {}, bridged, mem.decor ?? {}, closed);
 }
 
 export function mapMemory(ctx: Ctx, mapId: string): MapMemory {
@@ -58,9 +66,11 @@ export function aliveMembers(ctx: Ctx, piece: Piece): Character[] {
   return membersOf(ctx, piece).filter(isAlive);
 }
 
-/** Every character standing on a cell (fallen included when asked). */
+/** Every character standing on a cell (fallen included when asked; dormant enemies stay unseen, §7.5). */
 export function charsAt(ctx: Ctx, p: Pos, opts: { includeFallen?: boolean } = {}): Character[] {
-  return piecesAt(ctx, p, opts).flatMap((pc) => membersOf(ctx, pc));
+  return piecesAt(ctx, p, opts)
+    .filter((pc) => !pc.dormant)
+    .flatMap((pc) => membersOf(ctx, pc));
 }
 
 export function isHidden(ctx: Ctx, piece: Piece): boolean {
@@ -126,7 +136,8 @@ export function syncEvents(ctx: Ctx): GameEvent[] {
   for (const ev of map.events ?? []) {
     const pid = `n:${ev.id}`;
     const page = activePage(ctx, b.mapId, ev);
-    const visible = !!page && (!!page.npc || !!page.decor);
+    const uncovered = !ev.hidden || (mapMemory(ctx, b.mapId).discovered ?? []).includes(ev.id);
+    const visible = !!page && uncovered && (!!page.npc || !!page.decor);
     const existing = b.pieces[pid];
     if (!visible) {
       if (existing) {
@@ -165,7 +176,7 @@ export function syncEvents(ctx: Ctx): GameEvent[] {
 
 // ---------- entering a map ----------
 
-export function enterMap(ctx: Ctx, mapId: string, spawnId: string): GameEvent[] {
+export function enterMap(ctx: Ctx, mapId: string, spawnId: string, groups?: { members: string[]; spawn: string }[]): GameEvent[] {
   const map = ctx.db.map(mapId);
   const spawn = map.spawns[spawnId];
   if (!spawn) throw new Error(`Map ${mapId} has no spawn "${spawnId}"`);
@@ -181,12 +192,23 @@ export function enterMap(ctx: Ctx, mapId: string, spawnId: string): GameEvent[] 
   };
   ctx.state.board = b;
 
-  // Heroes: alive ones as parties of max size on the spawn cell, fallen ones lying there.
+  // Heroes: alive ones as parties of max size on the spawn cell, fallen ones lying there –
+  // or, after split floors (§5.3), each group at its own spawn.
   const alive = ctx.state.roster.filter((id) => isAlive(ctx.state.heroes[id]));
   const size = ctx.db.config.maxPartySize;
-  for (let i = 0; i < alive.length; i += size) {
-    const id = newPieceId(ctx, "h");
-    b.pieces[id] = { id, faction: "hero", members: alive.slice(i, i + size), x: spawn.x, y: spawn.y, facing: spawn.dir ?? "S" };
+  if (groups?.length) {
+    for (const g of groups) {
+      const at = map.spawns[g.spawn] ?? spawn;
+      const members = g.members.filter((m) => alive.includes(m));
+      if (!members.length) continue;
+      const id = newPieceId(ctx, "h");
+      b.pieces[id] = { id, faction: "hero", members, x: at.x, y: at.y, facing: at.dir ?? "S" };
+    }
+  } else {
+    for (let i = 0; i < alive.length; i += size) {
+      const id = newPieceId(ctx, "h");
+      b.pieces[id] = { id, faction: "hero", members: alive.slice(i, i + size), x: spawn.x, y: spawn.y, facing: spawn.dir ?? "S" };
+    }
   }
   for (const heroId of ctx.state.roster.filter((id) => !isAlive(ctx.state.heroes[id]))) {
     b.pieces[`f:${heroId}`] = { id: `f:${heroId}`, faction: "hero", members: [heroId], x: spawn.x, y: spawn.y, facing: "S", fallen: true };
@@ -200,10 +222,11 @@ export function enterMap(ctx: Ctx, mapId: string, spawnId: string): GameEvent[] 
       b.chars[cid] = createEnemy(ctx.db, cid, enemyId);
       return cid;
     });
-    b.pieces[`e:${e.id}`] = { id: `e:${e.id}`, faction: "enemy", members: ids, x: e.x, y: e.y, facing: e.dir ?? "S", sourceId: e.id, home: { x: e.x, y: e.y } };
+    b.pieces[`e:${e.id}`] = { id: `e:${e.id}`, faction: "enemy", members: ids, x: e.x, y: e.y, facing: e.dir ?? "S", sourceId: e.id, home: { x: e.x, y: e.y }, ...dormancy(ctx, e.enemy) };
   }
 
   syncEvents(ctx);
+  updateGates(ctx);
   return [{ type: "pieces" }];
 }
 
@@ -217,8 +240,13 @@ export function spawnMapEnemy(ctx: Ctx, entryId: string): GameEvent[] {
     b.chars[cid] = createEnemy(ctx.db, cid, enemyId);
     return cid;
   });
-  b.pieces[`e:${e.id}`] = { id: `e:${e.id}`, faction: "enemy", members: ids, x: e.x, y: e.y, facing: e.dir ?? "S", sourceId: e.id, home: { x: e.x, y: e.y } };
+  b.pieces[`e:${e.id}`] = { id: `e:${e.id}`, faction: "enemy", members: ids, x: e.x, y: e.y, facing: e.dir ?? "S", sourceId: e.id, home: { x: e.x, y: e.y }, ...dormancy(ctx, e.enemy) };
   return [{ type: "pieces" }];
+}
+
+/** Enemies with `boardAi.dormant` start lying still (§7.5). */
+function dormancy(ctx: Ctx, enemyId: string): { dormant?: true } {
+  return ctx.db.enemy(enemyId).boardAi.dormant ? { dormant: true } : {};
 }
 
 // ---------- reconciliation after HP changes ----------
@@ -289,6 +317,7 @@ export function reconcile(ctx: Ctx, opts: { rewardKills?: boolean; fallenAt?: Re
 
   if (opts.rewardKills !== false && (expPool > 0 || goldPool > 0)) events.push(...shareRewards(ctx, expPool, goldPool));
   if (changed) events.push({ type: "pieces" });
+  events.push(...updateGates(ctx)); // plates, gates and "all defeated" conditions (§5.8)
   return events;
 }
 
@@ -308,6 +337,15 @@ export function shareRewards(ctx: Ctx, exp: number, gold: number, heroIds?: stri
     events.push({ type: "gold", amount: gold });
   }
   return events;
+}
+
+/**
+ * Free exploration (§8.10): no living enemy on the board. There are no rounds then – heroes walk
+ * anywhere they can reach and act as often as they like.
+ */
+export function isExploring(ctx: Ctx): boolean {
+  if (!ctx.state.board) return false;
+  return !pieces(ctx).some((p) => p.faction === "enemy" && !p.fallen && !p.dormant && aliveMembers(ctx, p).length > 0);
 }
 
 export function isGameOver(ctx: Ctx): boolean {

@@ -117,15 +117,56 @@ Durations are counted at the **end of the owner's turn** (board turn or battle t
 - **Height rule:** a step between neighboring cells is only possible if the height difference is ≤ 1. Leaps (§6) check the height difference between start and landing cell (≤ 1 unless the pattern says otherwise).
 - Cells may contain **decor** (palms, cacti, crates; can block), **events** (NPCs, chests, signs, triggers), **exits** and **pieces**.
 
+### 5.4 Terrain that changes (elemental puzzles)
+Terrain can react to field effects. The rules are chipset data (`freezable`, `flammable`, `burnsTo`) plus field-effect data (`bridges`, `ignites`, `melts`), not map-specific code:
+- **Ice shapes**: Ice-type spells and items freeze by *size* (Ice / Frost Shard 3, Ice 2 5, Ice 3 7). Aimed at water they freeze the size×size square around the target, but **only its water cells** (land neighbours are ignored). Aimed at anything else they freeze a **straight line** of `size` cells centred on the target, along the caster → target direction. Like fire, the cold only passes between neighbouring cells at most **one level** apart: the line stops at a higher step, water beyond a step stays open.
+- **Freezable** terrain (water, rivers) can't be walked on, but **Frozen** turns it into an ice bridge: walkable (with ice sliding, §7.4) while the effect lasts. Only freezing works on open water: fire, poison clouds or mud cast on water have no effect.
+- **Burning** on a frozen cell **melts the ice** (removes Frozen) instead of setting the cell ablaze.
+- **Melting under someone**: sliding is instant, so ice never vanishes mid-slide. If a piece *stands* on ice over water when it melts (worn off, or fire), it is put back on the cell it stepped onto the ice from (fallback: the nearest free walkable cell).
+- **Flammable** terrain (flowers, grass) catches fire: it turns into its `burnsTo` terrain at once (flowers → scorched earth, an overgrown stair step → a plain step, grass → scorched earth). At the start of each round, fire on burnt terrain spreads to 4-neighbour cells with flammable terrain **at most one level higher or lower** (new fires last 2 rounds and spread again), so a flower bed burns away ring by ring. A fire cast directly lasts its normal 3 rounds.
+- **Burnable decor**: cacti and bushes (`flammable` in the chipset decor) burn away for good when fire reaches them and pass the fire on to neighbours. Blocking cacti can therefore close a path that only fire opens.
+- **Flower beds** block movement, so fire opens paths. Burnt cells stay burnt: terrain changes are remembered per map (saved with the game).
+
 ### 5.2 Board types
-- **Peaceful**: no enemies; NPCs wander. Turns still run (the board is always a board game), but NPC turns are animated quickly.
+- **Peaceful**: no enemies; NPCs wander. The board is in **free exploration** (§8.10) – no rounds, heroes walk wherever they can reach.
 - **Wild**: enemies present; NPCs may be present, flagged as targetable or ignored by enemies.
 - Board contents can change via event conditions (e.g. enemies appear once a quest step starts).
 
 ### 5.3 Exits
 Single cells marked with an **arrow pointing outwards**. Moving a hero onto an enabled exit asks *"Travel to ⟨board⟩?"*; on *Yes* **all heroes** (including fallen) travel to the target board's entry point. Exits can be enabled/disabled by conditions (quest flags); disabled exits show a greyed arrow and are not walkable. Enemies never use exits.
 
+**Doors** (`door: true`, also stairs inside buildings) are exits without arrow and without question: stepping into the open doorway enters. Inside, the party appears one cell in from the door; coming out it stands one cell in front of the door – never on an exit cell, so it can't bounce back and forth. Interiors are small maps cut away at the front (back walls only). The building continues **over** the doorway: the map's `overhead` layer (+ `overheadHeight`) adds purely visual blocks above a walkable cell, starting above a 4-level clearance (32 px, about a character's height), so a door is an opening with a lintel instead of a gap. Houses are 5 blocks tall, the two-storey inn 7.
+
+**Split floors** (`together: true` exits, e.g. the Mirage Tower's stairs): a hero piece stepping onto one waits there ("waiting for the others"); only when **every standing hero piece** waits on a together-exit to the same map does the board change – each piece arrives at the spawn of the exit it stood on. So teams that were separated stay separated on the next floor.
+
+**Wall signs** (`wallDecor` in the map: cell, `sign`, `face` N/E/S/W, block `level`): flat lettering (a normal square image from `graphics.wallSigns`, e.g. "INN" or a potion bottle) painted onto one side face of a block. It is mapped onto that face at native pixel size, so it is isometrically distorted like the wall, turns with it and is only drawn while that side faces the camera – after rotating it never shows on the wrong side of a building. Shop names go above the door.
+
 ---
+
+### 5.5 Water depth and swimmers
+- **Shallow water** (`water: shallow`): walkable for everyone, freezable, conducts lightning. **Deep water** (`water: deep`): heroes can't enter it (nobody in the party can swim) unless it is frozen; it conducts lightning.
+- **Swimmers** (`swims` on an enemy): `water` = moves only through water cells (shallow and deep), `amphibious` = land and water. Heroes can't engage a swimmer in deep water – only abilities (lightning!) reach it.
+
+### 5.6 Lightning and conduction
+- **Thunder** on the board (and the enemy **Zap**) strikes one cell: everyone there takes magical thunder damage.
+- Struck on a **conductive** cell (shallow/deep water or a **Soaked** cell – not ice), the bolt runs through all conductive cells connected to it (4-neighbourhood) up to **4 steps** away and hits everyone on them – friend or foe. Damage is **×1.5 on the struck cell** and falls off with distance: ×1.25, ×1.0, ×0.75, ×0.5 at 1–4 steps.
+- **Soaked** is a field effect that does nothing by itself (3 rounds) – but it conducts. (Tomato spit + Lemon zap.)
+- As always on the board, heroes are left at 1 HP at worst; enemies can be KO'd. This is the one exception to "board abilities don't deal direct damage" (§19.6).
+
+### 5.7 Plants that grow and are cut
+- **Seeds** (field effect, e.g. the Watermelon's *Seed Ring* around a hero – only on free, plantable cells) grow at the next round start into a **bramble**: blocking, flammable decor. Nothing grows under a piece.
+- **Cut** (granted by swords): removes a bramble or bush on an adjacent cell. **Fire** burns brambles too (§5.4).
+- Decor that appears/disappears is remembered per map (`decor` overrides in the map memory).
+
+### 5.8 Switches and gates
+- **Gates** (`gates` in the map) are bars across a cell: closed = blocked. A gate is open while one of its **switches** (`switches`: floor plates, `opens` gate ids, `weight` = heroes needed, `latch` = stays open once pressed) is pressed by standing heroes, or while its `openWhen` condition holds (e.g. all enemies defeated). A gate never closes on someone standing in it.
+- A gate closing for the first time can set a flag (`closeFlag`) – e.g. to start the "we have to split up" scene.
+
+### 5.9 Shaped blocks (ships)
+Blocks are cubes by default. For things that shouldn't look blocky – a ship – two shape tools exist; both are purely visual and turn with the board like every block:
+- **Diagonal pieces**: a map's `shape` layer marks cells whose corners are cut off along the diagonals (`legend.shapes`, e.g. `{ cut: [NW] }` = a half cell, `{ cut: [NW, NE] }` = a point). A ship's bow is a point in front of two half cells. Shaped cells are not walkable.
+- **Hull flare**: a terrain with `flare` leans its outer sides inward toward the bottom, so the deck overhangs the hull; `underlay` draws the water under it, and `bulwark` adds a low wall along the outer edges – open where a walkable non-hull cell joins (the gangplank). Sides between two hull cells stay hidden, so a hull of many cells reads as one.
+- **Directional decor** (`views: 4`): objects that look different from each side (the ship's wheel) have one frame per quarter turn; the board shows the one for its rotation and switches half-way through a spin, like the characters.
 
 ## 6. Patterns (movement, abilities, items)
 
@@ -161,10 +202,11 @@ When a hero's turn starts the **cursor jumps to the hero's cell**. Selecting the
 | Command | Limit per turn | Notes |
 |---|---|---|
 | **Move** | once | Party moves as a unit (§8). |
-| **Ability** | once | Includes *Join Party* / *Leave Party*. |
-| **Item** | unlimited | Use/give items; targets via item pattern. |
+| **Ability** | once | The hero's abilities as one plain list (no type/group levels on the board; scrolls beyond 5). Abilities cast on oneself (Discover, Hide, Chakra) go off right away. |
+| **Item** | unlimited | Use/give items; targets via item pattern. After an ability, item or party action the menus close and the map is back; select the hero again for more commands. |
 | **Act** | unlimited | Only when sharing a cell with a villager: opens the interaction close-up (§8.8). |
 | **Stats** | – | Shows the character's stats window. |
+| **Party** | once | *Join Party* / *Leave Party* (§8.1). Uses the same once-per-turn action as Ability: after joining/leaving no ability this turn, and after an ability no joining/leaving. |
 | **End Turn** | – | |
 | **End Party** | – | Ends the turn of every party member who hasn't acted yet (convenience). |
 
@@ -174,7 +216,7 @@ Move and Ability can be done in any order. The system **Menu** (§11) is availab
 1. Choose *Move* → reachable cells are highlighted.
 2. Cursor moves freely; only highlighted cells can be selected.
 3. The piece walks along the shortest path (sliding on ice, see §7.4).
-4. No confirmation prompt: the move happens immediately and the command box shows **Undo Move** instead of *Move*. Undo restores the exact previous state. It is only offered while nothing else happened since: no ability, item, interaction or turn end, and landing had no effect (trap, field effect damage/status, ice slide, step event). Attacks (engagements) ask *Attack?* before moving and can't be undone.
+4. No confirmation prompt: the move happens immediately and the command box shows **Undo Move** instead of *Move*. Undo restores the exact previous state. It is only offered while nothing else happened since: no ability, item, interaction or turn end, and landing had no effect (trap, field effect damage/status, ice slide, step event). Moving onto an enemy starts the battle at once (no question) and can't be undone.
 
 ### 7.4 Field effects
 Cells may carry **temporary field effects** (from abilities/items, with a duration in rounds) or permanent ones (from terrain):
@@ -182,12 +224,25 @@ Cells may carry **temporary field effects** (from abilities/items, with a durati
 |---|---|---|
 | **Burning** | 8% max HP fire damage | 8% max HP fire damage at the end of each of the character's turns |
 | **Poisonous** | Poison for 2–4 turns (random) | – |
-| **Frozen** | Character slides in its moving direction until it reaches a non-frozen cell or the next cell is invalid (blocked/height/edge/occupied) | – |
+| **Frozen** | Stepping onto ice **ends the walk there**: the piece slips on (~0.28 s per cell) in its moving direction until it reaches a non-frozen cell or the next cell is invalid (blocked/height/edge/occupied) | – |
 | **Sticky** | Stuck status (§4.2) | – |
 
-A field effect hits a **piece once as a group** (every member once): when the piece **lands** on the cell (passing through does nothing) and again at the **start of the piece's turn** each round (when its first member starts acting) – damage and status, but no sliding. Flying pieces are unaffected. Board damage cannot KO heroes (they stay at 1 HP) but can KO enemies (EXP/gold are shared by all heroes).
+A field effect hits a **piece once as a group** (every member once):
+- when the piece **crosses** the cell on its way (walking through fire burns, through poison poisons) and when it **lands** on it;
+- again **once per round at the start of the turn of the piece's anchor**: the member who moved the piece onto the cell. So a party whose last member moved it onto fire isn't burnt again right at the start of the next round – it burns when that member's turn comes round again. If the anchor leaves the party (or falls), the next member in the party becomes the anchor; a character who leaves is the anchor of its own new piece.
+
+Damage and status only, no sliding. Flying pieces are unaffected. Board damage cannot KO heroes (they stay at 1 HP) but can KO enemies (EXP/gold are shared by all heroes); an enemy KO'd on its way stops there.
 
 **Traps** (Thief) are hidden cell objects: the first enemy landing on it takes damage and gets *Stuck*; the trap is consumed. Enemies cannot see traps.
+
+### 7.5 Hidden things
+Some maps hide things from the heroes. **Discover** (Thief) finds them.
+- **Ancient traps** (map data) are invisible. A hero piece walking **through or onto** one stops on that cell: it takes damage, gets *Stuck*, and the trap is spent (remembered per map). Flying pieces float over them; enemies ignore them. Once revealed by Discover a trap is shown on the board and the heroes' paths go around it.
+- **Hidden objects** (map events with `hidden: true`, e.g. an invisible chest) are not on the board until uncovered.
+- **Dormant enemies** (e.g. skeletons, `boardAi.dormant`) lie on their cell looking exactly like the `skeleton` decor used for harmless remains. They block movement, take no turns and don't count as enemies (the board stays in free exploration). As soon as a hero piece's path reaches a cell the skeleton could attack with its own move pattern, the move stops there, the skeleton **rises** ("!") and attacks at once as an **ambush**; the board switches to turn-based tactics.
+- **Discover** (Thief, board only, MP 1, cast on the thief's own cell): the 3-cell reach around the thief lights up briefly, then everything hidden in it shows itself – traps become visible, hidden objects appear (and can be used), dormant enemies rise. Nothing found → "Nothing hidden nearby." An enemy uncovered this way is caught unprepared: it takes no turn in the current round (when this starts the tactics, round 1) and acts from the next round on – only enemies *provoked* by a party walking into their reach ambush at once.
+- **Defuse** (Thief, board only, MP 0, adjacent cell with a visible trap – revealed ancient trap or one the heroes set): takes the trap apart; it goes into the inventory as a **Snare**.
+- **Snare** (item): on **wild boards only**, hide it on an empty cell within 2 – like the Trap skill, the first enemy landing on or walking through it is hurt and stuck; enemies can't see it.
 
 ---
 
@@ -241,6 +296,15 @@ Moving a hero onto a villager's cell puts the party **on that cell** (consistent
 
 ### 8.9 Targetable NPCs
 If an enemy engages a targetable NPC without heroes, the fight is auto-resolved (both sides AI) and summarized in a message. If heroes stand on the same cell, the NPC fights as an AI-controlled guest.
+
+### 8.10 Free exploration
+While **no living enemy is on the board** (peaceful maps, or a wild map once every enemy is defeated) there are no rounds and no turns:
+- One hero piece is **selected** (HUD: `Exploring - Name`). Tapping/clicking a cell the piece can walk to moves it there along the shortest path – **no move pattern or reach limit**, orthogonal steps, the height rule (±1, or the members' pattern limit) still applies, allies and villagers are passable. It can move again right away; walks are animated quickly.
+- Tapping another hero piece selects it; tapping the selected piece opens its commands (a party first asks **Who?**): `Act` / `Ability` / `Item` / `Stats` – no Move, Undo, End Turn or End Party. Exits, villager close-ups (§8.8) and objects work as usual; backing out of a close-up still undoes the approach.
+- **Time**: after every hero action (move, ability, item, interaction) hero statuses tick and ability actions are available again. **Field effects run on a clock** instead: every `exploreRoundMs` (1.5 s) while the player is on the map (not in menus or animations) they wear off one round and fires spread. Ice lasts ×3 there (`exploreFactor`), ~18 s for Ice – enough to walk across. In a close-up any party member with *Steal* can steal (`Steal (Kit)`).
+- Wandering villagers take a step on a timer (~2 s) while the player is idle on the map.
+- Parties can still be formed and split (Join/Leave Party abilities).
+- As soon as an enemy appears (quest, script, spawn) the game shows **Enemies!** and returns to turn-based tactics with a fresh round; defeating the last enemy shows **Area clear** and switches to exploration.
 
 ---
 
@@ -305,6 +369,8 @@ An event is an object on a cell with **pages**. The last page whose condition ho
 - Rounds: all living combatants act once per round, ordered by SPD (±10% random jitter per round).
 - **Ambush**: an opening round in which only enemies act, then normal rounds. **First Strike**: opening round only for heroes.
 
+- **Revealed enemies** (Perceive, remembered per enemy type): while choosing a target, the message box shows the enemy's name on the left and cycles its facts on the right every ~1.8 s – HP/MP (current/max), then the stats, then weaknesses / resistances / immunities; a group that doesn't fit is split over several pages. Unrevealed enemies show only their name.
+
 ### 12.2 Commands
 | Command | Effect |
 |---|---|
@@ -328,9 +394,18 @@ Targets: any living combatant (heroes can target enemies and allies, e.g. heal a
 - Battle-only statuses are removed.
 
 ### 12.5 AI
-- **Battle AI**: weighted list of actions with conditions (`hpBelow`, `targetHasStatus`, `chance`, `turnMod`); targets chosen by rule (`random`, `lowestHp`, `highestThreat`).
+- **Battle AI**: weighted list of actions with conditions (`hpBelow`, `targetLacksStatus`, `chance`, `round`, `cooldown` = rounds since this actor last used it, `alone` = all its allies are down); targets chosen by rule (`random`, `lowestHp`, `highestHp`, `boss` = an allied boss). **Priority** rules are taken before the weighted pick whenever they apply (henchmen buff their master first, then fight).
 - **Board AI** behaviors: `aggressive` (engage reachable hero, else approach nearest visible hero), `guard` (hold until a hero is within `aggroRange`, then aggressive), `wander` (random moves within radius), `static`. Hidden heroes are ignored. NPCs use wander/static.
 - **Before moving** an enemy may use its ability action: leave/join a party (§8.7) or a **board ability** from `boardAi.abilities` (each with a chance per turn). Targets are scored: offensive abilities prefer cells with the most visible heroes and avoid hitting allies; supportive ones prefer wounded allies. The area is flashed briefly before it lands.
+
+### 12.7 Swallow, blessings and summons (the Grave Toad)
+- **Swallow** (enemy skill): the target disappears into the user. While inside it **can't act and can't be targeted by anyone** (friend or foe; group effects skip it). The swallower's next two turns are forced and are its whole action:
+  1. **Digest** – it gains half of what it will take (shown as +HP / +MP on it),
+  2. **Spit Out** – it gains the other half, then spits the victim back to its place, who now loses the full amount: **half of its HP when swallowed** (never to 0) and **30 % of its MP**.
+  A swallower holds only one victim and never swallows the last hero standing. If it **falls while holding someone**, the victim comes out without any loss (as does a victim whose HP ran out inside).
+- **Buffs**: *Empowered* (STR ×1.5) and *Bolstered* (DEF ×1.5, MDEF ×1.3), battle-only, 4 turns.
+- **Summon** (enemy skill `summon: {enemies, cost}`): raises new combatants on the user's side, in the places of the fallen. It is paid out of the battle's gold reward (the summoner's own gold is its purse – no summon it can't pay for); summoned enemies give EXP but no gold.
+- The **Grave Toad** (final boss of the demo, undead) attacks, breathes *Bad Breath* (poison on all heroes, cooldown 3), and sometimes swallows (cooldown 5, 50 %). Its two **Bone Acolytes** (undead) bless it with Dark Blessing (Empowered) and Bone Ward (Bolstered) whenever it lacks either, and otherwise attack or cast Bone Bolt. Once both acolytes are down the toad may raise two new ones (40 % per turn, 120 G each time). The fight has its own music (`final`).
 
 ---
 
@@ -355,7 +430,9 @@ An ability has: `type` (Magic, Sword Art, Skill, Ki, Party), optional `group` (m
 | Cross Slash | Knight 6 | 8 | Physical 1.1× all enemies | – |
 | Fire | Magician 1 | 4 | Fire magic power 1.0 | Burning on target cell (3 rounds), range 3 |
 | Heal | Magician 1 | 4 | Heal 20 + MAG×1.2 one target | Heal all characters on a cell (hero/enemy/NPC), range 2 |
-| Ice | Magician 2 | 5 | Ice magic power 1.0 | Frozen cross area (3 rounds), range 3 |
+| Ice (scroll) | Magician | 5 | Ice magic power 1.0 | Freeze size 3 (4 rounds), range 3: water 3×3 / land line of 3; bridges water (§5.4) |
+| Ice 2 (scroll, not in the demo) | Magician | 9 | Ice magic power 1.6 | Freeze size 5 (5 rounds) |
+| Ice 3 (scroll, not in the demo) | Magician | 15 | Ice magic power 1.3, all enemies | Freeze size 7 (6 rounds) |
 | Sleep | Magician 4 | 5 | Sleep 60%, 3 turns | Sleep on characters of a cell, range 3 |
 | Thunder | Magician 7 | 8 | Thunder power 0.8 all enemies | – |
 | Venom Mist (scroll) | Magician | 5 | Poison 70% all enemies | Poisonous diamond area r1 (3 rounds) |
@@ -363,6 +440,15 @@ An ability has: `type` (Magic, Sword Art, Skill, Ki, Party), optional `group` (m
 | Steal | Thief 1 | 0 | Steal from an enemy | *Steal* option at NPCs / adjacent enemies |
 | Hide | Thief 1 | 2 | Hidden 1 turn (untargetable) | Hidden 2 rounds |
 | Trap | Thief 3 | 3 | – | Hidden trap on an empty cell, range 2 |
+| Discover | Thief 1 | 1 | – | Reveals everything hidden within 3 cells of the thief (§7.5) |
+| Thunder | Magician 7 | 8 | Thunder power 0.8 all enemies | Lightning on a cell, range 3; runs through connected water (§5.6) |
+| Cut | swords (granted) | 0 | – | Cuts down a bramble/bush on an adjacent cell (§5.7) |
+| Holy (Holy Orb) | Monk | 12 | Holy power 2.4 one enemy (undead ×2) | – |
+| Water Spit | Tomato (enemy) | 0 | – | Soaks a 3×3 area around a hero, range 3 (§5.6) |
+| Zap | Lemon (enemy) | 0 | – | Lightning on a hero's cell, range 3 – prefers wet targets (§5.6) |
+| Seed Ring | Watermelon (enemy) | 0 | – | Seeds the 8 cells around a hero; brambles next round (§5.7) |
+| Flame Spit | Chili (enemy) | 0 | – | Burning cell around a hero, range 3 |
+| Defuse | Thief 1 | 0 | – | Takes apart a visible trap on an adjacent cell → Snare item (§7.5) |
 | Mug | Thief 6 | 5 | Physical 1.0 + steal | – |
 | Chakra | Monk 1 | 3 | Heal self 15 + MAG×1.0, cure Poison | same (self) |
 | Perceive | Monk 1 | 2 | Reveal enemy stats & weaknesses | Reveal enemies in diamond r4 + traps; halves ambush chance this round |
@@ -403,13 +489,17 @@ Equipment slots: **Weapon, Armor, Accessory**. Sell price = 50% of buy price.
 | Remedy | consumable | 100 | Cure all negative statuses |
 | Phoenix Feather | consumable | 150 | Revive with 25% HP |
 | Fire Bomb | battle item | 60 | Fire 40 fixed dmg all enemies / board: burning diamond r1, range 3 |
-| Frost Shard | battle item | 60 | Ice 45 fixed dmg one enemy / board: frozen cell, range 3 |
+| Frost Shard | battle item | 60 | Ice 45 fixed dmg one enemy / board: freezes like Ice (size 3), range 3 |
 | Sleep Powder | battle item | 50 | Sleep 70% one enemy / board: sleep on a cell, range 2 |
 | Glue Pot | battle item | 40 | Slow one enemy / board: sticky cell, range 3 |
 | Scroll: Venom Mist | scroll | 200 | Magician learns Venom Mist |
 | Scroll: Quagmire | scroll | 180 | Magician learns Quagmire |
 | Scroll: Cross Slash | scroll | 250 | Knight learns Cross Slash |
 | Scroll: Aura | scroll | 220 | Monk learns Aura |
+| Scroll: Ice | scroll | 150 | Magician learns Ice (Elvenglade) |
+| Token of Serenity / Foresight / Life | key | – | The temple's stolen tokens (§18) |
+| Holy Orb | key (scroll-like) | – | A Monk who studies it learns Holy |
+| Snare | consumable | 40 | From Defuse; board, wild boards only: hidden trap on an empty cell, range 2 (15 dmg + Stuck) |
 | Village Charm | key | – | Side quest item |
 
 Weapons (ATK / MAG / SPD):
@@ -436,7 +526,9 @@ Accessories: Speed Anklet (SPD +3, 400), Amulet (Poison immunity, 300), Mana Rin
 ## 15. Shops & inn
 - Shopkeepers always look the same per shop type and have a sign icon: **Weapons** (smith, red apron, sword sign), **Armor** (shared with weapon smith in demo), **Items** (merchant, green, potion sign), **Magic** (mage, purple robe, star sign; sells scrolls & battle items).
 - Shop screen: Buy / Sell / Leave, drawn on the left at the same height as the interaction close-up. Choosing an item opens a **quantity dialog** (arrows / up-down, max = what the gold allows (buy, ≤ 99) or what is owned (sell), running total, Buy|Sell / Cancel) so a single click never buys or sells by accident. The info bar shows the description, owned count and which heroes can equip it.
-- **Inn** (innkeeper, bed sign): Rest for `10 × party size` gold → full HP/MP, revive fallen, cure statuses.
+- **Inn** (innkeeper, bed sign): Rest for `10 × party size` gold → full HP/MP, revive fallen, cure statuses. The screen fades to black, a lullaby jingle plays, and the party wakes up next to the beds on the upper floor (`wakeAt`) with "The party has recovered!".
+- **Counters**: shopkeepers inside buildings stand behind a counter; the counter is the interactive object (`keeper` = the npc behind it – shown in the close-up, speaks the dialogs), reached from the front.
+- **Comparing equipment**: in the Equip list and the shop info bar, each weapon/armor/accessory shows how it differs from what is worn in that slot ("ATK+6 MAG-2"), in green when it is stronger overall (sum of the changes), red when weaker, grey when equal/equipped.
 
 ---
 
@@ -451,9 +543,11 @@ Accessories: Speed Anklet (SPD +3, 400), Amulet (Poison immunity, 300), Mana Rin
 - **Controls**: mouse/touch (click cell, click menu entries), keyboard (arrows/WASD = cursor/menu, Z/Enter/Space = confirm, X/Esc/Backspace = cancel, M/Tab = menu), **gamepad** (standard mapping: D-pad/left stick with key repeat, A confirm, B/Select cancel, X/Y/Start menu). The menu key also works while the command box is open.
 - **Touch** (phones/tablets, or `?touch=1`): tap = click; on-screen **Back** and **Menu** buttons (bottom-right on the board, Back top-right in battle); **drag** pans the board; when choosing a move/ability/item target the **first tap previews** (cursor, path, area) and the **second tap on the same cell confirms**. Taps fire on release so drags never select anything.
 - **Audio**: chiptune music per board (`music:` in the map file), battle and boss themes and a title theme (`config.music`); sound effects for UI (cursor, confirm, cancel, invalid), movement, hits/crits/misses, spells by element, heals, statuses, KOs, field effects, traps, chests, gold, travel, battle start/escape, victory/defeat/level-up jingles and a subtle typewriter blip. Music crossfades between scenes. Music and sound volume are set in System (saved in the browser).
+- **Menu cursor**: the hand sits on the menu box's left border (FF6 style); entries are not indented to make room for it.
 - **Resolution**: 480×270 virtual pixels, scaled to fit. Menus use roomy 15px rows (the battle command box uses 12px rows to fit its fixed height).
-- **Flying pieces** hover ~10px above their cell with a slow bob; a round shadow stays on the ground.
-- **Map rotation**: the board can be turned in 90° steps (Q/E, gamepad shoulder buttons, or the two rotate buttons with arrow icons at the bottom right) so tiles hidden behind heights become visible. It rotates around the cursor cell, which keeps its place on screen (the camera may move up to a screen beyond the map edges for this). Blocks are redrawn from the new angle, characters face their new screen direction, decor stays upright. Cursor keys always follow the screen.
+- **Flying pieces** hover ~10px above their cell with a slow bob; a round shadow stays on the ground. In battle, flying battlers (e.g. condors) hover and bob as well.
+- **Map rotation**: the board can be turned in 90° steps (Q/E, gamepad shoulder buttons, or the two rotate buttons with arrow icons at the bottom right) so tiles hidden behind heights become visible. It rotates around the cursor cell, which keeps its place on screen (positions are sub-pixel during the turn so it runs smoothly, and snap back to whole pixels afterwards) (the camera may move up to a screen beyond the map edges for this). The turn starts moving at once and eases out; its length is the **Turn speed** setting in System (1 slow … 5 fast: 1.5 / 1.15 / 0.9 / 0.6 / 0.35 s, default 3). The **terrain turns as one solid unit**: during the animation every cell column is drawn as a textured mesh (its top face and the side faces toward the camera, cut from the same chipset frames) whose corners follow the rotation, so the ground stays continuous, walls stay vertical and the first and last frames look exactly like the normal blocks. The top textures switch to the new orientation half-way. Upright things – characters, decor (palms, pillars, chests) and status icons – ride along on their cells but stay upright; characters switch to their new facing half-way through the turn. Overlays and the cursor are hidden while turning, and the pointer is ignored (cells slide under a resting mouse). Afterwards the blocks are drawn normally from the new angle. Cursor keys always follow the screen.
+- **Interaction close-up floor**: each backdrop defines where its floor starts (`floor` of the battleback in `graphics.yaml`, an image row), so the villager stands on the ground of that backdrop instead of floating in front of walls or the horizon.
 - **Phones**: landscape only. The first tap requests fullscreen and a landscape lock (Android); held upright, a "turn your phone" hint is shown. The web app manifest makes "Add to Home Screen" launch fullscreen landscape (also the way to get fullscreen on iPhone). System → Fullscreen toggles it on any device.
 
 ---
@@ -467,15 +561,44 @@ Accessories: Speed Anklet (SPD +3, 400), Amulet (Poison immunity, 300), Mana Rin
 ---
 
 ## 18. Demo content
-1. **Sandhollow** (peaceful village): adobe houses, well, palms, market. NPCs: Elder Hamid, weapon smith Brann, item merchant Salma, mage vendor Oriel, innkeeper Dara, child Nia, wandering villagers, guard at the east gate. Exit east → Scorpion Dunes (disabled until the Elder's quest starts).
-2. **Scorpion Dunes** (wild): dunes with heights, rocks, cacti, quicksand, a small oasis. Enemies: Sand Scorpions (some in pairs), Giant Condors, **Emperor Scorpion** (boss, guards the road). Chest with Village Charm. Exit west → Sandhollow; exit east → "the road continues…" (disabled – end of demo).
-3. **Quests**: *Road to the Oasis* (main, hierarchical: talk to Elder → complete *Clear the Dunes* → report back), *Clear the Dunes* (defeat Emperor Scorpion; hidden ending: defeat all enemies → extra reward), *Nia's Charm* (side quest; switchable).
+The journey runs west → east: **Saltmere Harbor → Greenwood River (→ Elvenglade) → Sunken Ruins → Sandhollow → Scorpion Dunes**.
+
+1. **Saltmere Harbor** (peaceful, start): the heroes arrive by ship. Cobbled quay, wooden docks on the sea, the moored ship *Gull* (a deck of planks with masts and a gangplank). Captain Rhea on deck, two sailors (one wanders the dock), a dock worker. Barrels, jars and crates can be **searched**: the first search of some finds a Potion, an Ether, an Antidote or 40 gold; searching again (or searching an empty one) tells what's still inside – strong wine dregs, cheap rum smell, salted fish, rope. They never refuse the party. Exit east → Greenwood River.
+2. **Greenwood River** (peaceful, a long forest map): forest paths between trees and mushrooms. Half-way, a path leads north to **Elvenglade**. Then a **river** (3 cells wide, from map edge to map edge) blocks the way: it can only be crossed on ice (Ice spell, §5.4). Beyond it a meadow with flower beds and **stairs** up to the desert's edge – **two cacti side by side** block one step until burnt with Fire (the fire jumps from one cactus to the other; the ledges beside the stairs carry more cacti and bushes). A signpost by the river and the elves hint at both. Exit east at the top of the stairs → Sunken Ruins.
+3. **Elvenglade** (peaceful): a small village of elves (small folk with pointed ears) among great trees, with leaf-roofed houses. Elder Sylwen, a few elves, and **Faelar's magic shop** – a building with a potion bottle painted above its door; inside, Faelar sells *Scroll: Ice* plus ethers and a Frost Shard across the counter. Exit south → Greenwood River.
+4. **Sunken Ruins** (wild): sand-swallowed ruins of an old temple – cracked flagstones, broken pillars and walls. **Skeletons** lie everywhere: three are dormant enemies that rise when heroes come within 2 cells, the others are harmless remains (same look). **Ancient traps** on the paths stop the party. An **invisible chest** (Speed Anklet) can only be found with Discover. Exit west → Greenwood River, exit east → Sandhollow (west gate).
+5. **Sandhollow** (peaceful village): adobe houses, well, palms, market. Two houses can be entered: **Elder Hamid's house** and the inn **The Sleeping Camel** ("INN" painted above its door; ground floor with Dara behind the counter and the stairs, upper floor with two beds). NPCs: weapon smith Brann, item merchant Salma, mage vendor Oriel, innkeeper Dara, child Nia, wandering villagers, guard at the east gate. West gate → Sunken Ruins. Exit east → Scorpion Dunes (disabled until the Elder's quest starts).
+6. **Scorpion Dunes** (wild): dunes with heights, rocks, cacti, quicksand, a small oasis. Enemies: Sand Scorpions (some in pairs), Giant Condors, **Emperor Scorpion** (boss, guards the road). Chest with Village Charm. Exit west → Sandhollow; exit east → "the road continues…" (disabled – end of demo).
+7. **Temple Mountain** (peaceful): east of the Scorpion Dunes (the road opens after reporting to the Elder). A tall, vertical map climbed in zig-zags: stairs up, along a ledge to the left, stairs up, along a ledge to the right … to a plateau with the **Temple of the Still Sky** (tiered roofs, stone lanterns, prayer flags). Pilgrims on the ledges. From the foot of the mountain a path leads east to the **Reed Pond**.
+8. **Temple** (interior): monks meditating on cushions around a Buddha statue, incense. A **free cushion** faces them: sitting there starts the conversation, the three monks speaking in turns. They offer to teach an old technique against evil – **Holy** – if the heroes prove worthy by returning the three tokens stolen from the temple. Behind them a hidden door opens once the tokens are back: the **Hall of Fears** (a dark room where the heroes' fears take shape: Shadow Knight, Shadow Mage, Shadow Thief, Shadow Monk); when all are beaten, the gate to the **orb chamber** opens – the **Holy Orb** teaches the Monk *Holy*.
+9. **Reed Pond** (wild): shallow water (walkable, freezable) and deep water (only frozen). **Fishfolk** (humanoid fish, amphibious) and **Bog Toads** (amphibious) – in deep water only lightning reaches them. The **Token of Serenity** lies on an islet in the middle.
+10. **Endless Dunes → Mirage Tower**: a south exit of the Scorpion Dunes leads into the Endless Dunes, whose edges lead back into themselves. Only who gets **lost** (crossing them three times) sees the **Mirage Tower** appear. Five floors:
+   - F1: the hall – a floor switch opens a gate only while someone stands on it; stepping off, the gate closes again → "we have to split up". One team holds the switch, the other passes; inside, a switch opens the gate for the first team. Each team reaches its own stairs.
+   - F2 (puzzle): two halves divided by a wall – each team's switch opens the *other* team's gate, so they take turns.
+   - F3 (puzzle): an ice lane slides each team straight onto a latching plate that opens the other team's stairs gate (one hero is enough, so an uneven split never gets stuck).
+   - F4 (fight): Mirage Phantoms on both sides of the wall.
+   - F5 (boss): the teams enter the boss room from two entrances – the **Mirage Djinn** and its phantoms guard the **Token of Foresight**.
+   The stairs are together-exits (§5.3): the teams stay apart from F1 to F5.
+11. **Verdant Isle** (wild) – by ship: Captain Rhea sails there from Saltmere Harbor once the monks have given the task. A rainforest of **sentient fruit and vegetables** that fight together: **Tomato** soaks the heroes (Water Spit), **Lemon** zaps the wet ground (Zap), **Watermelon** walls them in with brambles (Seed Ring), **Chili** burns (Flame Spit). A few groups on the way; in the **garden** of a house the **Pumpkin King** and all of them hold the island's elder, **Old Mora**, hostage. After the fight Mora (in her house) gives the **Token of Life**. Rhea's boat takes the party back.
+12. **The Grave Toad's cave**: once the Holy Orb is claimed, a cave opens half-way up Temple Mountain. It leads down to the **Grave Toad** (§12.7) and its two Bone Acolytes – the end of the demo.
+13. **Quests**: *Into the Desert* (prologue, starts at the harbor: reach the Greenwood → cross the river → cross the ruins to Sandhollow; completing it starts the main quest), *Road to the Oasis* (main, hierarchical: talk to Elder → complete *Clear the Dunes* → report back), *Clear the Dunes* (defeat Emperor Scorpion; hidden ending: defeat all enemies → extra reward), *Nia's Charm* (side quest; switchable), *The Mountain Temple* (main, after *Road to the Oasis*: climb the mountain → speak with the monks → find the three tokens → return them → face your fears → claim the Holy Orb).
 
 Enemy stats:
 | Enemy | Lvl | HP | STR | DEF | MAG | MDEF | SPD | Move | Skills | Weak/Resist | EXP / Gold | Drops |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Sand Scorpion | 2 | 30 | 10 | 9 | 2 | 4 | 6 | `scuttle` (diag. slide 2 + 1 step) | Poison Sting | weak ice / resist earth | 9 / 6 | Antidote 25% |
 | Giant Condor | 3 | 26 | 11 | 5 | 4 | 6 | 14 | `flyer` (any cell ≤3, ignores height) | Dive, Gust | weak thunder | 11 / 8 | Potion 20%, Phoenix Feather 5% |
+| Skeleton | 3 | 34 | 11 | 7 | 2 | 4 | 7 | `rook2` | Bone Rattle (may Slow) | weak fire, holy ×2 / resist ice, poison immune | 14 / 9 | Potion 20% |
+| Fishfolk | 5 | 48 | 14 | 9 | 5 | 8 | 9 | `walk1` + swims (amphibious) | Spear Jab, Bubble (may Slow) | weak thunder / resist ice, fire | 20 / 14 | Potion 20% |
+| Bog Toad | 4 | 40 | 12 | 8 | 3 | 5 | 6 | `king1` + swims (amphibious) | Tongue Lash, Croak (Sleep) | weak thunder / resist earth | 16 / 10 | Antidote 25% |
+| Mirage Phantom | 6 | 50 | 13 | 7 | 12 | 12 | 11 | `flyer` | Mirage Touch (Blind) | weak holy ×2 / resist fire, ice | 24 / 16 | Ether 15% |
+| Mirage Djinn (boss) | 9 | 320 | 18 | 12 | 20 | 16 | 12 | `king1` | Sand Blade, Mirage Storm (all, Blind) | weak holy, ice / resist fire, earth | 150 / 120 | Token of Foresight (story) |
+| Tomato | 6 | 44 | 12 | 8 | 8 | 8 | 10 | `walk1` | Water Spit (board), Splat | weak fire | 18 / 12 | Potion 20% |
+| Lemon | 6 | 38 | 9 | 7 | 14 | 10 | 12 | `diagonal2` | Zap (board), Sour Spray (Blind) | weak earth / resist thunder | 18 / 12 | Eye Drops 25% |
+| Watermelon | 7 | 70 | 15 | 12 | 6 | 8 | 5 | `walk1` | Seed Ring (board), Body Slam | weak fire | 22 / 14 | Hi-Potion 10% |
+| Chili | 7 | 42 | 13 | 7 | 13 | 9 | 13 | `rook2` | Flame Spit (board), Hot Pepper (fire) | weak ice / resist fire | 22 / 14 | Fire Bomb 20% |
+| Pumpkin King (boss) | 10 | 380 | 20 | 15 | 14 | 12 | 8 | `king1` | Vine Lash, Harvest Moon (all) | weak fire / resist earth | 180 / 150 | – |
+| Shadow Knight / Mage / Thief / Monk | 10 | 160 | the heroes' fears: each fights like its hero's class | | | | | – | class attacks, dark | weak holy ×2 | 60 / 0 | – |
 | Emperor Scorpion | 6 | 180 | 17 | 14 | 8 | 8 | 7 | `king1` | Crushing Claw, Venom Tail, Sandstorm | weak ice / resist earth, fire | 80 / 60 | Scorpion Shell 100% |
 
 ---
@@ -494,8 +617,27 @@ Where the rough ideas were incomplete or conflicting, these rules were chosen:
 10. **Exits** move all heroes; enemies can't use exits (§5.3).
 11. **Escape** returns the attacker to its origin (§8.5).
 12. **Quest progress** evaluated only for the active quest, but conditions are state-based so nothing is lost when switching (§10.4).
-13. **Peaceful boards are also turn-based** for consistency; NPC turns play fast (§5.2).
+13. **Boards without enemies are explored freely** – no rounds, walk anywhere reachable (user decision, replaces the earlier "peaceful boards are turn-based") (§8.10).
 14. **Ambush/First Strike** probabilities defined, modified by Hide and Perceive (§8.4).
 15. **Fallen heroes** stay on their cell and are revived there (user correction) (§3.4).
 16. **NPCs are walk-through and interactions happen on their cell** with a close-up view; cancelling an interaction undoes the move (user suggestion) (§8.3, §8.8).
 17. **Weapons, armor, accessories, enemies, formulas** were unspecified and are defined in §12–14 based on FF/Shining Force conventions.
+18. **Board rotation as a unit** (user request): the terrain spins as one solid made of per-cell meshes, upright sprites (characters, decor) keep their own logic and turn their facing at the half-way point (§16).
+19. **Water & ice**: Ice freezes the 9-neighbourhood of water cells (non-water neighbours ignored) or, aimed at land, a line of 3 along the caster → target direction (user spec); Ice 2/3 use 5/7. It lasts 4 rounds (×3 by time while exploring); frozen water is a walkable ice bridge; stepping on ice slips you to its end; if it melts under you, you're put back where you stepped onto it (user spec, §5.4, §7.4).
+20. **Fire**: burns flammable terrain at once and spreads one ring per round to 4-neighbour flowers/grass; no effect on water; melts ice (§5.4). Only grass and flowers burn – forest floor, trees and buildings don't, so a spell can't burn down a whole map.
+21. **Ice is bought, not levelled**: Mira no longer learns Ice at level 2; the Elvenglade magic shop sells the scroll, which makes the river crossing the gate to the rest of the demo.
+22. **Discover & Defuse** (user spec): Discover reveals everything hidden within 3 cells at once (no markers) – traps show, hidden objects appear, skeletons rise; Defuse turns a visible trap into a Snare item that can be set on wild boards (§7.5).
+23. **Hidden traps stop movement**: a hero piece passing through an ancient trap stops on it (and an enemy passing through a thief trap); flying pieces are not caught. Dormant skeletons interrupt movement as soon as they could reach the party, then ambush it (§7.5).
+24. **Cell effects on crossing, anchored per party** (user spec): effects also hit while walking through; the start-of-turn repeat is tied to the member who moved the party there (§7.4).
+25. **Peaceful boards run field effects by time** (user spec): 1.5 s per round, ice ×3 (§8.10).
+26. **Swimming**: heroes never swim; shallow water is walkable, deep water only when frozen. Swimmers are an enemy property (`water` only / `amphibious`) (§5.5).
+27. **Lightning in water** (user spec: "travels 4 tiles … connected in a 4-neighbourhood", more damage in water, less with distance) → ×1.5 at the struck cell, −0.25 per step, hits allies too (§5.6).
+28. **Seeds grow one round later** and never under a piece; brambles are cut with a sword (Cut, granted by all swords) or burnt (§5.7).
+29. **Split floors**: together-exits keep separated teams apart across floors; the tower is only left through the boss room (§5.3, §18).
+30. **Getting lost**: the Endless Dunes loop into themselves; the third crossing reveals the Mirage Tower (a map switch, not a hidden cell) (§18).
+31. **Token names**: Serenity (pond), Foresight (tower), Life (island) (user asked for a name for the pond's token).
+32. **Holy** is learned from the Holy Orb by the Monk (like a scroll); undead and shadows (skeletons, phantoms, fears) take double (§13.3).
+33. **Swallow** (user spec: spat out two rounds later with half its HP and some MP stolen, untargetable meanwhile, released unharmed if the boss dies, gains shown half at a time) → the loss is based on HP when swallowed and never kills; MP = 30 %; one victim at a time, never the last hero (§12.7).
+34. **Henchmen** buff first, then attack (priority AI rules); **re-summoning** costs the boss 120 G of its reward and happens with 40 % per turn once both are down, so not right away (§12.7).
+35. **Final boss placement**: the cave opens half-way up the mountain after the Holy Orb – Holy is the answer to an undead boss (§18).
+36. **Ships** (user request: "diagonal pieces instead of straight blocks and overhangs", "small walls on deck and a steering wheel") → shaped blocks: diagonal cuts, hull flare with water beneath, bulwarks open at the gangway; the wheel is decor (§5.9).

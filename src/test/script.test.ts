@@ -6,13 +6,22 @@ import { interactionsFor, performInteraction } from "../core/script/interact";
 import { canSwitchQuest, currentObjective, evaluateQuests, switchQuest } from "../core/script/quests";
 import { MemoryStorage, loadGame, saveGame } from "../core/state/save";
 import { exitAt, exitEnabled, mapMemory } from "../core/board/board";
-import { testDb } from "./helpers";
+import { villageGame } from "./helpers";
 
 function newGame(seed = 7) {
-  return Game.create(testDb(), seed).game;
+  return villageGame(seed);
 }
 
 function talk(game: Game, eventId: string) {
+  // Elder Hamid lives in his house now: step in, talk, step out again.
+  const home = eventId === "elder" && game.ctx.state.board!.mapId !== "elder_house";
+  if (home) game.enter("elder_house", "from_town");
+  const lines = talkHere(game, eventId);
+  if (home) game.enter("sandhollow", "from_elder");
+  return lines;
+}
+
+function talkHere(game: Game, eventId: string) {
   const ctx = game.ctx;
   const opts = interactionsFor(ctx, "aldric", `n:${eventId}`);
   const talkOpt = opts.find((o) => o.interaction.type === "talk")!;
@@ -99,5 +108,26 @@ describe("save/load", () => {
     saveGame(game.db, game.state, storage, 1);
     const loaded = loadGame(storage, 1)!;
     expect(loaded).toEqual(game.state);
+  });
+});
+
+describe("buildings (§18)", () => {
+  it("doors are walked into without a question; the inn counter rests the party upstairs", () => {
+    const game = newGame();
+    const ctx = game.ctx;
+    const door = exitAt(ctx, { x: 10, y: 2 })!;
+    expect(door.door).toBe(true);
+    game.travel(door);
+    expect(game.ctx.state.board!.mapId).toBe("sandhollow_inn");
+    const opts = interactionsFor(game.ctx, "aldric", "n:inn_counter");
+    expect(opts.map((o) => o.label)).toEqual(["Rest", "Talk"]);
+    const rest = performInteraction(game.ctx, "aldric", "n:inn_counter", opts[0]);
+    expect(rest.requests[0]).toMatchObject({ type: "inn", wakeAt: { map: "sandhollow_inn_upper", spawn: "bed" } });
+    // stepping out puts the party one cell in front of the door, not on it
+    const out = exitAt(game.ctx, { x: 3, y: 6 })!;
+    game.travel(out);
+    const p = Object.values(game.ctx.state.board!.pieces).find((x) => x.members.includes("aldric"))!;
+    expect([p.x, p.y]).toEqual([10, 3]);
+    expect(exitAt(game.ctx, p)).toBeUndefined();
   });
 });

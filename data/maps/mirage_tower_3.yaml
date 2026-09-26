@@ -1,0 +1,78 @@
+# Mirage Tower F3 (§18.10): an ice lane slides each team up to a latching plate that opens the
+# other team's stairs gate.
+name: Mirage Tower 3F
+kind: wild
+chipset: desert
+battleback: mirage
+music: mirage
+
+legend:
+  terrain:
+    f: tower_floor
+    W: tower_wall
+    i: ice
+    O: doorway
+  decor:
+    M: mirage_crystal
+    U: stairs_up
+    o: rubble
+
+layers:
+  terrain: |
+    WWWWWWWWWWWWW
+    WfffffWfffffW
+    WfffffWfffffW
+    WWWiWWWWWiWWW
+    WWWiWWWWWiWWW
+    WWWiWWWWWiWWW
+    WWWiWWWWWiWWW
+    WWWiWWWWWiWWW
+    WfffffWfffffW
+    WfffffWfffffW
+    WfffffWfffffW
+  height: |
+    4444443444444
+    4000003000004
+    4000003000004
+    4330333330334
+    4330333330334
+    4330333330334
+    4330333330334
+    4330333330334
+    4000003000004
+    4000003000004
+    4000003000004
+  decor: |
+    .............
+    .U.........U.
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .....M.M.....
+    .............
+
+spawns:
+  west: { x: 3, y: 9, dir: N }
+  east: { x: 9, y: 9, dir: N }
+
+exits:
+  - { x: 1, y: 1, dir: N, to: mirage_tower_4, spawn: west, label: Upstairs, door: true, together: true }
+  - { x: 11, y: 1, dir: N, to: mirage_tower_4, spawn: east, label: Upstairs, door: true, together: true }
+
+gates:
+  - { id: west_stairs, x: 1, y: 2 }
+  - { id: east_stairs, x: 11, y: 2 }
+switches:
+  - { id: west_plate, x: 3, y: 2, opens: [east_stairs], latch: true }
+  - { id: east_plate, x: 9, y: 2, opens: [west_stairs], latch: true }
+
+events:
+  - id: f3_intro
+    x: 3
+    y: 9
+    pages:
+      - { trigger: auto, dialog: tower_f3 }

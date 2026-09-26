@@ -78,3 +78,33 @@ export async function showStats(scene: Phaser.Scene, input: InputRouter, ctx: Ct
   await input.waitConfirm();
   p.destroy();
 }
+
+/**
+ * What Perceive revealed about an enemy, as groups of short facts for the battle's cycling info
+ * (§12.1): HP/MP, stats, then weaknesses/resistances/immunities. Empty while not revealed.
+ */
+export function enemyInfoGroups(ctx: Ctx, c: Character): string[][] {
+  if (c.kind !== "enemy" || !isRevealed(ctx, c)) return [];
+  const max = computeStats(ctx.db, c);
+  const s = effectiveStats(ctx.db, c, "battle");
+  const def = ctx.db.enemy(c.def);
+  const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
+  const byMult = (test: (m: number) => boolean) =>
+    Object.entries(def.elements ?? {})
+      .filter(([, m]) => test(m))
+      .map(([e]) => cap(e));
+  const weak = byMult((m) => m > 1);
+  const resist = byMult((m) => m > 0 && m < 1);
+  const immune = [...byMult((m) => m === 0), ...(def.immune ?? []).map((st) => ctx.db.status(st).name)];
+  const groups: string[][] = [
+    [`HP ${c.hp}/${max.maxHp}`, `MP ${c.mp}/${max.maxMp}`],
+    [`ATK ${s.str}`, `DEF ${s.def}`, `MAG ${s.mag}`, `MDEF ${s.mdef}`, `SPD ${s.spd}`],
+  ];
+  const elements: string[] = [];
+  if (weak.length) elements.push(`Weak: ${weak.join(", ")}`);
+  if (resist.length) elements.push(`Resists: ${resist.join(", ")}`);
+  if (immune.length) elements.push(`Immune: ${immune.join(", ")}`);
+  groups.push(elements.length ? elements : ["No weaknesses"]);
+  return groups;
+}
+

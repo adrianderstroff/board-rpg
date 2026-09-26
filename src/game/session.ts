@@ -25,12 +25,17 @@ export interface Settings {
   textSpeed: number; // characters per second
   musicVolume: number; // 0..1
   sfxVolume: number; // 0..1
+  /** Map turn speed 1 (slow) … 5 (fast); 3 is the default. */
+  rotateSpeed: number;
 }
+
+/** Duration (ms) of a map quarter turn per speed setting 1…5. */
+export const ROTATE_MS_BY_SPEED = [1500, 1150, 900, 600, 350];
 
 /** Process-wide session shared by all scenes. */
 export class Session {
   game: Game | null = null;
-  settings: Settings = { textSpeed: 45, musicVolume: 0.5, sfxVolume: 0.7 };
+  settings: Settings = { textSpeed: 45, musicVolume: 0.5, sfxVolume: 0.7, rotateSpeed: 3 };
   readonly storage: SaveStorage = new LocalSaveStorage();
 
   constructor(readonly db: Database) {

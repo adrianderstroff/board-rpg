@@ -1,0 +1,109 @@
+# Sunken Ruins – wild map (§18): dormant skeletons among harmless remains, ancient traps and
+# an invisible chest (§7.5). Kit's Discover senses and uncovers hidden things.
+name: Sunken Ruins
+kind: wild
+chipset: desert
+battleback: ruins
+music: ruins
+
+legend:
+  terrain:
+    r: rock
+    s: sand
+    u: ruin_floor
+    X: ruin_wall
+    p: stone_path
+  decor:
+    K: skeleton
+    I: pillar
+    i: pillar_broken
+    o: rubble
+    c: cactus_small
+    C: cactus
+
+layers:
+  terrain: |
+    rrrrrsssssssssssrrrr
+    rrsssuuuXXXuuussssrr
+    rssuuuuuXuXuuuuusssr
+    rsuuXXuuuuuuXXuuusss
+    ssuuXuuuuuuuuXuuussr
+    ssuuuuuuXXXuuuuuussr
+    pssuuuuuuuuuuuuuusss
+    rsuuuuuuuuuuuuuuuupp
+    rsuuXuuuXXuuuXuuussr
+    rssuXuuuuuuuuXuusssr
+    rsssuuuuuuuuuuussssr
+    rsssuuuXXuuuuusssrrr
+    rrssssssssssssssrrrr
+    rrrrrrssssssrrrrrrrr
+  height: |
+    33333000000000003333
+    33000111333111000033
+    30011111313111110003
+    30113311111133111000
+    00113111111113111003
+    00111111333111111003
+    00011111111111111000
+    30111111111111111100
+    30113111331113111003
+    30013111111113110003
+    30001111111111100003
+    30001113311111000333
+    33000000000000003333
+    33333300000033333333
+  decor: |
+    ....................
+    ......I......i......
+    .c.....K....K.......
+    ..........I....K....
+    ...I.......o....i...
+    ....................
+    ....................
+    .....o..............
+    ....................
+    ...K............K...
+    ......I..K..i..o....
+    ..o...............C.
+    ....................
+    ....................
+
+spawns:
+  from_forest: { x: 1, y: 6, dir: E }
+  from_sandhollow: { x: 18, y: 7, dir: W }
+
+exits:
+  - { x: 0, y: 6, dir: W, to: greenwood, spawn: from_ruins, label: Greenwood River }
+  - { x: 19, y: 7, dir: E, to: sandhollow, spawn: from_ruins, label: Sandhollow }
+
+# Dormant skeletons look exactly like the remains (K) around them (§7.5).
+enemies:
+  - { id: bones_a, enemy: skeleton, x: 5, y: 4, dir: S }
+  - { id: bones_b, enemy: skeleton, x: 11, y: 9, dir: N }
+  - { id: bones_c, enemy: skeleton, x: 16, y: 5, dir: W }
+
+# Ancient traps: invisible, stop heroes walking over them (§7.5).
+traps:
+  - { id: trap_a, x: 8, y: 6, damage: 8, status: stuck }
+  - { id: trap_b, x: 13, y: 7, damage: 8, status: stuck }
+  - { id: trap_c, x: 4, y: 7, damage: 8, status: stuck }
+
+events:
+  - id: ruins_enter
+    x: 1
+    y: 6
+    pages:
+      - { trigger: auto, dialog: ruins_enter }
+
+  - id: hidden_chest
+    x: 10
+    y: 11
+    hidden: true
+    pages:
+      - decor: chest_closed
+        interactions:
+          - type: examine
+            label: Open
+            dialog: ruins_chest
+            actions: [{ giveItem: speed_anklet }, { setFlag: ruins_chest_open }]
+      - { when: { flag: ruins_chest_open }, decor: chest_open, trigger: none }

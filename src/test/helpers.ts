@@ -4,6 +4,8 @@ import type { MapDef } from "../core/data/types";
 import { makeCtx, type Ctx } from "../core/context";
 import { enterMap } from "../core/board/board";
 import { newGameState } from "../core/state/newGame";
+import { Game } from "../core/game";
+import { runActions } from "../core/script/actions";
 
 /** Real content plus an optional test map. */
 export function testDb(extraMaps: Record<string, Omit<MapDef, "id">> = {}): Database {
@@ -36,4 +38,15 @@ export function arenaCtx(map: Omit<MapDef, "id"> = arena(), seed = 42): Ctx {
   const ctx = makeCtx(db, newGameState(db, seed));
   enterMap(ctx, "arena", "start");
   return ctx;
+}
+
+/**
+ * A new game that skips the prologue (harbor → forest → ruins): the party stands in Sandhollow
+ * with the main quest active, like the original demo start.
+ */
+export function villageGame(seed = 7): Game {
+  const { game } = Game.create(testDb(), seed);
+  runActions(game.ctx, [{ completeQuest: "into_the_desert" }, { startQuest: { id: "road_to_oasis", activate: true } }]);
+  game.enter("sandhollow", "start");
+  return game;
 }

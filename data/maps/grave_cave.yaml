@@ -1,0 +1,93 @@
+# The Grave Toad's cave (§18.12, §12.7): beneath Temple Mountain. Remains line the way down to the
+# chamber where the Grave Toad and its Bone Acolytes wait – the end of the demo.
+name: Grave Cave
+kind: wild
+chipset: desert
+battleback: cave
+music: ruins
+
+legend:
+  terrain:
+    v: cave_floor
+    X: cave_wall
+  decor:
+    K: skeleton
+    Q: bones
+    M: mushroom
+
+layers:
+  terrain: |
+    XXXXXXXXXXXX
+    XXvvvvvvvvXX
+    XvvvvvvvvvvX
+    XvvvvvvvvvvX
+    XvvvvvvvvvvX
+    XXvvvvvvvvXX
+    XXXXvvvXXXXX
+    XXXvvvvXXXXX
+    XXvvvXXvvvXX
+    XvvvXXXXvvvX
+    XvvXXXXXXvvX
+    XvvvXXXXvvvX
+    XXvvvvvvvvXX
+    XXXXvvvvXXXX
+    XXXXXvvXXXXX
+    XXXXXvXXXXXX
+  height: |
+    444444444444
+    440000000044
+    400000000004
+    400000000004
+    400000000004
+    440000000044
+    444400044444
+    444111144444
+    441114411144
+    411144441114
+    411444444114
+    411144441114
+    441111111144
+    444422224444
+    444442244444
+    444442444444
+  decor: |
+    ............
+    ............
+    ..K......K..
+    ............
+    ........Q...
+    ...Q........
+    ............
+    .....Q......
+    .......M....
+    .K..........
+    ............
+    ..........M.
+    ......Q.....
+    ....M.......
+    ............
+    ............
+
+spawns:
+  from_mountain: { x: 5, y: 14, dir: N }
+
+exits:
+  - { x: 5, y: 15, dir: S, to: temple_mountain, spawn: from_cave, label: Temple Mountain, door: true }
+
+enemies:
+  - { id: cave_skel_a, enemy: skeleton, x: 2, y: 10, dir: E }
+  - { id: cave_skel_b, enemy: skeleton, x: 9, y: 10, dir: W }
+  - { id: grave_toad, enemy: grave_toad, party: [bone_acolyte, bone_acolyte], x: 5, y: 3, dir: S }
+
+events:
+  - id: cave_intro
+    x: 5
+    y: 14
+    pages:
+      - { trigger: auto, dialog: cave_enter }
+  - id: toad_defeated
+    x: 5
+    y: 5
+    pages:
+      - { trigger: none }
+      - { when: { defeated: { enemy: grave_toad } }, trigger: auto, dialog: demo_end }

@@ -19,6 +19,15 @@ export type GameEvent =
   | { type: "revive"; target: string; hp: number }
   | { type: "fieldEffect"; x: number; y: number; effect: string; rounds: number }
   | { type: "trap"; x: number; y: number; triggeredBy?: string }
+  | { type: "terrain"; x: number; y: number; terrain: string } // a cell's terrain changed (burnt, §5.4)
+  | { type: "melt"; x: number; y: number }
+  | { type: "decor"; x: number; y: number; decor: string | null; cause?: "burnt" | "cut" | "grown" } // §5.4, §5.7
+  | { type: "shock"; cells: Pos[] } // lightning ran through these cells (§5.6)
+  | { type: "gates" } // gates/switches changed (§5.8)
+  | { type: "wake"; piece: string } // a dormant enemy rises (§7.5)
+  | { type: "sensed"; cells: Pos[]; center: Pos; radius: number } // Discover's reach and what it found
+  | { type: "defused"; x: number; y: number; item: string }
+  | { type: "uncovered"; x: number; y: number; what: "trap" | "event" | "enemy" }
   | { type: "steal"; actor: string; target: string; item: string | null }
   | { type: "reveal"; targets: string[] }
   | { type: "learn"; target: string; ability: string }
@@ -31,4 +40,8 @@ export type GameEvent =
   | { type: "pieces" } // piece set/parties changed – re-sync visuals
   | { type: "turnStart"; actor: string; round: number }
   | { type: "turnSkipped"; actor: string; reason: string }
+  | { type: "swallow"; actor: string; target: string } // §12.7
+  | { type: "spit"; actor: string; target: string; hp: number; mp: number }
+  | { type: "release"; actor: string; target: string } // swallower fell: out without loss
+  | { type: "summoned"; actor: string; ids: string[]; cost: number }
   | { type: "round"; round: number };

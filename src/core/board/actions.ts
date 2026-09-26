@@ -20,6 +20,26 @@ import {
   reconcile,
 } from "./board";
 import { patternCells, resolvePatternRef } from "./patterns";
+import { defuse, discover, visibleTrapAt } from "./hidden";
+import { conductive, freezeCells, placeFieldEffect, setDecor, shockMultiplier, shockNetwork } from "./terrain";
+
+/**
+ * Lightning (§5.6): everyone on the struck cell – or, on water, on every connected conductive cell
+ * within reach – takes thunder damage, ×1.5 where it struck, less with distance. Hits allies too.
+ */
+function shock(ctx: Ctx, user: Character, target: Pos, power: number, reach?: number): GameEvent[] {
+  const wet = conductive(ctx, target);
+  const net = shockNetwork(ctx, target, reach);
+  const events: GameEvent[] = [{ type: "shock", cells: net.map((n) => n.pos) }];
+  for (const { pos, d } of net) {
+    const effect: EffectDef = { type: "damage", kind: "magical", power: power * shockMultiplier(wet, d), element: "thunder" };
+    for (const pc of piecesAt(ctx, pos)) {
+      if (pc.dormant || pc.fallen) continue;
+      for (const c of aliveMembers(ctx, pc)) events.push(...applyEffects({ ctx, user, scope: "board" }, c, [effect]));
+    }
+  }
+  return events;
+}
 import { abilityUsed, markAbilityUsed } from "./turns";
 
 // ---------- targeting ----------
@@ -35,7 +55,7 @@ export interface Targeting {
 
 function cellMatches(ctx: Ctx, user: Character, p: Pos, filter: BoardTargetFilter): boolean {
   const all = piecesAt(ctx, p, { includeFallen: true });
-  const standing = all.filter((pc) => !pc.fallen && pc.members.length);
+  const standing = all.filter((pc) => !pc.fallen && !pc.dormant && pc.members.length);
   const userPiece = mustPieceOf(ctx, user.id);
   switch (filter) {
     case "self":
@@ -54,6 +74,12 @@ function cellMatches(ctx: Ctx, user: Character, p: Pos, filter: BoardTargetFilte
       return !all.length && !!grid(ctx).cell(p)?.walkable && !exitAt(ctx, p);
     case "anyCell":
       return !!grid(ctx).cell(p);
+    case "trap":
+      return visibleTrapAt(ctx, p);
+    case "plant": {
+      const c = grid(ctx).cell(p);
+      return !!(c?.decor && grid(ctx).chipset.decor[c.decor]?.cuttable);
+    }
   }
 }
 
@@ -61,12 +87,22 @@ export function targeting(ctx: Ctx, user: Character, use: BoardUse): Targeting {
   const piece = mustPieceOf(ctx, user.id);
   const g = grid(ctx);
   const range = patternCells(g, piece, resolvePatternRef(ctx.db, use.range));
-  const valid = range.filter((p) => use.targets.some((f) => cellMatches(ctx, user, p, f)));
+  const wildOk = !use.wildOnly || ctx.db.map(board(ctx).mapId).kind === "wild";
+  const valid = wildOk ? range.filter((p) => use.targets.some((f) => cellMatches(ctx, user, p, f))) : [];
   const area = use.area ? resolvePatternRef(ctx.db, use.area) : undefined;
+  const freeze = use.effects.find((e) => e.type === "freezeArea");
+  const shock = use.effects.find((e) => e.type === "shock");
   return {
     range,
     valid,
-    areaAt: (p) => (area ? patternCells(g, p, { ...area, includeOrigin: true }) : [p]),
+    areaAt: (p) =>
+      freeze?.type === "freezeArea"
+        ? freezeCells(ctx, piece, p, freeze.size)
+        : shock?.type === "shock"
+          ? shockNetwork(ctx, p, shock.reach).map((n) => n.pos)
+          : area
+            ? patternCells(g, p, { ...area, includeOrigin: true })
+            : [p],
   };
 }
 
@@ -77,7 +113,13 @@ function applyBoardUse(ctx: Ctx, user: Character, use: BoardUse, target: Pos): G
   if (!t.valid.some((p) => samePos(p, target))) throw new Error(`Invalid target ${target.x},${target.y}`);
   const events: GameEvent[] = [];
   const cells = t.areaAt(target);
-  const charEffects = use.effects.filter((e) => e.type !== "fieldEffect" && e.type !== "placeTrap");
+  const charEffects = use.effects.filter((e) => !["fieldEffect", "freezeArea", "placeTrap", "discover", "defuse", "shock", "cut"].includes(e.type));
+  for (const e of use.effects) {
+    if (e.type === "discover") events.push(...discover(ctx, user, e.radius));
+    if (e.type === "defuse") events.push(...defuse(ctx, target, e.item));
+    if (e.type === "cut") events.push(...setDecor(ctx, target, null, "cut"));
+    if (e.type === "shock") events.push(...shock(ctx, user, target, e.power, e.reach));
+  }
   const revive = use.effects.some((e) => e.type === "revive");
   const hitsCharacters = use.targets.some((f) => f !== "emptyCell" && f !== "anyCell") || charEffects.length > 0;
   if (use.effects.some((e) => e.type === "reveal")) board(ctx).perceivedRound = board(ctx).turn.round;
@@ -93,7 +135,7 @@ function applyBoardUse(ctx: Ctx, user: Character, use: BoardUse, target: Pos): G
     events.push(...applyCellEffects(ctx, cell, use.effects));
     if (!hitsCharacters || !charEffects.length) continue;
     for (const pc of piecesAt(ctx, cell, { includeFallen: revive })) {
-      if (pc.faction === "enemy" && isHidden(ctx, pc)) continue;
+      if (pc.dormant || (pc.faction === "enemy" && isHidden(ctx, pc))) continue;
       for (const c of pc.members.map((id) => getChar(ctx, id))) {
         if (!revive && !isAlive(c)) continue;
         events.push(...applyEffects({ ctx, user, scope: "board" }, c, charEffects));
@@ -112,10 +154,8 @@ function applyCellEffects(ctx: Ctx, cell: Pos, effects: EffectDef[]): GameEvent[
   const events: GameEvent[] = [];
   if (!grid(ctx).cell(cell)) return events;
   for (const e of effects) {
-    if (e.type === "fieldEffect") {
-      b.fieldEffects = b.fieldEffects.filter((f) => !(f.x === cell.x && f.y === cell.y));
-      b.fieldEffects.push({ x: cell.x, y: cell.y, effect: e.effect, rounds: e.rounds });
-      events.push({ type: "fieldEffect", x: cell.x, y: cell.y, effect: e.effect, rounds: e.rounds });
+    if (e.type === "fieldEffect" || e.type === "freezeArea") {
+      events.push(...placeFieldEffect(ctx, cell, e.effect, e.rounds));
     } else if (e.type === "placeTrap") {
       b.traps.push({ x: cell.x, y: cell.y, damage: e.damage, status: e.status });
       events.push({ type: "trap", x: cell.x, y: cell.y });
@@ -206,6 +246,7 @@ export function joinTargets(ctx: Ctx, charId: string): Piece[] {
       p.id !== own.id &&
       !p.fallen &&
       p.faction === own.faction &&
+      !p.dormant &&
       aliveMembers(ctx, p).length > 0 &&
       p.members.length < max &&
       isAdjacentOrSame(p, own) &&
@@ -228,9 +269,12 @@ export function joinParty(ctx: Ctx, charId: string, host: Piece): GameEvent[] {
 export function leaveParty(ctx: Ctx, charId: string): GameEvent[] {
   const own = mustPieceOf(ctx, charId);
   if (own.members.length < 2) return [];
+  const at = own.members.indexOf(charId);
   own.members = own.members.filter((m) => m !== charId);
+  // The anchor for cell effects passes to the next member (§7.4).
+  if (own.anchor === charId) own.anchor = own.members[at % own.members.length];
   const id = newPieceId(ctx, own.faction === "hero" ? "h" : "e");
-  board(ctx).pieces[id] = { id, faction: own.faction, members: [charId], x: own.x, y: own.y, facing: own.facing };
+  board(ctx).pieces[id] = { id, faction: own.faction, members: [charId], x: own.x, y: own.y, facing: own.facing, anchor: charId, ...(own.iceOrigin ? { iceOrigin: own.iceOrigin } : {}) };
   // The leaver keeps its own "moved" flag (it can still move if it hasn't).
   return [{ type: "pieces" }];
 }

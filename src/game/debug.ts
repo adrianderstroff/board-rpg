@@ -1,10 +1,11 @@
 import type Phaser from "phaser";
-import { board, mustPieceOf, reconcile } from "../core/board/board";
+import { board, isExploring, mustPieceOf, reconcile } from "../core/board/board";
 import { engage } from "../core/board/engage";
-import { executeMove, movePiece } from "../core/board/moves";
+import { executeMove, moveOptions, movePiece } from "../core/board/moves";
 import { gainExp, expForLevel, computeStats } from "../core/chars/character";
 import type { Ctx } from "../core/context";
 import { addItem } from "../core/items/inventory";
+import { runActions } from "../core/script/actions";
 import { getSession } from "./session";
 import { Menu } from "../engine/ui/widgets";
 
@@ -18,6 +19,8 @@ export function installDebug(game: Phaser.Game) {
     view: { sync(): void; refreshOverlays(): void };
     hud: { refresh(a?: string | null): void };
     moveCursor(p: { x: number; y: number }, snap?: boolean): void;
+    explorer?: string;
+    exploreIdle: boolean;
   };
   const resync = () => {
     const s = boardScene();
@@ -35,6 +38,12 @@ export function installDebug(game: Phaser.Game) {
       const s = ctx().state;
       const cur = s.board?.turn.current;
       return cur && s.heroes[cur] ? cur : null;
+    },
+    exploring: () => !!ctx().state.board && isExploring(ctx()),
+    /** Free exploration: the selected hero while the game waits for a tap on the map. */
+    explorer: () => {
+      const s = boardScene();
+      return s?.exploreIdle && isExploring(ctx()) ? (s.explorer ?? null) : null;
     },
     /** Moves the piece containing `charId` to a cell (no rules) and puts the cursor there. */
     place(charId: string, x: number, y: number) {
@@ -84,6 +93,11 @@ export function installDebug(game: Phaser.Game) {
       const p = s.view.cellTop({ x, y });
       return { x: p.x - s.cameras.main.scrollX, y: p.y - s.cameras.main.scrollY };
     },
+    /** Skips the journey inland: main quest active, party in Sandhollow (the original demo start). */
+    skipPrologue() {
+      runActions(ctx(), [{ completeQuest: "into_the_desert" }, { startQuest: { id: "road_to_oasis", activate: true } }]);
+      api.travel("sandhollow", "start");
+    },
     travel(map: string, spawn: string) {
       (game.scene.getScene("board") as unknown as { travelTo(m: string, s: string): Promise<void> }).travelTo(map, spawn);
     },
@@ -91,6 +105,10 @@ export function installDebug(game: Phaser.Game) {
     menu: () => Menu.open[Menu.open.length - 1]?.describe() ?? null,
     /** Active highlight overlays on the board (name → cell count). */
     highlights: () => Object.fromEntries([...((game.scene.getScene("board") as unknown as { view: { highlights: Map<string, { cells: unknown[] }> } }).view.highlights)].map(([k, v]) => [k, v.cells.length])),
+    /** Puts the board cursor on a cell (Enter then picks it). */
+    cursorTo(x: number, y: number) {
+      boardScene().moveCursor({ x, y });
+    },
     /** Board cursor cell. */
     cursor: () => ({ ...(game.scene.getScene("board") as unknown as { cursor: { x: number; y: number } }).cursor }),
     /** Board view rotation in quarter turns. */
@@ -101,7 +119,7 @@ export function installDebug(game: Phaser.Game) {
       return { x: c.scrollX, y: c.scrollY };
     },
     resync,
-    core: { engage, executeMove, reconcile },
+    core: { engage, executeMove, moveOptions, reconcile },
   };
   const w = window as unknown as { __game: Record<string, unknown> };
   w.__game = { phaser: game, session: getSession, core: api.core, debug: api };

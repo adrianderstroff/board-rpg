@@ -16,7 +16,7 @@
 //   check.mjs       re-parses output, prints duration / peak / size
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { SR, fadeEdges, normalize, trimSilence } from './synth.mjs';
+import { SR, fadeEdges, normalize, trimSilence, saturate } from './synth.mjs';
 import { renderSong } from './sequencer.mjs';
 import { lintSong } from './theory.mjs';
 import { encodeWav } from './wav.mjs';
@@ -54,7 +54,10 @@ for (const song of SONGS.filter((s) => wanted(s.name))) {
     lintWarnings++;
   }
   // No edge fades: the loop is seamless by construction (tails wrap to the start).
-  const buf = normalize(renderSong(song, { sr: SR, loop: true }), MUSIC_PEAK_DB);
+  // Optional song.saturate = soft-clip drive for peaky (plucked / mallet) mixes.
+  let buf = renderSong(song, { sr: SR, loop: true });
+  if (song.saturate) buf = saturate(buf, song.saturate);
+  buf = normalize(buf, song.peakDb ?? MUSIC_PEAK_DB); // optional per-song peak (quieter tracks)
   write(`music/${song.name}.wav`, buf);
   count++;
 }

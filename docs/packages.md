@@ -97,6 +97,7 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ Targetable NPCs auto-resolved battles (§8.9)
 - ☑ Enemy parties joining/leaving via AI (§8.7): pack animals join allies, stuck members leave
 - ☑ Enemy board abilities chosen by the AI (§12.5, §13.3)
+- ☑ Free exploration without enemies: unlimited walking, per-action time ticks, timed NPC wandering, party steal (§8.10)
 
 ## P8 · Battle rules ☑
 *Depends on: P4, P6*
@@ -164,9 +165,10 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ Item menu with range targeting (§14.1)
 - ☑ Stats window for any character (hidden values for unrevealed enemies) (§16)
 - ☑ Enemy/NPC turns via board AI with camera follow (§12.5)
-- ☑ Engagement confirm → battle transition → apply result (§8.4, §8.5)
+- ☑ Engagement (no confirm, moving onto an enemy attacks) → battle transition → apply result (§8.4, §8.5)
 - ☑ NPC interaction menu, exits with travel prompt (§8.8, §5.3)
 - ☑ HUD: quest objective, round/actor, cell info (§16)
+- ☑ Free exploration loop: tap to walk, select heroes, command box without turn entries, switch to/from tactics (§8.10)
 
 ## P14 · Battle scene ☑
 *Depends on: P8, P10, P11*
@@ -192,7 +194,7 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ Unit tests for core packages (patterns, parties, turn order, field effects, battle formulas, quests, dialog markup, data validation)
 - ☑ Scripted playthrough test: new game → talk to elder → travel → fight → win (core only, headless)
 - ☑ Browser smoke test with screenshots (Playwright, `tools/smoke.mjs`, manual run against the dev server)
-- ☑ End-to-end scenarios (`npm run e2e`): inn & revive, exits, save/continue, game over, shop/scroll/equip, steal, trap/freeze/slide, hidden quest ending, enemy AI
+- ☑ End-to-end scenarios (`npm run e2e`): inn & revive, exits, save/continue, game over, shop/scroll/equip, steal, trap/freeze/slide, hidden quest ending, enemy AI, free exploration, harbor search, river ice & stair fire, ruins traps/Discover/skeletons
 
 ## P17 · Future (not started) ☑
 - ☐ Map/data editor (visual) (§1)
@@ -203,3 +205,73 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☐ Desktop (Tauri/Electron) and mobile (Capacitor) packaging
 - ☐ Localization of data texts
 - ☐ More classes, boards, enemies
+
+## P18 · Board presentation II ☑
+*Depends on: P10, P13*
+- ☑ Unit rotation: per-cell textured meshes spin as one solid; decor/characters stay upright and ride along; facing switches half-way; overlays/cursor hidden during the turn (§16)
+- ☑ Close-up floor per backdrop (`battlebacks.<id>.floor` in graphics.yaml) (§16)
+
+## P19 · Changing terrain ☑
+*Depends on: P7*
+- ☑ Live grid: per-map terrain overrides (saved), walkability from field effects (§5.4)
+- ☑ Freezable water: Frozen bridges water, ice under pieces persists, only freezing works on open water (§5.4)
+- ☑ Fire: burns flammable terrain (`burnsTo`), spreads each round to 4-neighbours, melts ice (§5.4)
+- ☑ Ice spell 3×3 / 4 rounds; Ice via scroll only (§13.3)
+- ☑ View: terrain changes redraw cells (§5.4)
+
+## P20 · Hidden things ☑
+*Depends on: P7, P19*
+- ☑ Ancient map traps: stop hero movement on the way, spent once (§7.5)
+- ☑ Hidden events (invisible chest), revealed by Discover (§7.5)
+- ☑ Dormant enemies: look like remains, block, no turns, rise when heroes come close (stop the move), don't count for exploration (§7.5)
+- ☑ Discover ability: sense within 3 (? markers), uncover target (§7.5)
+- ☑ View/scene: ? markers, dormant rendering, rise/trap playback, interrupted moves skip close-ups/travel
+
+## P22 · Cell rules II ☑
+*Depends on: P19, P20*
+- ☑ Field effects on crossing; start-of-turn effects anchored on the member who moved the piece (§7.4)
+- ☑ Ice: walks end on the first ice cell and slip; melting under a piece puts it back ashore (§5.4)
+- ☑ Ice shapes by size (water square / land line), Frost Shard like Ice, Ice 2/3 scrolls (§5.4, §13.3)
+- ☑ Exploration clock for field effects; ice lasts longer there (§8.10)
+- ☑ Skeletons rise when they can reach the party and ambush (§7.5)
+- ☑ Discover reveals everything within 3 at once; Defuse → Snare item for wild boards (§7.5)
+- ☑ Rotation: per-cell meshes without seams (§16)
+
+## P21 · Demo expansion ☑
+*Depends on: P11, P12, P19, P20*
+- ☑ Art: harbor/forest/ruins/elf terrains & decor, sailors, captain, elves, elf mage, skeleton (charset, battler, face), backdrops harbor/forest/ruins/elvenglade (§18)
+- ☑ Maps: Saltmere Harbor (start), Greenwood River, Elvenglade, Sunken Ruins; Sandhollow west gate (§18)
+- ☑ Content: NPCs, dialogs, searchable barrels/jars, magic shop with Scroll: Ice, skeleton enemy, prologue quest *Into the Desert* (§18)
+- ☑ Tests: unit tests for the mechanics, e2e scenarios for the new maps, playthrough start (§18)
+
+## P23 · Water, lightning, plants ☑
+*Depends on: P19*
+- ☑ Shallow/deep water terrains; swimmer movement (`water` / `amphibious`) (§5.5)
+- ☑ Lightning (Thunder board use, Zap): conduction through connected water/soaked cells ≤4 steps, damage falloff (§5.6)
+- ☑ Soaked field effect; Seeds → brambles next round; Cut (sword-granted); decor overrides per map (§5.7)
+- ☑ Enemy board AI: combos (spit then zap), seed rings
+
+## P24 · Switches, gates, split floors ☑
+*Depends on: P7*
+- ☑ Gates & switches (weight, latch, openWhen, closeFlag) (§5.8)
+- ☑ Together-exits and group travel (§5.3)
+
+## P25 · Temple Mountain & the three tokens ☑
+*Depends on: P21, P23, P24*
+- ☑ Art: mountain/temple/pond/tower/jungle/dark tiles & decor, monks, islander, fishfolk, toad, produce enemies, bosses, shadows, backdrops; music (§18)
+- ☑ Maps: Temple Mountain, Temple, Hall of Fears, Reed Pond, Endless Dunes, Mirage Sands, Mirage Tower F1–F5, Verdant Isle, Grove Garden, Mora's House (§18)
+- ☑ Content: monks' alternating dialogs, quest *The Mountain Temple*, tokens, Holy Orb/Holy, ship to the island, enemies (§18)
+- ☑ Tests: unit tests for the mechanics, e2e scenarios (§18)
+
+## P26 · The Grave Toad (final boss) ☑
+*Depends on: P25*
+- ☑ Battle: swallow / digest / spit, untargetable victim, release when the swallower falls (§12.7)
+- ☑ AI: priority rules, `cooldown`, `alone`, `boss` target; Empowered/Bolstered; summon with gold cost (§12.5, §12.7)
+- ☑ Data & art: Grave Toad, Bone Acolytes, Bad Breath, Swallow, Raise Dead, buffs; `final` music, gulp/spit SFX
+- ☑ Cave maps and the fight's place in the quest (§18)
+
+## P27 · Shaped blocks: a ship that looks like one ☑
+*Depends on: P3*
+- ☑ Diagonal pieces (`shape` layer, cut corners), hull flare with water underlay, bulwarks open at gangways – static and while rotating (§5.9)
+- ☑ The Gull: pointed bow, raised stern, bulwarks, steering wheel (decor `ship_wheel`)
+- ☑ Directional decor: one frame per view, turning with the board (the wheel)

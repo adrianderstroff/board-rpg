@@ -7,6 +7,7 @@ import {
   canUseBattleAbility,
   nextBattleTurn,
   performAction,
+  swallowedEntry,
   targetCandidates,
 } from "../../core/battle/battle";
 import type { BattleAction, BattleState } from "../../core/battle/types";
@@ -19,6 +20,28 @@ import { InputRouter } from "../../engine/input";
 import { addTouchButtons, isTouchMode } from "../../engine/ui/TouchButtons";
 import { wait } from "../../engine/tween";
 import { banner, COLORS, CURSOR_KEY, Gauge, Panel, pick, popup } from "../../engine/ui/widgets";
+import { measureText } from "../../engine/assets";
+import { enemyInfoGroups } from "../ui/stats";
+
+/** How long each page of a revealed enemy's info shows next to its name (ms). */
+const INFO_PAGE_MS = 1800;
+
+/** Packs info groups into lines that fit `width` px; every group starts a new line. */
+function pageInfo(scene: Phaser.Scene, groups: string[][], width: number): string[] {
+  const pages: string[] = [];
+  for (const g of groups) {
+    let line = "";
+    for (const part of g) {
+      const next = line ? `${line}  ${part}` : part;
+      if (line && measureText(scene, next) > width) {
+        pages.push(line);
+        line = part;
+      } else line = next;
+    }
+    if (line) pages.push(line);
+  }
+  return pages;
+}
 import { faceKey, icon, K, miniStatusIconsOf } from "../keys";
 import { pickAbility } from "../ui/abilityMenu";
 import { castSound, getAudio, music, sfx, sfxForEvent, sfxKey } from "../sound";
@@ -30,6 +53,7 @@ interface Actor {
   sprite: Phaser.GameObjects.Sprite;
   home: { x: number; y: number };
   frames: Record<string, number>;
+  shadow: Phaser.GameObjects.Image;
   /** Status icons above the sprite. */
   icons: Phaser.GameObjects.Image[];
   iconKey: string;
@@ -43,6 +67,15 @@ const ENEMY_SLOTS = [
   { x: 170, y: 126 },
   { x: 115, y: 182 },
 ];
+/** A big boss in the middle with its henchmen to the sides (§12.7). */
+const BIG_BOSS_POS = { x: 118, y: 160 };
+const HENCH_SLOTS = [
+  { x: 40, y: 178 },
+  { x: 198, y: 180 },
+  { x: 36, y: 132 },
+  { x: 202, y: 130 },
+];
+
 const HERO_SLOTS = [
   { x: 368, y: 122 },
   { x: 386, y: 140 },
@@ -54,8 +87,10 @@ const HERO_SLOTS = [
 export class BattleScene extends Phaser.Scene {
   private router!: InputRouter;
   private actors = new Map<string, Actor>();
+  private bigSlot?: number;
   private statusPanel?: Panel;
   private messagePanel?: Panel;
+  private infoTimer?: Phaser.Time.TimerEvent;
   private onDone?: () => void;
   private summary = { exp: 0, gold: 0, items: [] as string[], levels: [] as string[] };
 
@@ -82,18 +117,28 @@ export class BattleScene extends Phaser.Scene {
     const heroes = b.combatants.filter((c) => c.side === "hero");
     const enemies = b.combatants.filter((c) => c.side === "enemy");
     heroes.forEach((c, i) => this.addActor(c.id, "hero", HERO_SLOTS[i % HERO_SLOTS.length]));
-    enemies.forEach((c, i) => {
+    const bigOne = enemies.find((c) => this.frameHeight(c.id) > 60);
+    this.bigSlot = enemies.length > 1 && bigOne ? bigOne.slot : undefined;
+    enemies.forEach((c) => {
       const big = enemies.length === 1 && this.frameHeight(c.id) > 60;
-      this.addActor(c.id, "enemy", big ? { x: 120, y: 172 } : ENEMY_SLOTS[i % ENEMY_SLOTS.length]);
+      this.addActor(c.id, "enemy", big ? { x: 120, y: 172 } : this.enemyPos(c.slot));
     });
     this.refreshStatus();
     this.events.on("update", this.bobIcons, this);
     this.events.once("shutdown", () => this.events.off("update", this.bobIcons, this));
     this.cameras.main.fadeIn(300);
     const tracks = getSession().db.config.music;
-    music(b.boss ? (tracks?.boss ?? tracks?.battle) : tracks?.battle, this);
+    const own = enemies.map((c) => getChar(this.ctx, c.id)).find((c) => c.kind === "enemy" && this.ctx.db.enemy(c.def).music);
+    music(own ? this.ctx.db.enemy(own.def).music : b.boss ? (tracks?.boss ?? tracks?.battle) : tracks?.battle, this);
     if (isTouchMode(this)) void addTouchButtons(this, this.router, [{ label: "Back", action: "cancel" }], this.scale.width - 4, 6);
     void this.run(b);
+  }
+
+  /** Where an enemy stands by its slot (summoned ones reuse the slots of the fallen). */
+  private enemyPos(slot: number) {
+    if (this.bigSlot === undefined) return ENEMY_SLOTS[slot % ENEMY_SLOTS.length];
+    if (slot === this.bigSlot) return BIG_BOSS_POS;
+    return HENCH_SLOTS[(slot > this.bigSlot ? slot - 1 : slot) % HENCH_SLOTS.length];
   }
 
   private frameHeight(id: string) {
@@ -115,8 +160,8 @@ export class BattleScene extends Phaser.Scene {
       sprite = this.add.sprite(pos.x, pos.y, K.charset(g.charset), side === "hero" ? 10 : 1).setOrigin(0.5, 1);
     }
     sprite.setDepth(pos.y);
-    this.add.image(pos.x, pos.y - 1, K.shadow).setDepth(pos.y - 1).setScale(sprite.width / 16, 1).setAlpha(0.5);
-    const actor: Actor = { id, side, sprite, home: { ...pos }, frames, icons: [], iconKey: "" };
+    const shadow = this.add.image(pos.x, pos.y - 1, K.shadow).setDepth(pos.y - 1).setScale(sprite.width / 16, 1).setAlpha(0.5);
+    const actor: Actor = { id, side, sprite, shadow, home: { ...pos }, frames, icons: [], iconKey: "" };
     this.actors.set(id, actor);
     if (!isAlive(c)) this.pose(actor, "ko");
     else if (frames.idle2 !== undefined) {
@@ -142,7 +187,7 @@ export class BattleScene extends Phaser.Scene {
   private refreshStatusIcons() {
     for (const a of this.actors.values()) {
       const c = getChar(this.ctx, a.id);
-      const icons = isAlive(c) ? miniStatusIconsOf(this.ctx.db, [c]) : [];
+      const icons = isAlive(c) && !swallowedEntry(this.ctx, a.id) ? miniStatusIconsOf(this.ctx.db, [c]) : [];
       const key = icons.join(",");
       if (key !== a.iconKey) {
         for (const img of a.icons) img.destroy();
@@ -154,10 +199,14 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
-  /** Gentle up/down motion of the status icons. */
+  /** Gentle up/down motion of the status icons, and of flying battlers (they hover and bob). */
   private bobIcons(time: number) {
     for (const a of this.actors.values()) {
-      for (const img of a.icons) img.y = (img.getData("baseY") as number) + Math.round(Math.sin(time * 0.004 + (img.getData("phase") as number)));
+      const c = getChar(this.ctx, a.id);
+      const flying = isAlive(c) && c.statuses.some((s) => this.ctx.db.status(s.id).fieldImmune);
+      const bob = flying ? Math.round(Math.sin(time * 0.003 + a.home.x * 0.05) * 3) - 4 : 0;
+      if (!a.sprite.getData("held")) a.sprite.y = a.home.y + bob; // not while swallowed / spat out
+      for (const img of a.icons) img.y = (img.getData("baseY") as number) + bob + Math.round(Math.sin(time * 0.004 + (img.getData("phase") as number)));
     }
   }
 
@@ -188,13 +237,34 @@ export class BattleScene extends Phaser.Scene {
     this.statusPanel = p;
   }
 
-  private message(text: string | null) {
+  private message(text: string | null, info: string[][] = []) {
     this.messagePanel?.destroy();
     this.messagePanel = undefined;
+    this.infoTimer?.remove();
+    this.infoTimer = undefined;
     if (!text) return;
     const p = new Panel(this, 90, 6, 300, 22);
-    p.text(150, 6, text, { align: "center" });
     this.messagePanel = p;
+    if (!info.length) {
+      p.text(150, 6, text, { align: "center" });
+      return;
+    }
+    // Name on the left, the revealed facts cycling on the right (Perceive, §12.1).
+    p.text(8, 6, text, { color: COLORS.highlight });
+    const room = 300 - 8 - measureText(this, text) - 18;
+    const pages = pageInfo(this, info, room);
+    let i = 0;
+    let line = p.text(292, 6, pages[0], { align: "right" });
+    if (pages.length < 2) return;
+    this.infoTimer = this.time.addEvent({
+      delay: INFO_PAGE_MS,
+      loop: true,
+      callback: () => {
+        i = (i + 1) % pages.length;
+        line.destroy();
+        line = p.text(292, 6, pages[i], { align: "right" });
+      },
+    });
   }
 
   // ---------- loop ----------
@@ -358,7 +428,8 @@ export class BattleScene extends Phaser.Scene {
       const reach = a.sprite.displayWidth * 0.35 + 9;
       hand.setFlipX(enemy);
       hand.setPosition(enemy ? a.sprite.x + reach : a.sprite.x - reach, a.sprite.y - a.sprite.displayHeight * 0.45);
-      this.message(getChar(ctx, list[i]).name);
+      const c = getChar(ctx, list[i]);
+      this.message(c.name, enemyInfoGroups(ctx, c));
     };
     place();
     return new Promise((resolve) => {
@@ -445,7 +516,7 @@ export class BattleScene extends Phaser.Scene {
           this.refreshStatus();
           break;
         case "mp":
-          if (e.amount > 0) popup(this, top.x, top.y, `+${e.amount} MP`, COLORS.mp);
+          if (e.amount > 0) popup(this, top.x, top.y - 12, `+${e.amount} MP`, COLORS.mp); // above an HP popup
           this.refreshStatus();
           break;
         case "miss":
@@ -482,6 +553,74 @@ export class BattleScene extends Phaser.Scene {
           this.message("Stats revealed!");
           await wait(this, 400);
           break;
+        case "swallow": {
+          // the victim shrinks into the maw
+          const by = this.actors.get(e.actor);
+          const v = this.actors.get(e.target);
+          if (by && v) {
+            v.sprite.setData("busy", true).setData("held", true);
+            this.refreshStatusIcons();
+            const mouth = { x: by.sprite.x + by.sprite.displayWidth * 0.3, y: by.sprite.y - by.sprite.displayHeight * 0.45 };
+            await new Promise<void>((r) =>
+              this.tweens.add({ targets: v.sprite, x: mouth.x, y: mouth.y, scale: 0.2, alpha: 0, duration: 380, ease: "Quad.easeIn", onComplete: () => r() }),
+            );
+            this.tweens.add({ targets: by.sprite, scaleY: 1.08, yoyo: true, duration: 140, repeat: 1 });
+          }
+          this.message(`${getChar(this.ctx, e.target).name} was swallowed!`);
+          await wait(this, 700);
+          break;
+        }
+        case "spit":
+        case "release": {
+          const by = this.actors.get(e.actor);
+          const v = this.actors.get(e.target);
+          if (v) {
+            const from = by ? { x: by.sprite.x + by.sprite.displayWidth * 0.3, y: by.sprite.y - by.sprite.displayHeight * 0.45 } : v.home;
+            v.sprite.setPosition(from.x, from.y).setScale(0.3).setAlpha(1);
+            if (by && e.type === "spit") this.tweens.add({ targets: by.sprite, scaleX: 1.1, yoyo: true, duration: 120 });
+            await new Promise<void>((r) =>
+              this.tweens.add({ targets: v.sprite, x: v.home.x, y: v.home.y, scale: 1, duration: 420, ease: "Back.easeOut", onComplete: () => r() }),
+            );
+            v.sprite.setData("held", false);
+            const alive = isAlive(getChar(this.ctx, e.target));
+            this.pose(v, alive ? "hurt" : "ko");
+            if (e.type === "spit") {
+              const vt = { x: v.home.x, y: v.home.y - v.sprite.displayHeight - 2 };
+              if (e.hp) popup(this, vt.x, vt.y, `${e.hp}`, COLORS.text);
+              if (e.mp) popup(this, vt.x, vt.y - 10, `-${e.mp} MP`, COLORS.mp);
+            } else this.message(`${getChar(this.ctx, e.target).name} escaped the stomach!`);
+            await wait(this, 500);
+            if (alive) this.pose(v, "idle");
+            v.sprite.setData("busy", false);
+          }
+          this.refreshStatus();
+          break;
+        }
+        case "summoned": {
+          this.message(`${getChar(this.ctx, e.actor).name} pays ${e.cost} G to raise the dead!`);
+          await wait(this, 600);
+          const b = battle(this.ctx);
+          for (const id of e.ids) {
+            const c = b.combatants.find((x) => x.id === id)!;
+            const pos = this.enemyPos(c.slot);
+            // the fallen one in that place makes room
+            for (const [oid, old] of this.actors) {
+              if (old.side === "enemy" && oid !== id && old.home.x === pos.x && old.home.y === pos.y && !isAlive(getChar(this.ctx, oid))) {
+                old.sprite.destroy();
+                old.shadow.destroy();
+                for (const ic of old.icons) ic.destroy();
+                this.actors.delete(oid);
+              }
+            }
+            this.addActor(id, "enemy", pos);
+            const a = this.actors.get(id)!;
+            a.sprite.setAlpha(0).setTint(0x63c74d);
+            this.tweens.add({ targets: a.sprite, alpha: 1, duration: 500, onComplete: () => a.sprite.clearTint() });
+          }
+          await wait(this, 550);
+          this.refreshStatus();
+          break;
+        }
         case "turnSkipped": {
           const s = this.actors.get(e.actor);
           if (s) popup(this, s.sprite.x, s.sprite.y - s.sprite.displayHeight, "...", COLORS.dim);

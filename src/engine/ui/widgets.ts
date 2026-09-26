@@ -132,6 +132,8 @@ export interface MenuItem {
   icon?: number;
   disabled?: boolean;
   color?: number;
+  /** Colour of the right-hand text (defaults to the label colour). */
+  rightColor?: number;
 }
 
 export interface MenuOptions {
@@ -162,6 +164,8 @@ export const MENU_KEY_RESULT = -1;
 /** Default menu row height (roomy enough for touch); dense menus pass `rowHeight`. */
 const ROW = 15;
 const PAD = 7;
+/** How far the menu hand sticks out left of the box. */
+const HAND_OVERHANG = 10;
 const HEADER_H = 28;
 
 /** Vertical list menu with a hand cursor. `choose()` resolves with the index or null when cancelled. */
@@ -193,12 +197,12 @@ export class Menu {
     const width =
       opts.width ??
       Math.max(60, ...items.map((i) => measureText(scene, i.label) + (i.right ? measureText(scene, i.right) + 12 : 0) + (i.icon !== undefined ? 18 : 0)), opts.title ? measureText(scene, opts.title) : 0, headerW - 12) +
-        PAD * 2 +
-        12;
+        PAD * 2;
     const h = opts.height ?? Math.min(items.length, this.maxRows) * this.row + PAD * 2 + this.titleH;
     const y = opts.anchorBottom ? opts.y - h : opts.y;
     const x = Math.min(opts.x, scene.scale.width - width - 2);
-    this.panel = new Panel(scene, Math.max(2, x), Math.max(2, Math.min(y, scene.scale.height - h - 2)), width, h);
+    // keep room on the left for the hand, which sits on the box border (FF6 style)
+    this.panel = new Panel(scene, Math.max(HAND_OVERHANG + 2, x), Math.max(2, Math.min(y, scene.scale.height - h - 2)), width, h);
     if (header) {
       let tx = PAD;
       if (header.portrait && scene.textures.exists(header.portrait)) {
@@ -234,18 +238,19 @@ export class Menu {
     const visible = this.items.slice(this.top, this.top + this.maxRows);
     visible.forEach((item, i) => {
       const y = PAD + this.titleH + i * this.row + Math.floor((this.row - 12) / 2);
-      let x = PAD + 12;
+      let x = PAD;
       if (item.icon !== undefined) {
         this.rows.push(this.panel.icon(x, y - 3, item.icon));
         x += 18;
       }
       const color = item.disabled ? COLORS.disabled : (item.color ?? COLORS.text);
       this.rows.push(this.panel.text(x, y, item.label, { color }));
-      if (item.right) this.rows.push(this.panel.text(this.panel.w - PAD, y, item.right, { color, align: "right" }));
+      if (item.right) this.rows.push(this.panel.text(this.panel.w - PAD, y, item.right, { color: item.disabled ? color : (item.rightColor ?? color), align: "right" }));
     });
     if (this.top > 0) this.rows.push(this.panel.text(this.panel.w / 2, 0, "^", { align: "center", color: COLORS.dim }));
     if (this.top + this.maxRows < this.items.length) this.rows.push(this.panel.text(this.panel.w / 2, this.panel.h - 9, "v", { align: "center", color: COLORS.dim }));
-    this.cursor.setPosition(PAD - 4, PAD + this.titleH + (this.index - this.top) * this.row + Math.floor((this.row - 12) / 2) - 3);
+    // The hand overlaps the left border instead of pushing the text right (FF6 style).
+    this.cursor.setPosition(-HAND_OVERHANG, PAD + this.titleH + (this.index - this.top) * this.row + Math.floor((this.row - 12) / 2) - 3);
     this.panel.bringToTop(this.cursor);
   }
 

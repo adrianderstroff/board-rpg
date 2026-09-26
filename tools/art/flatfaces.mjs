@@ -377,5 +377,359 @@ F.enemy_condor = () => {
   return p;
 };
 
+// ---------------------------------------------------------------- harbor folk
+/** recolour pixels of the given colours in horizontal bands (striped cloth) */
+const stripes = (from, to, y0, period, h, yMax = S) => (c) => {
+  const map = new Map(from.map((f, i) => [H(f) >>> 0, H(to[i])]));
+  for (let y = y0; y < yMax; y++) if ((y - y0) % period < h) for (let x = 0; x < S; x++) { const t = map.get(c.get(x, y) >>> 0); if (t != null) c.set(x, y, t); }
+};
+
+F.captain = () => {
+  const p = new FlatPortrait({ bg: '124e89', shape: { type: 'disc', color: '0099db', x: 25, y: 22, r: 17 } });
+  p.mat('coat', '3a4466', '262b44', 0.55).mat('gold', 'feae34').mat('shirt', 'ffffff', 'c0cbdc', 0.65).mat('skin', SKIN[0])
+    .mat('hair', 'be4a2f', 'a22633', 0.6).mat('hat', '3a4466', '262b44', 0.6).mat('hatD', '181425');
+  p.poly('hair', [[31, 26], [36.5, 27], [38.5, 36], [36, 43], [33, 38], [33, 30]]); // ponytail over the shoulder
+  P_.hairBack(p, 'hair');
+  P_.bust(p, 'coat');
+  p.poly('shirt', [[19.2, 34], [30.4, 34], [28.2, 48], [21.4, 48]]);
+  p.line('gold', 19.2, 34, 21.6, 48, 1.8); p.line('gold', 30.4, 34, 28, 48, 1.8);
+  p.poly('shirt', [[21, 34], [24.8, 38.5], [28.6, 34], [26.8, 32], [22.8, 32]]); // collar
+  P_.neck(p, 'skin');
+  P_.face(p, 'skin');
+  p.poly('hair', [[17, 24], [17.6, 19.5], [21.5, 17.6], [29, 17.6], [32.4, 19.5], [32.8, 24], [30.2, 20.8], [24, 21.8], [19.6, 20.6]]);
+  // tricorn: crown + upturned brim, front corner pointing down at the centre
+  p.ell('hat', 24.8, 13.8, 8, 5.4);
+  p.poly('hat', [[7.2, 19.6], [11, 12.6], [17.5, 14.6], [24.8, 13.4], [32, 14.6], [38.6, 12.6], [42.4, 19.6], [33.6, 18.4], [24.8, 23], [16, 18.4]]);
+  p.poly('gold', [[7.2, 19.6], [16, 18.4], [24.8, 23], [33.6, 18.4], [42.4, 19.6], [33.8, 19.8], [24.8, 24.6], [15.8, 19.8]]);
+  p.poly('hatD', [[16.6, 16.2], [24.8, 15.2], [33, 16.2], [33.4, 17.4], [24.8, 20.4], [16.2, 17.4]]); // shadowed inside of the front brim
+  p.post((c) => { for (const [x, y] of [[16, 39], [15, 43], [33, 39], [34, 43]]) c.fillRect(x, y, 2, 2, H('feae34')); });
+  P_.brows(p, 'a22633', -2);
+  P_.eyes(p); P_.mouth(p, 'a22633', true); P_.nose(p, 'c28569');
+  return p;
+};
+
+F.sailor = () => {
+  const p = new FlatPortrait({ bg: 'fee761', shape: { type: 'disc', color: 'feae34', x: 30, y: 20, r: 16 } });
+  p.mat('shirt', 'ffffff', 'c0cbdc', 0.6).mat('skin', TAN[0]).mat('band', 'e43b44', 'a22633', 0.6).mat('hair', '262b44').mat('knot', 'a22633');
+  P_.bust(p, 'shirt');
+  p.poly('skin', [[20, 34], [29.6, 34], [27.8, 36.4], [21.8, 36.4]]); // boat neck
+  P_.neck(p, 'skin'); P_.ears(p, 'skin');
+  p.ell('hair', 17.6, 25, 1.9, 4); p.ell('hair', 32, 25, 1.9, 4);
+  P_.face(p, 'skin');
+  // bandana: tight over the crown, knot + tails at the side
+  p.ell('band', 24.8, 21.4, 8.6, 6.9, (x, y) => y < 22.4);
+  p.poly('band', [[16.4, 21], [33.2, 21], [33, 22.8], [16.6, 22.8]]);
+  p.ell('knot', 34.6, 20.5, 2.4, 2.2);
+  p.poly('band', [[35, 21], [40.4, 27.5], [37.6, 28.6], [34.2, 22.6]]); p.poly('knot', [[35.6, 21.4], [38.6, 29.6], [36.6, 30], [34.6, 22.6]]);
+  p.post(stripes(['ffffff', 'c0cbdc'], ['0099db', '124e89'], 37, 4, 2));
+  P_.brows(p, '262b44', -2);
+  P_.eyes(p); P_.mouth(p, '733e39', true); P_.nose(p, '9a5e4a');
+  p.post((c) => { for (const [x, y] of [[21, 33], [23, 34], [26, 34], [28, 33]]) c.set(x, y, H('9a5e4a')); }); // stubble
+  return p;
+};
+
+F.sailor_b = () => {
+  const p = new FlatPortrait({ bg: '193c3e', shape: { type: 'ring', color: '265c42', x: 25, y: 22, r: 18 } });
+  p.mat('shirt', 'ead4aa', 'e4a672').mat('vest', 'b86f50', '733e39', 0.55).mat('skin', TAN[0], TAN[1], 0.66).mat('grey', 'c0cbdc', '8b9bb4', 0.66)
+    .mat('cap', '5a6988', '3a4466', 0.6).mat('rim', '8b9bb4', '5a6988', 0.6).mat('dark', '3e2731');
+  P_.bust(p, 'shirt', 1.05);
+  p.poly('vest', [[2.6, 48], [5.8, 38.6], [13, 34.6], [20, 34], [21.2, 48]]); p.poly('vest', [[28.8, 34], [36, 34.6], [43.4, 38.6], [46.6, 48], [28.2, 48]]);
+  p.post((c) => { c.fillRect(19, 40, 1, 1, H('3e2731')); c.fillRect(19, 44, 1, 1, H('3e2731')); });
+  P_.neck(p, 'skin'); P_.ears(p, 'skin');
+  P_.face(p, 'skin');
+  p.ell('grey', 17.8, 24.4, 1.8, 3.2); p.ell('grey', 31.8, 24.4, 1.8, 3.2);
+  P_.beard(p, 'grey');
+  // knit cap with a rolled rim
+  p.ell('cap', 24.8, 19.8, 8.6, 8.2, (x, y) => y < 20);
+  p.poly('rim', [[16, 18], [33.6, 18], [33.8, 21.8], [15.8, 21.8]]);
+  p.post((c) => { for (let x = 18; x < 33; x += 3) c.fillRect(x, 13, 1, 4, H('3a4466')); }); // knit ribs
+  p.post((c) => { c.fillRect(19, 23, 4, 1, H('c0cbdc')); c.fillRect(27, 23, 4, 1, H('c0cbdc')); });
+  P_.eyes(p, '181425', { h: 1, dy: 0.6 });
+  P_.nose(p, '9a5e4a');
+  return p;
+};
+
+// ---------------------------------------------------------------- elves (long pointed ears)
+function elfEars(p, mat, inner, { y = 25, len = 1 } = {}) {
+  p.poly(mat, [[18.4, y - 2.4], [18 - 10 * len, y - 9 * len], [18.6, y + 3.6]]);
+  p.poly(mat, [[31.2, y - 2.4], [31.6 + 10 * len, y - 9 * len], [31, y + 3.6]]);
+  if (inner) { p.poly(inner, [[18, y - 0.8], [15 - 4 * len, y - 4.8 * len], [18.2, y + 1.8]]); p.poly(inner, [[31.6, y - 0.8], [34.6 + 4 * len, y - 4.8 * len], [31.4, y + 1.8]]); }
+}
+
+F.elf = () => {
+  const p = new FlatPortrait({ bg: '193c3e', shape: { type: 'disc', color: '265c42', x: 26, y: 21, r: 17 } });
+  p.mat('tunic', '63c74d', '3e8948', 0.58).mat('cape', '3e8948', '265c42', 0.55).mat('skin', SKIN[0]).mat('earIn', 'c28569')
+    .mat('hair', 'feae34', 'd77643', 0.62).mat('belt', '733e39');
+  P_.cape(p, 'cape');
+  P_.bust(p, 'tunic', 0.86);
+  p.poly('cape', [[14, 33], [24.8, 40], [35.6, 33], [33, 31.5], [24.8, 36], [16.6, 31.5]]); // leaf collar
+  p.poly('cape', [[17, 35], [20.6, 39.4], [16, 39]]); p.poly('cape', [[32.6, 35], [29, 39.4], [33.6, 39]]);
+  p.poly('belt', [[8.5, 45.5], [41, 45.5], [41.6, 48], [8, 48]]);
+  P_.hairBack(p, 'hair');
+  P_.neck(p, 'skin');
+  elfEars(p, 'skin', 'earIn');
+  P_.face(p, 'skin', { y: 25.8, rx: 7.3, ry: 8.1 });
+  P_.bangs(p, 'hair');
+  P_.eyes(p); P_.mouth(p, 'a22633', true); P_.blush(p, 'f6757a');
+  return p;
+};
+
+F.elf_b = () => {
+  const p = new FlatPortrait({ bg: '8a4f8e', shape: { type: 'ring', color: 'b55088', x: 25, y: 23, r: 18 } });
+  p.mat('dress', 'b55088', '68386c', 0.58).mat('trim', 'f6757a').mat('skin', SKIN[0]).mat('earIn', 'c28569')
+    .mat('hair', 'ffffff', 'c0cbdc', 0.62).mat('vine', '3e8948').mat('flower', 'f6757a').mat('flowerW', 'ffffff');
+  P_.hairBack(p, 'hair', true);
+  P_.bust(p, 'dress', 0.9);
+  p.poly('trim', [[20.4, 34], [29.2, 34], [24.8, 39.5]]);
+  P_.neck(p, 'skin');
+  elfEars(p, 'skin', 'earIn');
+  P_.face(p, 'skin');
+  P_.bangs(p, 'hair');
+  // flower circlet
+  p.poly('vine', [[16.6, 18.8], [24.8, 16.4], [33, 18.8], [33, 20], [24.8, 17.8], [16.6, 20]]);
+  for (const [x, y, m] of [[18, 18.6, 'flower'], [22.4, 17, 'flowerW'], [27.2, 17, 'flower'], [31.6, 18.6, 'flowerW']]) p.ell(m, x, y, 1.9, 1.7);
+  p.post((c) => { for (const [x, y] of [[18, 18], [22, 16], [27, 16], [31, 18]]) c.set(x, y, H('feae34')); });
+  P_.eyes(p, '68386c'); P_.mouth(p, 'a22633', true); P_.blush(p, 'f6757a');
+  return p;
+};
+
+F.elf_elder = () => {
+  const p = new FlatPortrait({ bg: '265c42', shape: { type: 'ring', color: 'feae34', x: 25, y: 22, r: 18, w: 3 } });
+  p.mat('robe', '7fd1c7', '3d8f8a', 0.55).mat('gold', 'feae34').mat('skin', SKIN[0]).mat('earIn', 'c28569')
+    .mat('hair', 'ffffff', 'c0cbdc', 0.78).mat('hairF', 'ffffff').mat('wood', '733e39').mat('leaf', '63c74d', '3e8948', 0.5).mat('gem', '63c74d');
+  p.line('wood', 42.6, 48, 42.6, 11, 2);
+  p.poly('leaf', [[42.6, 11.5], [38.4, 6.6], [39.6, 2.6], [43.4, 6]]); p.poly('leaf', [[43, 13], [47.6, 9.6], [46.4, 14.6]]);
+  P_.hairBack(p, 'hair', true);
+  P_.bust(p, 'robe');
+  p.poly('gold', [[19.2, 34], [30.4, 34], [24.8, 42.5]]);
+  p.poly('robe', [[21.6, 34], [28, 34], [24.8, 39]]);
+  P_.neck(p, 'skin');
+  elfEars(p, 'skin', 'earIn', { len: 1.05 });
+  P_.face(p, 'skin');
+  p.poly('hairF', [[17, 23.4], [17.6, 18.6], [21.4, 16.4], [28.2, 16.4], [32, 18.6], [32.6, 23.4], [30.8, 20.2], [24.8, 19.4], [18.8, 20.2]]);
+  p.poly('gold', [[16.8, 19.4], [24.8, 17.2], [32.8, 19.4], [32.8, 20.8], [24.8, 18.6], [16.8, 20.8]]);
+  p.ell('gem', 24.8, 18.4, 1.5, 1.5);
+  p.post((c) => { c.fillRect(19, 23, 4, 1, H('ffffff')); c.fillRect(27, 23, 4, 1, H('ffffff')); c.set(19, 31, H('c28569')); c.set(30, 31, H('c28569')); });
+  P_.eyes(p, '265c42', { h: 1, dy: 0.6 });
+  P_.mouth(p, 'c28569'); P_.nose(p, 'c28569');
+  return p;
+};
+
+F.elf_mage = () => {
+  const p = new FlatPortrait({ bg: '181425', shape: { type: 'diamond', color: '262b44', x: 25, y: 23, r: 20 } });
+  p.mat('robe', '124e89', '262b44', 0.55).mat('inner', '181425').mat('skin', SKIN[0]).mat('earIn', 'c28569')
+    .mat('hair', 'c0cbdc', '8b9bb4', 0.65).mat('wood', '733e39').mat('orb', '2ce8f5', '0099db', 0.55).mat('gold', 'feae34');
+  p.line('wood', 5.6, 48, 5.6, 15, 2); p.ell('orb', 5.6, 11.6, 3.5);
+  P_.bust(p, 'robe', 0.92);
+  p.poly('gold', [[19.6, 34], [30, 34], [24.8, 41]]); p.poly('robe', [[21.8, 34], [27.8, 34], [24.8, 38]]);
+  P_.hood(p, 'robe', 'inner');
+  elfEars(p, 'skin', 'earIn', { y: 26, len: 0.95 }); // poking out through slits in the hood
+  P_.face(p, 'skin', { y: 26.2, rx: 6.4, ry: 7.6 });
+  p.poly('hair', [[18.4, 25], [19.2, 20], [22.4, 18.4], [27.4, 18.4], [30.6, 20], [31.4, 25], [29.4, 21.8], [26, 21.2], [24.2, 22.6], [21.2, 21.6]]);
+  P_.stars(p, 'feae34', [[14, 19], [36, 20], [11, 43], [38, 44], [24, 12]]);
+  p.post((c) => { c.set(4, 10, H('ffffff')); c.set(5, 10, H('ffffff')); });
+  P_.eyes(p, '124e89', { dy: 0.5 }); P_.mouth(p, 'a22633');
+  return p;
+};
+
+// ---------------------------------------------------------------- undead
+F.enemy_skeleton = () => {
+  const p = new FlatPortrait({ bg: '45283c', shape: { type: 'half', color: '68386c', x: 24, y: 44, r: 24 } });
+  p.mat('bone', 'f4e6c8', 'c0cbdc', 0.62).mat('boneD', '8b9bb4').mat('void', '181425').mat('rust', 'be4a2f', '733e39', 0.55).mat('rag', '3e2731');
+  // ragged cloak scraps + bony shoulders, collarbones and ribs
+  p.poly('rag', [[2, 48], [5, 40], [12, 36], [37, 36], [44, 40], [47, 48], [42, 45], [38, 48], [33, 44], [29, 48], [20, 48], [16, 44], [11, 48], [7, 45]]);
+  p.ell('bone', 9.6, 39.6, 4.2, 3.6); p.ell('bone', 40, 39.6, 4.2, 3.6);
+  p.line('bone', 24.8, 36, 11, 37.2, 1.8); p.line('bone', 24.8, 36, 38.6, 37.2, 1.8);
+  p.rect('bone', 23.6, 34, 2.4, 14);
+  for (let i = 0; i < 3; i++) { const y = 39.6 + i * 3; p.line('bone', 24.8, y, 16 + i, y + 2.4, 1.6); p.line('bone', 24.8, y, 33.6 - i, y + 2.4, 1.6); }
+  // skull: cranium + narrower jaw
+  p.poly('bone', [[17.6, 27], [32, 27], [31, 33.5], [27.6, 36], [22, 36], [18.6, 33.5]]);
+  p.ell('bone', 24.8, 22.8, 9, 9.2);
+  p.ell('boneD', 17.8, 29.4, 1.2, 1.8); p.ell('boneD', 31.8, 29.4, 1.2, 1.8); // cheekbone hollows
+  p.ell('void', 20.6, 25.6, 2.9, 3.1); p.ell('void', 29, 25.6, 2.9, 3.1);
+  p.poly('void', [[23.8, 29], [25.8, 29], [24.8, 31.4]]);
+  // dented rusty helmet fragment
+  p.ell('rust', 24.8, 22.4, 9.6, 9.6, (x, y) => y < 17.2 + (x - 16) * 0.12 && x > 15.5 && x < 31);
+  p.post((c) => {
+    const V = H('181425'), G = H('ff0044'), Y = H('fee761');
+    c.fillRect(20, 33, 10, 1, V); for (let x = 21; x < 30; x += 2) c.fillRect(x, 32, 1, 3, V); // teeth
+    c.set(33, 17, V); c.set(32, 18, V); c.set(32, 19, V); c.set(31, 20, V); // crack
+    for (const x of [20, 28]) { c.fillRect(x, 25, 2, 2, G); c.set(x + (x < 24 ? 0 : 1), 25, Y); } // eerie glow
+  });
+  return p;
+};
+
+// ---------------------------------------------------------------- Temple Mountain monks
+/** prayer-bead / lei loop hanging around the neck: dots along the lower half of an ellipse */
+function neckLoop(cx = 24.8, cy = 32.5, rx = 7.2, ry = 7.4, n = 11) {
+  const pts = [];
+  for (let i = 0; i < n; i++) { const a = Math.PI * (0.08 + 0.84 * (i / (n - 1))); pts.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]); }
+  return pts;
+}
+function monkFace({ bg, shape, outer, under, skin, bust = 1, eyes = { h: 1, dy: 0.5 }, smile = false }) {
+  const p = new FlatPortrait({ bg, shape });
+  p.mat('under', under[0], under[1], 0.58).mat('outer', outer[0], outer[1], 0.58).mat('edge', outer[1]).mat('skin', skin[0], skin[1], 0.72);
+  P_.bust(p, 'under', bust);
+  // outer robe draped over the (viewer's right) shoulder, running diagonally across the chest; folded edge
+  const X = (x) => 24 + (x - 24) * bust;
+  p.poly('outer', [[X(45), 48], [X(42), 39], [X(35), 35], [X(28), 34], [25, 36.5], [13.5, 48]]);
+  p.line('edge', 25.4, 36.4, 14.2, 48, 1.3);
+  P_.neck(p, 'skin'); P_.ears(p, 'skin');
+  P_.face(p, 'skin', { y: 24.8, rx: 7.3, ry: 8.9 });
+  p.post((c) => neckLoop(24.8, 32.5, 7.4, 7.6, 8).forEach(([x, y]) => { c.fillRect(Math.round(x - 1), Math.round(y - 1), 2, 2, H('b86f50')); c.set(Math.round(x), Math.round(y), H('3e2731')); })); // prayer beads
+  P_.eyes(p, '3e2731', eyes);
+  P_.mouth(p, '733e39', smile);
+  P_.nose(p, skin[1]);
+  return p;
+}
+F.monk = () => {
+  const p = monkFace({ bg: '3e8948', shape: { type: 'disc', color: '63c74d', x: 30, y: 20, r: 16 }, outer: ['f77622', 'be4a2f'], under: ['a22633', '733e39'], skin: [TAN[0], '9a5e4a'] });
+  P_.brows(p, '3e2731', -2);
+  return p;
+};
+F.monk_b = () => {
+  const p = monkFace({ bg: '124e89', shape: { type: 'ring', color: '0099db', x: 25, y: 22, r: 18 }, outer: ['a22633', '733e39'], under: ['feae34', 'd77643'], skin: [SKIN[0], 'c28569'], bust: 0.9, eyes: {}, smile: true });
+  P_.brows(p, '733e39', -3, 2);
+  return p;
+};
+F.monk_old = () => {
+  const p = new FlatPortrait({ bg: 'a22633', shape: { type: 'ring', color: 'feae34', x: 25, y: 22, r: 18, w: 3 } });
+  p.mat('robe', 'feae34', 'd77643', 0.58).mat('drape', 'e43b44', 'a22633', 0.58).mat('skin', SKIN[0], 'c28569', 0.75).mat('white', 'ffffff', 'c0cbdc', 0.7)
+    .mat('wood', '733e39').mat('knob', 'b86f50', '733e39', 0.5);
+  p.line('wood', 42.6, 48, 42.6, 10, 2); p.ell('knob', 42.6, 9, 2.6, 2.4);
+  P_.bust(p, 'robe');
+  p.poly('drape', [[45, 48], [42, 39], [35, 35], [28, 34], [25, 36.5], [13.5, 48]]);
+  P_.neck(p, 'skin'); P_.ears(p, 'skin');
+  P_.face(p, 'skin', { y: 24.8, rx: 7.3, ry: 8.9 });
+  P_.beard(p, 'white', true);
+  // long white eyebrows drooping past the eyes
+  p.poly('white', [[18.6, 22], [23.2, 21.8], [22.6, 23.2], [18.4, 24], [15.6, 27.4], [15.8, 24.6]]);
+  p.poly('white', [[31, 22], [26.4, 21.8], [27, 23.2], [31.2, 24], [34, 27.4], [33.8, 24.6]]);
+  p.post((c) => { c.fillRect(21, 18, 7, 1, H('c28569')); c.fillRect(22, 20, 5, 1, H('c28569')); }); // forehead creases
+  P_.eyes(p, '3e2731', { h: 1, dy: 0.8 });
+  P_.nose(p, 'c28569');
+  return p;
+};
+
+// ---------------------------------------------------------------- island folk
+F.islander = () => {
+  const p = new FlatPortrait({ bg: '0099db', shape: { type: 'sun', color: 'fee761', x: 31, y: 21, r: 15, bg: '0099db' } });
+  p.mat('dress', '3e8948', '265c42', 0.58).mat('zig', 'f77622').mat('skin', 'b86f50', '733e39', 0.7).mat('hair', 'c0cbdc', '8b9bb4', 0.6)
+    .mat('pink', 'f6757a').mat('whiteF', 'ffffff').mat('yellowF', 'feae34').mat('bud', 'e43b44');
+  p.ell('hair', 24.8, 12.8, 5, 4); // bun
+  P_.hairBack(p, 'hair');
+  P_.bust(p, 'dress', 1.02);
+  for (const y of [39.5, 44.5]) p.poly('zig', Array.from({ length: 11 }, (_, i) => [3 + i * 4.3, y + (i % 2 ? -1.6 : 1.6)]).concat(Array.from({ length: 11 }, (_, i) => [3 + (10 - i) * 4.3, y + 1.4 + ((10 - i) % 2 ? -1.6 : 1.6)])),
+    (x, y) => y > 34 + Math.max(0, Math.abs(x - 24) - 10) * 0.6);
+  P_.neck(p, 'skin'); P_.ears(p, 'skin');
+  P_.face(p, 'skin');
+  p.poly('hair', [[17, 23.4], [17.6, 18.8], [21.4, 16.6], [28.2, 16.6], [32, 18.8], [32.6, 23.4], [30.4, 19.8], [24.8, 18.8], [19.2, 19.8]]); // hair pulled back
+  // flower lei round the neck
+  const fl = ['pink', 'whiteF', 'yellowF'];
+  neckLoop(24.8, 31.8, 8.6, 6.8, 8).forEach(([x, y], i) => p.ell(fl[i % 3], x, y, 2.1, 1.8));
+  p.post((c) => neckLoop(24.8, 31.8, 8.6, 6.8, 8).forEach(([x, y]) => c.set(Math.round(x - 0.5), Math.round(y - 0.5), H('e43b44'))));
+  P_.brows(p, '8b9bb4', -2);
+  P_.eyes(p, '3e2731', { h: 1, dy: 0.5 });
+  P_.mouth(p, '3e2731', true); P_.nose(p, '733e39');
+  p.post((c) => { c.set(18, 27, H('733e39')); c.set(31, 27, H('733e39')); c.set(21, 32, H('9a5e4a')); c.set(28, 32, H('9a5e4a')); }); // crow's feet, smile lines
+  return p;
+};
+
+// ---------------------------------------------------------------- sea creatures
+F.enemy_fishfolk = () => {
+  const p = new FlatPortrait({ bg: '193c3e', shape: { type: 'disc', color: '124e89', x: 24, y: 26, r: 19 } });
+  p.mat('scale', '2a9d8f', '1d5f6b', 0.55).mat('belly', 'a8e4c8', '6cc0a4', 0.6).mat('fin', 'f77622', 'be4a2f', 0.55).mat('ray', 'be4a2f')
+    .mat('eye', 'ffffff', 'c0cbdc', 0.7).mat('lip', '8fd3b8').mat('mouth', '181425').mat('kelp', '3e8948', '265c42', 0.5)
+    .mat('wood', '733e39').mat('coral', 'f6757a', 'e43b44', 0.55);
+  // coral-tipped spear
+  p.line('wood', 42.6, 48, 42.6, 12, 2);
+  p.line('coral', 42.6, 13, 42.6, 3, 2); p.line('coral', 42.6, 11, 38.6, 5.6, 1.8); p.line('coral', 42.6, 9, 46.4, 4.6, 1.8);
+  p.ell('coral', 42.6, 2.6, 1.6); p.ell('coral', 38.4, 5.2, 1.4); p.ell('coral', 46.6, 4.2, 1.4);
+  // shoulders with spiky fins, pale belly, kelp strands over the shoulder
+  p.poly('fin', [[3, 40], [0.5, 31], [6, 36.5], [5, 29.5], [10, 35.5]]); p.poly('fin', [[45, 40], [47.5, 31], [42, 36.5], [43, 29.5], [38, 35.5]]);
+  P_.bust(p, 'scale');
+  p.ell('belly', 24.8, 44, 7.4, 8.6);
+  p.poly('kelp', [[33, 34.5], [36, 34.5], [30, 48], [26.6, 48]]);
+  // crest: spiny fin over the crown, dark rays
+  p.poly('fin', [[16.4, 22], [15.4, 13.4], [18.6, 16.8], [19.4, 9.6], [22.4, 14.4], [24.8, 6.4], [27.2, 14.4], [30.2, 9.6], [31, 16.8], [34.2, 13.4], [33.2, 22]]);
+  for (const x of [19.4, 24.8, 30.2]) p.line('ray', x, 19, x, x === 24.8 ? 8.6 : 11.6, 1);
+  // gill fins at the sides of the head
+  p.poly('fin', [[16.5, 26], [10.5, 24], [12, 29.6], [16.8, 31]]); p.poly('fin', [[33.1, 26], [39.1, 24], [37.6, 29.6], [32.8, 31]]);
+  // broad fish head, wide lipped mouth, big round eyes set far apart
+  p.ell('scale', 24.8, 25.6, 9, 9.2);
+  p.ell('belly', 24.8, 31.4, 6.6, 3.6);
+  p.poly('lip', [[17.8, 29.4], [31.8, 29.4], [30, 32.2], [19.6, 32.2]]);
+  p.poly('mouth', [[18.6, 30.2], [31, 30.2], [29.6, 31.3], [20, 31.3]]);
+  p.ell('eye', 18.2, 23.4, 3.6, 3.8); p.ell('eye', 31.4, 23.4, 3.6, 3.8);
+  p.post((c) => {
+    const I = H('181425'), sh = H('1d5f6b');
+    for (const x of [18, 30]) { c.fillRect(x, 23, 2, 3, I); c.set(x + (x < 24 ? 0 : 1), 23, H('ffffff')); }
+    for (const [x, y] of [[20, 35], [28, 35], [16, 39], [32, 39], [12, 42], [36, 42]]) c.fillRect(x, y, 2, 1, sh); // scale marks
+    for (const [x, y] of [[4, 20], [8, 12], [6, 5], [38, 23]]) { c.set(x, y, H('2ce8f5')); c.set(x + 1, y - 1, H('2ce8f5')); } // bubbles
+  });
+  return p;
+};
+
+// ---------------------------------------------------------------- undead (final boss servants)
+F.enemy_bone_acolyte = () => {
+  const p = new FlatPortrait({ bg: '181425', shape: { type: 'disc', color: '193c3e', x: 24, y: 24, r: 19 } });
+  p.mat('robe', '265c42', '193c3e', 0.55).mat('inner', '181425').mat('bone', 'f4e6c8', 'c0cbdc', 0.62).mat('boneD', '8b9bb4').mat('void', '181425')
+    .mat('staff', 'c0cbdc', '8b9bb4', 0.5).mat('ghost', 'b6f5a0', '63c74d', 0.5).mat('ghostV', '265c42');
+  // bone staff with a glowing green skull
+  p.line('staff', 5.4, 48, 5.4, 15, 2); p.ell('staff', 5.4, 15.6, 1.8, 1.2);
+  p.ell('ghost', 5.6, 9.6, 4.2, 4); p.rect('ghost', 3.4, 11.6, 4.6, 3.2);
+  p.ell('ghostV', 4, 9.8, 1.1, 1.2); p.ell('ghostV', 7.4, 9.8, 1.1, 1.2);
+  // tattered hooded robe
+  p.poly('robe', [[2, 48], [5, 39], [12, 35], [37, 35], [44, 39], [47, 48], [43, 45], [39, 48], [35, 44.5], [30, 48], [19, 48], [15, 44.5], [10, 48], [6, 45]]);
+  P_.hood(p, 'robe', 'inner');
+  // skull inside the hood
+  p.poly('bone', [[19, 27.5], [30.6, 27.5], [29.8, 32.8], [27.2, 35], [22.4, 35], [19.8, 32.8]]);
+  p.ell('bone', 24.8, 24.4, 7, 7.4);
+  p.ell('boneD', 19.2, 29.4, 1, 1.6); p.ell('boneD', 30.4, 29.4, 1, 1.6);
+  p.ell('void', 21.6, 26.2, 2.3, 2.5); p.ell('void', 28, 26.2, 2.3, 2.5);
+  p.poly('void', [[24, 29.2], [25.6, 29.2], [24.8, 31.2]]);
+  p.post((c) => {
+    const V = H('181425'), G = H('63c74d'), W = H('b6f5a0');
+    c.fillRect(21, 33, 8, 1, V); for (let x = 22; x < 29; x += 2) c.fillRect(x, 32, 1, 3, V); // teeth
+    for (const x of [21, 27]) { c.fillRect(x, 26, 2, 2, G); c.set(x + (x < 24 ? 0 : 1), 26, W); } // green glow in the sockets
+    for (const [x, y] of [[11, 8], [14, 4], [2, 3], [9, 17], [40, 12], [43, 20]]) c.set(x, y, G); // drifting motes
+  });
+  return p;
+};
+
+// ---------------------------------------------------------------- the heroes' fears (shadow twins)
+// Render the hero portrait, key out its background, recolour the figure by brightness onto a violet-black
+// ramp, set it on a dark backdrop with a magenta disc, add a violet rim + wisps and glowing red eyes.
+const SHADOW_FACE = ['181425', '2b1a3e', '45283c', '68386c', '8a4f8e'].map(H);
+function shadowFace(render, keyColors, eyes = EYES, eyeW = 2) {
+  const src = render();
+  const keys = new Set(keyColors.map((k) => H(k) >>> 0));
+  const out = new Canvas(S, S, H('262b44'));
+  drawShape(out, { type: 'disc', color: 'b55088', x: 24, y: 22, r: 17 });
+  const fig = new Uint8Array(S * S);
+  for (let y = 0; y < S; y++)
+    for (let x = 0; x < S; x++) {
+      const c = src.get(x, y) >>> 0;
+      if (keys.has(c)) continue;
+      fig[y * S + x] = 1;
+      const L = (0.3 * ((c >>> 24) & 255) + 0.59 * ((c >>> 16) & 255) + 0.11 * ((c >>> 8) & 255)) / 255;
+      out.set(x, y, SHADOW_FACE[Math.min(4, Math.floor(L ** 1.1 * 4.6))]);
+    }
+  const isFig = (x, y) => x >= 0 && y >= 0 && x < S && y < S && fig[y * S + x];
+  const rim = H('8a4f8e'), wisp = H('68386c');
+  for (let y = 0; y < S; y++)
+    for (let x = 0; x < S; x++) {
+      if (isFig(x, y)) continue;
+      if (isFig(x + 1, y) || isFig(x, y + 1) || isFig(x - 1, y) || isFig(x, y - 1)) out.set(x, y, rim);
+      else if (isFig(x, y + 2) && ((x * 7 + y * 3) % 5 === 0)) out.set(x, y, wisp); // wisps rising off the silhouette
+    }
+  for (const [x, y] of eyes) { out.fillRect(x, y, eyeW, 2, H('ff0044')); out.set(x + (x < 24 ? 0 : eyeW - 1), y, H('f6757a')); }
+  return out;
+}
+F.enemy_shadow_knight = () => ({ render: () => shadowFace(() => F.hero_knight().render(), ['feae34', 'f77622']) });
+F.enemy_shadow_mage = () => ({ render: () => shadowFace(varFlat, ['e4a672', 'd77643']) });
+F.enemy_shadow_thief = () => ({ render: () => shadowFace(() => F.hero_thief().render(), ['ead4aa', 'e4a672'], [[19, 22], [27, 22]], 3) });
+F.enemy_shadow_monk = () => ({ render: () => shadowFace(() => F.hero_monk().render(), ['5a6988', '3a4466'], [[20, 25], [27, 25]]) });
+
 export const FLAT_FACE_IDS = Object.keys(F);
 export function flatFace(id) { return F[id]().render(); }

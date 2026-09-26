@@ -10,7 +10,9 @@ import {
   useBoardItem,
   type Targeting,
 } from "../../core/board/actions";
-import { board, charsAt, isGameOver, mustPieceOf, pieceOf, piecesAt, syncEvents } from "../../core/board/board";
+import { aliveMembers, board, charsAt, heroPieces, isExploring, isGameOver, mustPieceOf, pieceOf, piecesAt, syncEvents } from "../../core/board/board";
+import { exploreTick, exploreTime, exploreWander, startTactics } from "../../core/board/explore";
+import { togetherReady, type TogetherTravel } from "../../core/board/gates";
 import { engage, resolveEngagement } from "../../core/board/engage";
 import { canPieceMove, executeMove, moveOptions, type MoveOption } from "../../core/board/moves";
 import { abilityUsed, endTurn, nextTurn } from "../../core/board/turns";
@@ -34,7 +36,7 @@ import { banner, COLORS, MENU_KEY_RESULT, pick, popup, UI_DEPTH } from "../../en
 import { BoardView } from "../board/BoardView";
 import { Hud } from "../board/Hud";
 import { faceKey, HL, icon, K, miniStatusIconsOf } from "../keys";
-import { getSession } from "../session";
+import { getSession, ROTATE_MS_BY_SPEED } from "../session";
 import { playDialog, showMessage, type RequestHandler } from "../ui/dialog";
 import { pickAbility } from "../ui/abilityMenu";
 import { CLOSE_UP, CloseUp } from "../ui/closeUp";
@@ -57,6 +59,8 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
   private hud!: Hud;
   private cursor: Pos = { x: 0, y: 0 };
   private pendingEnter?: EnterResult;
+  /** Shown once the board is back after a scene change (e.g. waking up at the inn). */
+  private pendingMessage?: string;
   private travelling = false;
   /**
    * Undo for the last plain move (§7.3): kept while nothing else happened since – no ability, item,
@@ -69,6 +73,10 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
   private closeUp?: CloseUp;
   /** Incremented per scene start; stale async loops from a previous start exit. */
   private generation = 0;
+  /** Free exploration (§8.10): the selected hero, whether the player is idle on the map, action counter. */
+  private explorer?: string;
+  private exploreIdle = false;
+  private actions = 0;
 
   constructor() {
     super("board");
@@ -82,9 +90,12 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
     return this.rpg.ctx;
   }
 
-  init(data: { enter?: EnterResult }) {
+  init(data: { enter?: EnterResult; message?: string }) {
     this.pendingEnter = data?.enter;
+    this.pendingMessage = data?.message;
     this.travelling = false;
+    this.exploreIdle = false;
+    this.wandering = undefined;
   }
 
   create() {
@@ -97,14 +108,31 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
     // Map rotation works in every state (menus, targeting, enemy turns).
     this.router.onGlobalAction = (a) => {
       if (a !== "rotateLeft" && a !== "rotateRight") return false;
-      // Rotate around the cursor cell: it keeps its place on screen.
+      // Animated rotation around the cursor cell: it keeps its place on screen the whole time.
+      if (this.view.isRotating) return true;
       const cam = this.cameras.main;
       cam.panEffect.reset();
       const before = this.screenOf(this.cursor);
-      this.view.rotate(a === "rotateLeft" ? -1 : 1);
-      this.applyCameraBounds();
-      const after = this.view.cellTop(this.cursor);
-      cam.setScroll(after.x - before.x, after.y - before.y);
+      cam.useBounds = false; // the map swings beyond its old limits while turning
+      // Sub-pixel positions while turning: snapping everything to whole pixels makes the turn judder.
+      const snap = cam.roundPixels;
+      cam.setRoundPixels(false);
+      const pivot = { ...this.cursor };
+      void this.view
+        .rotate(
+          a === "rotateLeft" ? -1 : 1,
+          () => {
+            const after = this.view.cellTop(pivot);
+            cam.setScroll(after.x - before.x, after.y - before.y);
+          },
+          ROTATE_MS_BY_SPEED[Math.min(5, Math.max(1, getSession().settings.rotateSpeed ?? 3)) - 1],
+        )
+        .then(() => {
+          this.applyCameraBounds();
+          cam.useBounds = true;
+          cam.setScroll(Math.round(cam.scrollX), Math.round(cam.scrollY));
+          cam.setRoundPixels(snap);
+        });
       sfx("cursor");
       return true;
     };
@@ -139,6 +167,11 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
   private async start() {
     const gen = ++this.generation;
     try {
+      if (this.pendingMessage) {
+        const text = this.pendingMessage;
+        this.pendingMessage = undefined;
+        await showMessage(this, this.router, this.ctx, text);
+      }
       if (this.pendingEnter) {
         const r = this.pendingEnter;
         this.pendingEnter = undefined;
@@ -155,7 +188,17 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
   // ---------- main loop ----------
 
   private async loop(gen: number) {
+    let tactics = false;
     while (gen === this.generation && !this.travelling) {
+      if (isExploring(this.ctx)) {
+        if (tactics) void banner(this, "Area clear", 700);
+        tactics = false;
+        await this.explore(gen);
+        if (this.travelling) return;
+        if (isGameOver(this.ctx)) return this.gameOver();
+        continue;
+      }
+      tactics = true;
       const { actor, events } = nextTurn(this.ctx);
       await this.play(events);
       if (!actor) {
@@ -186,7 +229,7 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
           const piece = board(this.ctx).pieces[e.piece];
           const npc = piece?.faction === "npc";
           if (!npc && piece) this.follow({ x: e.path[e.path.length - 1].x, y: e.path[e.path.length - 1].y });
-          await this.view.animateMove(e.piece, e.path, e.mode, npc);
+          await this.view.animateMove(e.piece, e.path, e.mode, npc || isExploring(this.ctx));
           break;
         }
         case "damage": {
@@ -232,8 +275,83 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
         case "fieldEffect":
         case "trap":
           this.view.refreshOverlays();
-          if (e.type === "trap" && e.triggeredBy) this.hud.toast("A trap snaps shut!", COLORS.highlight);
+          if (e.type === "trap" && e.triggeredBy) {
+            this.hud.toast("A trap snaps shut!", COLORS.highlight);
+            const t = this.view.cellTop(e);
+            popup(this, t.x, t.y - 30, "Trap!", COLORS.bad, UI_DEPTH - 5);
+            this.cameras.main.shake(180, 0.004);
+            await wait(this, 350);
+          }
           break;
+        case "terrain":
+          this.view.setTerrain(e, e.terrain);
+          break;
+        case "decor":
+          this.view.setDecor(e, e.decor);
+          break;
+        case "gates":
+          this.view.refreshGates();
+          break;
+        case "shock": {
+          // the bolt: every cell it ran through flashes
+          this.view.highlight("shock", e.cells, HL.area, 1);
+          this.cameras.main.flash(120, 255, 255, 200);
+          await wait(this, 350);
+          this.view.clearHighlight("shock");
+          break;
+        }
+        case "melt": {
+          this.view.refreshOverlays();
+          const t = this.view.cellTop(e);
+          popup(this, t.x, t.y - 20, "Melt", COLORS.mp, UI_DEPTH - 5);
+          break;
+        }
+        case "wake": {
+          this.view.sync();
+          const a = this.view.pieceAnchor(e.piece);
+          if (a) {
+            this.follow(board(this.ctx).pieces[e.piece] ?? this.cursor);
+            popup(this, a.x, a.y - 36, "!", COLORS.bad, UI_DEPTH - 5);
+          }
+          const leader = board(this.ctx).pieces[e.piece]?.members[0];
+          const name = leader ? board(this.ctx).chars[leader]?.name : undefined;
+          this.hud.toast(`${name ?? "Something"} rises from the remains!`, COLORS.bad);
+          await wait(this, 600);
+          break;
+        }
+        case "sensed": {
+          // Show how far Discover reached, briefly, then what it found.
+          const reach: Pos[] = [];
+          for (let dy = -e.radius; dy <= e.radius; dy++)
+            for (let dx = -e.radius; dx <= e.radius; dx++) {
+              const p = { x: e.center.x + dx, y: e.center.y + dy };
+              if (this.view.hasCell(p)) reach.push(p);
+            }
+          this.view.highlight("discover", reach, HL.ability, 0.55);
+          await wait(this, 700);
+          this.view.clearHighlight("discover");
+          this.view.refreshOverlays();
+          if (!e.cells.length) this.hud.toast("Nothing hidden nearby.", COLORS.dim);
+          break;
+        }
+        case "defused": {
+          this.view.refreshOverlays();
+          const t = this.view.cellTop(e);
+          popup(this, t.x, t.y - 26, "Defused!", COLORS.good, UI_DEPTH - 5);
+          await wait(this, 300);
+          break;
+        }
+        case "uncovered": {
+          this.view.refreshOverlays();
+          const t = this.view.cellTop(e);
+          const text = e.what === "trap" ? "A trap!" : e.what === "event" ? "Found something!" : "";
+          if (text) {
+            popup(this, t.x, t.y - 26, text, COLORS.good, UI_DEPTH - 5);
+            this.hud.toast(text, COLORS.good);
+          }
+          await wait(this, 300);
+          break;
+        }
         case "join":
           await this.view.animateJoin(e.char, e.from, e.to);
           break;
@@ -316,11 +434,19 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
         });
         if (r === 0) {
           this.ctx.state.gold -= price;
-          sfx("save");
-          await fadeOut(this, 300);
+          // Night falls: black screen, the sleep jingle, and the party wakes up by the beds.
+          await fadeOut(this, 600);
+          sfx("sleep");
           await this.play(restParty(this.ctx));
-          await fadeIn(this, 300);
-          await showMessage(this, this.router, this.ctx, "Everyone feels *refreshed*!");
+          await wait(this, 3000);
+          if (req.wakeAt) {
+            this.closeUp?.destroy();
+            this.closeUp = undefined;
+            await this.travelTo(req.wakeAt.map, req.wakeAt.spawn, { quiet: true, message: "The party has *recovered*!" });
+            return;
+          }
+          await fadeIn(this, 600);
+          await showMessage(this, this.router, this.ctx, "The party has *recovered*!");
         }
         break;
       }
@@ -441,6 +567,8 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
           return true;
         },
         onPointerMove: (p) => {
+          // While the map turns, cells slide under a resting pointer: hovering would make the cursor jump.
+          if (this.view.isRotating) return;
           const c = this.view.cellAt(p.worldX, p.worldY);
           if (c && !samePos(c, this.cursor)) {
             this.cursor = c;
@@ -450,6 +578,7 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
           }
         },
         onPointerDown: (p) => {
+          if (this.view.isRotating) return;
           const c = this.view.cellAt(p.worldX, p.worldY);
           if (!c) return;
           // Touch has no hover: when choosing a target, the first tap previews, the second confirms.
@@ -481,7 +610,7 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
     this.moveCursor(piece);
     await wait(this, 120);
     for (;;) {
-      if (this.travelling || !pieceOf(this.ctx, actor) || !isAlive(this.ctx.state.heroes[actor])) {
+      if (this.travelling || !pieceOf(this.ctx, actor) || !isAlive(this.ctx.state.heroes[actor]) || isExploring(this.ctx)) {
         if (!this.travelling && board(this.ctx).turn.current === actor) await this.play(endTurn(this.ctx, actor));
         return;
       }
@@ -511,6 +640,155 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
     }
   }
 
+  // ---------- free exploration (§8.10) ----------
+
+  /**
+   * No enemies on the board: no rounds. The selected hero walks to any tapped reachable cell;
+   * tapping another hero selects it, tapping the selected one opens its commands. Villagers
+   * wander on a timer while the player is idle. Returns as soon as an enemy shows up.
+   */
+  private async explore(gen: number) {
+    await this.play(exploreTick(this.ctx, { statuses: false }));
+    this.undoMove = null;
+    const timer = this.time.addEvent({ delay: 2200, loop: true, callback: () => this.background(() => exploreWander(this.ctx)) });
+    // Field effects run on a clock while exploring: fires spread, ice melts (§8.10).
+    const clock = this.time.addEvent({ delay: this.ctx.db.config.exploreRoundMs ?? 1500, loop: true, callback: () => this.background(() => exploreTime(this.ctx)) });
+    let selected: string | undefined;
+    try {
+      while (gen === this.generation && !this.travelling && isExploring(this.ctx) && !isGameOver(this.ctx)) {
+        const actor = this.exploreActor();
+        if (!actor) {
+          await wait(this, 200);
+          continue;
+        }
+        if (actor !== selected) {
+          selected = actor;
+          this.hud.refresh(actor);
+          this.cursorBack(actor);
+        }
+        this.exploreIdle = true;
+        const p = await this.selectCell({
+          allowMenu: true,
+          onHover: (c) => {
+            const o = moveOptions(this.ctx, actor).get(key(c));
+            this.view.highlight("path", o && o.mode === "walk" ? o.path : [], HL.path, 0.8);
+          },
+        });
+        this.exploreIdle = false;
+        this.view.clearHighlight("path");
+        await this.waitForWander();
+        if (p === "menu") await this.mainMenu();
+        else if (p === null) this.cursorBack(actor);
+        else await this.exploreAt(actor, p);
+        this.undoMove = null;
+        await this.passTime();
+      }
+    } finally {
+      timer.remove();
+      clock.remove();
+      this.exploreIdle = false;
+    }
+    if (!this.travelling && !isExploring(this.ctx)) {
+      // An enemy appeared (quest, script, a rising skeleton): back to turn-based tactics, round 1.
+      await this.play(startTactics(this.ctx));
+      void banner(this, "Enemies!", 700);
+      await wait(this, 400);
+    }
+  }
+
+  /** The selected hero, falling back to the first standing hero piece. */
+  private exploreActor(): string | undefined {
+    const ok = (id?: string) => !!id && !!pieceOf(this.ctx, id) && isAlive(this.ctx.state.heroes[id]);
+    if (!ok(this.explorer)) this.explorer = heroPieces(this.ctx).map((p) => aliveMembers(this.ctx, p)[0]?.id).find(ok);
+    this.hud.explorer = this.explorer;
+    return this.explorer;
+  }
+
+  private async exploreAt(actor: string, p: Pos) {
+    const ctx = this.ctx;
+    const own = mustPieceOf(ctx, actor);
+    if (samePos(p, own)) {
+      const who = await this.chooseMember(own, actor);
+      if (!who) return this.cursorBack(actor);
+      this.explorer = this.hud.explorer = who;
+      this.hud.refresh(who);
+      for (let r = await this.commandBox(who); r === "again"; r = await this.commandBox(who)) {
+        if (this.travelling || !isExploring(this.ctx) || !pieceOf(this.ctx, who) || !isAlive(this.ctx.state.heroes[who])) return;
+        await this.passTime(); // abilities are ready again before the box reopens
+        this.cursorBack(who);
+      }
+      this.cursorBack(who);
+      return;
+    }
+    const other = piecesAt(ctx, p).find((pc) => pc.faction === "hero" && !pc.fallen && aliveMembers(ctx, pc).length);
+    if (other) {
+      sfx("cursor");
+      this.explorer = aliveMembers(ctx, other)[0].id;
+      return;
+    }
+    const option = moveOptions(ctx, actor).get(key(p));
+    if (option) return this.moveTo(actor, option);
+    if (charsAt(ctx, p, { includeFallen: true }).length) return this.inspect(p, actor);
+    sfx("buzzer");
+  }
+
+  /** A party picks which member gives the commands. */
+  private async chooseMember(piece: ReturnType<typeof mustPieceOf>, current: string): Promise<string | null> {
+    const members = aliveMembers(this.ctx, piece);
+    if (members.length <= 1) return members[0]?.id ?? null;
+    const r = await pick(this, this.router, members.map((c) => ({ label: c.name })), {
+      ...this.menuPos(piece),
+      title: "Who?",
+      initial: Math.max(0, members.findIndex((c) => c.id === current)),
+    });
+    return r === null ? null : members[r].id;
+  }
+
+  private wandering?: Promise<void>;
+  /** Action count at the last exploration time step. */
+  private tickedAt = 0;
+
+  /** While exploring, one quiet round passes after each action (§8.10). */
+  private async passTime() {
+    if (this.actions === this.tickedAt || this.travelling || !isExploring(this.ctx)) return;
+    this.tickedAt = this.actions;
+    await this.play(exploreTick(this.ctx));
+  }
+
+  /**
+   * Timers while exploring (a villager's step, the field-effect clock): only while the player is
+   * idle on the map and nothing else is playing – ice never melts under a sliding party.
+   */
+  private background(run: () => GameEvent[]) {
+    if (!this.exploreIdle || this.wandering || this.travelling || !isExploring(this.ctx)) return;
+    const events = run();
+    if (!events.length) return;
+    this.wandering = this.play(events).finally(() => (this.wandering = undefined));
+  }
+
+  private async waitForWander() {
+    while (this.wandering) await this.wandering;
+  }
+
+  /**
+   * A move ended early (ice, trap, rising enemy, §7.4/§7.5). A skeleton that rose within reach
+   * attacks at once: ambush.
+   */
+  private async afterInterrupt(res: { ambush?: string; final: Pos }) {
+    await this.afterChange();
+    const attacker = res.ambush ? board(this.ctx).pieces[res.ambush] : undefined;
+    const leader = attacker?.members[0];
+    if (!attacker || !leader || this.travelling) return;
+    await wait(this, 350);
+    await this.battle(() => engage(this.ctx, leader, res.final, { kind: "ambush" }));
+  }
+
+  /** Something happened (ability, item, interaction, travel): no undo, time moves on while exploring. */
+  private spend() {
+    this.undoMove = null;
+    this.actions++;
+  }
+
   /** Clicking another cell: show stats of a character there. */
   /**
    * Clicking another cell: for an enemy (or another hero) piece show where it can move/attack
@@ -524,7 +802,7 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
       return;
     }
     const own = mustPieceOf(ctx, actor);
-    const mover = piecesAt(ctx, p).find((pc) => pc.faction !== "npc" && !pc.fallen && pc.members.length && pc.id !== own.id);
+    const mover = piecesAt(ctx, p).find((pc) => pc.faction !== "npc" && !pc.fallen && !pc.dormant && pc.members.length && pc.id !== own.id);
     if (mover) {
       const reach = [...moveOptions(ctx, mover.members[0], { ignoreMoved: true }).values()].map((o) => o.pos);
       this.view.highlight("inspect", reach, mover.faction === "enemy" ? HL.attack : HL.move, 0.8);
@@ -566,22 +844,28 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
     const ctx = this.ctx;
     const piece = mustPieceOf(ctx, actor);
     const canMove = canPieceMove(ctx, piece);
+    // Join/Leave Party live in their own "Party" entry; they share the turn's ability action (§8.1).
     const abilities = boardAbilities(ctx, actor);
-    const canAbility = !abilityUsed(ctx, actor) && abilities.some((a) => canUseBoardAbility(ctx, actor, a));
+    const isParty = (a: string) => !!ctx.db.ability(a).special;
+    const canAbility = !abilityUsed(ctx, actor) && abilities.some((a) => !isParty(a) && canUseBoardAbility(ctx, actor, a));
+    const canParty = !abilityUsed(ctx, actor) && abilities.some((a) => isParty(a) && canUseBoardAbility(ctx, actor, a));
     const items = boardItems(ctx);
     const partyRest = piece.members.filter((m) => m !== actor && isAlive(ctx.state.heroes[m]) && !board(ctx).turn.acted.includes(m));
     const hero = ctx.state.heroes[actor];
     const npcHere = this.npcOnCell(actor);
+    // While exploring (§8.10) moving is a tap on the map and there are no turns to end.
+    const exploring = isExploring(ctx);
     const entries: { label: string; id: string; disabled?: boolean }[] = [
       ...(npcHere ? [{ label: "Act", id: "act" }] : []),
-      this.undoMove?.actor === actor ? { label: "Undo Move", id: "undo" } : { label: "Move", id: "move", disabled: !canMove },
+      ...(exploring ? [] : [this.undoMove?.actor === actor ? { label: "Undo Move", id: "undo" } : { label: "Move", id: "move", disabled: !canMove }]),
       { label: "Ability", id: "ability", disabled: !canAbility },
       { label: "Item", id: "item", disabled: items.length === 0 },
       { label: "Stats", id: "stats" },
-      { label: "End Turn", id: "end" },
+      { label: "Party", id: "party", disabled: !canParty },
+      ...(exploring ? [] : [{ label: "End Turn", id: "end" }]),
     ];
-    if (partyRest.length) entries.push({ label: "End Party", id: "endParty" });
-    const initial = !canMove && !canAbility ? entries.findIndex((e) => e.id === "end") : entries.findIndex((e) => !e.disabled && e.id !== "undo");
+    if (partyRest.length && !exploring) entries.push({ label: "End Party", id: "endParty" });
+    const initial = !canMove && !canAbility && !exploring ? entries.findIndex((e) => e.id === "end") : entries.findIndex((e) => !e.disabled && e.id !== "undo");
     const r = await pick(this, this.router, entries, {
       ...this.menuPos(piece),
       title: hero.name,
@@ -601,15 +885,25 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
       case "undo":
         this.restoreUndo(actor);
         return "again";
-      case "ability":
+      // After an ability, item or party action the menus close and the map is back (tap the hero for more).
+      case "ability": {
+        const before = this.actions;
         await this.abilityFlow(actor);
-        return "again";
-      case "item":
+        return this.actions !== before ? "roam" : "again";
+      }
+      case "item": {
+        const before = this.actions;
         await this.itemFlow(actor);
-        return "again";
+        return this.actions !== before ? "roam" : "again";
+      }
       case "stats":
         await showStats(this, this.router, ctx, hero);
         return "again";
+      case "party": {
+        const before = this.actions;
+        await this.partyFlow(actor);
+        return this.actions !== before ? "roam" : "again";
+      }
       case "act":
         if (npcHere) await this.closeUpSession(actor, npcHere);
         return "again";
@@ -648,17 +942,30 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
       this.moveCursor(piece);
       return;
     }
-    const option = opts.get(key(target))!;
+    await this.moveTo(actor, opts.get(key(target))!);
+  }
+
+  /** Carries out a chosen move option: attack, travel, interact or a plain walk. */
+  private async moveTo(actor: string, option: MoveOption) {
+    const target = option.pos;
     switch (option.kind) {
       case "engage":
-        if (await this.confirm("Attack?", target)) await this.battle(() => engage(this.ctx, actor, target));
+        await this.battle(() => engage(this.ctx, actor, target)); // moving onto an enemy attacks (§8.4)
         break;
       case "exit": {
         const label = option.exit!.label ?? this.ctx.db.map(option.exit!.to).name;
-        if (await this.confirm(`Travel to ${label}?`, target)) {
+        // Doors (and stairs) are simply walked through; map exits ask first.
+        if (option.exit!.door || (await this.confirm(`Travel to ${label}?`, target))) {
+          this.spend();
           const res = executeMove(this.ctx, actor, target);
           await this.play(res.events);
-          await this.travel(option);
+          if (res.interrupted) await this.afterInterrupt(res); // ice, a hidden trap or a rising skeleton
+          else if (option.exit!.together) {
+            // split floors (§5.3): wait here until every team stands on its stairs
+            const ready = togetherReady(this.ctx);
+            if (ready) await this.travelGroups(ready);
+            else this.hud.toast("Waiting for the others at their stairs…", COLORS.highlight);
+          } else await this.travel(option);
         }
         break;
       }
@@ -668,7 +975,12 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
       case "move": {
         const snapshot = this.rpg.snapshot();
         const res = executeMove(this.ctx, actor, target);
+        this.actions++;
         await this.play(res.events);
+        if (res.ambush) {
+          await this.afterInterrupt(res);
+          break;
+        }
         // step-triggered events on the landing cell
         const triggers = stepTriggers(this.ctx, res.final);
         for (const out of triggers) await this.outcome(out);
@@ -689,9 +1001,15 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
     const snapshot = this.rpg.snapshot();
     const res = executeMove(this.ctx, actor, option.pos);
     await this.play(res.events);
+    if (res.interrupted) {
+      this.actions++;
+      await this.afterInterrupt(res);
+      return;
+    }
     const clean = !hadEffects(res.events);
     const result = await this.closeUpSession(actor, option.targets![0], clean ? snapshot : undefined);
     if (result === "undone") return;
+    this.actions++;
     await this.afterChange();
     // Leaving without doing anything keeps the approach undoable from the command box.
     if (result === "left" && clean) this.undoMove = { actor, snapshot };
@@ -749,7 +1067,7 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
         if (r === null || r === options.length) break; // Back / Leave
         await this.outcome(performInteraction(this.ctx, actor, npcPieceId, options[r]));
         acted = true;
-        this.undoMove = null;
+        this.spend();
         await this.afterChange();
       }
     } finally {
@@ -773,12 +1091,16 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
 
   private async abilityFlow(actor: string) {
     const ctx = this.ctx;
-    const all = boardAbilities(ctx, actor).map((id) => ctx.db.ability(id));
+    const all = boardAbilities(ctx, actor)
+      .map((id) => ctx.db.ability(id))
+      .filter((a) => !a.special); // Join/Leave Party are under "Party"
     const pos = this.menuPos(mustPieceOf(ctx, actor));
     const hero = ctx.state.heroes[actor];
     for (;;) {
       const ability = await pickAbility(this, this.router, all, {
         ...pos,
+        flat: true, // on the board: one list, scrolling beyond 5
+        maxRows: 5,
         title: `${hero.name}  MP ${hero.mp}`,
         usable: (a) => canUseBoardAbility(this.ctx, actor, a.id),
         onHighlight: (a) => this.preview(a ? abilityTargeting(this.ctx, actor, a.id) : null),
@@ -787,18 +1109,47 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
         this.cursorBack(actor);
         return;
       }
-      if (ability.special === "leaveParty") {
-        this.undoMove = null;
-        await this.play(useBoardAbility(this.ctx, actor, ability.id));
-        return;
-      }
-      const target = await this.pickTarget(abilityTargeting(this.ctx, actor, ability.id)!);
+      // Abilities cast on oneself (Discover, Hide, Chakra) go off at once – no target to pick.
+      const self = ability.board?.targets.length === 1 && ability.board.targets[0] === "self";
+      const target = self ? { x: mustPieceOf(this.ctx, actor).x, y: mustPieceOf(this.ctx, actor).y } : await this.pickTarget(abilityTargeting(this.ctx, actor, ability.id)!);
+      this.view.clearHighlight("range", "valid");
       if (!target) continue;
-      this.undoMove = null;
+      this.spend();
       await this.play(useBoardAbility(this.ctx, actor, ability.id, target));
       await this.afterChange();
       this.cursorBack(actor);
       return;
+    }
+  }
+
+  /** Join or leave a party (§8.1) – uses the turn's ability action, like an ability. */
+  private async partyFlow(actor: string) {
+    const ctx = this.ctx;
+    const piece = mustPieceOf(ctx, actor);
+    const options = [
+      { id: "join_party", label: "Join Party" },
+      { id: "leave_party", label: "Leave Party" },
+    ].map((o) => ({ ...o, disabled: !canUseBoardAbility(ctx, actor, o.id) }));
+    for (;;) {
+      const r = await pick(this, this.router, options, {
+        ...this.menuPos(piece),
+        title: "Party",
+        initial: Math.max(0, options.findIndex((o) => !o.disabled)),
+        onHighlight: (i) => this.preview(options[i]?.id === "join_party" ? abilityTargeting(this.ctx, actor, "join_party") : null),
+      });
+      this.view.clearHighlight("range", "valid");
+      if (r === null) return this.cursorBack(actor);
+      if (options[r].id === "leave_party") {
+        this.spend();
+        await this.play(useBoardAbility(this.ctx, actor, "leave_party"));
+        return this.cursorBack(actor);
+      }
+      const target = await this.pickTarget(abilityTargeting(this.ctx, actor, "join_party")!);
+      if (!target) continue;
+      this.spend();
+      await this.play(useBoardAbility(this.ctx, actor, "join_party", target));
+      await this.afterChange();
+      return this.cursorBack(actor);
     }
   }
 
@@ -831,10 +1182,11 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
       const t = itemTargeting(this.ctx, actor, ids[r])!;
       const target = await this.pickTarget(t);
       if (!target) continue;
-      this.undoMove = null;
+      this.spend();
       await this.play(useBoardItem(this.ctx, actor, ids[r], target));
       await this.afterChange();
       this.cursorBack(actor);
+      return;
     }
   }
 
@@ -956,18 +1308,27 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
 
   private async travel(option: MoveOption) {
     this.travelling = true;
-    sfx("travel");
+    sfx(option.exit!.door ? "step" : "travel");
     await fadeOut(this, 350);
     const result = this.rpg.travel(option.exit!);
     this.scene.restart({ enter: result });
   }
 
-  private async travelTo(map: string, spawn: string) {
+  /** Split floors: every team arrives at the spawn of the stairs it stood on (§5.3). */
+  private async travelGroups(t: TogetherTravel) {
     this.travelling = true;
-    sfx("travel");
+    sfx("step");
     await fadeOut(this, 350);
-    const result = this.rpg.enter(map, spawn);
+    const result = this.rpg.enterGroups(t.to, t.groups);
     this.scene.restart({ enter: result });
+  }
+
+  private async travelTo(map: string, spawn: string, opts: { quiet?: boolean; message?: string } = {}) {
+    this.travelling = true;
+    if (!opts.quiet) sfx("travel");
+    await fadeOut(this, opts.quiet ? 0 : 350);
+    const result = this.rpg.enter(map, spawn);
+    this.scene.restart({ enter: result, message: opts.message });
   }
 
   private async gameOver() {

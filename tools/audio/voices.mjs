@@ -10,7 +10,9 @@
 //   ensemble      detuned oscillators with slow independent drift = chorus
 //                 (strings, heat-haze pad)
 //   loopDrone     sustained, perfectly periodic drone for looping songs
-import { SR, TAU, noteFreq, rng, OnePole, adsr, osc, glideFactor } from './synth.mjs';
+//   reed          detuned "musette" reed pair (accordion / squeezebox)
+//   gullCry       short rise-then-fall pitch swoop (distant seagull)
+import { SR, TAU, noteFreq, rng, OnePole, adsr, osc, glideFactor, tone, mixInto } from './synth.mjs';
 
 const endFade = (out, sr, ms = 20) => {
   const n = Math.min(out.length, Math.round((ms / 1000) * sr));
@@ -260,4 +262,45 @@ export function loopDrone(o, loopLen) {
     if (i >= loopLen) out[i - loopLen] = v * (o.vol ?? 1);
   }
   return out;
+}
+
+// ----------------------------------------------------------------- reed ----
+/**
+ * Accordion / squeezebox: `reeds` (cents offsets, e.g. [-7, 0, 7]) of a pulse
+ * + saw mix rendered with tone() and summed, so the detuned reeds beat like a
+ * musette register. All tone() options (env, vibrato, lp, glideFrom) apply.
+ * `sawMix` (0..1) blends in a saw reed for a brighter, fiddle-ish edge.
+ */
+export function reed(o) {
+  const { reeds = [-7, 0, 7], sawMix = 0.4, duty = 0.3, ...rest } = o;
+  const f = noteFreq(o.freq);
+  const parts = [];
+  reeds.forEach((cents, k) => {
+    const fr = f * 2 ** (cents / 1200);
+    parts.push(tone({ ...rest, wave: 'square', duty, freq: fr, phase: (k * 0.37) % 1 }));
+    if (sawMix > 0) parts.push(tone({ ...rest, wave: 'saw', freq: fr, phase: (k * 0.61) % 1, vol: (rest.vol ?? 1) * sawMix }));
+  });
+  const out = new Float32Array(Math.max(...parts.map((p) => p.length)));
+  for (const p of parts) mixInto(out, p, 0, 1 / Math.sqrt(parts.length));
+  return out;
+}
+
+// ------------------------------------------------------------ gull cry ----
+/**
+ * Seagull-like "kee-ow": the pitch rises quickly above the written note, then
+ * falls well below it over the note. Triangle/sine through a low-pass, a bit
+ * of fast warble. Options: rise (ratio), fall (ratio), riseTime (s), plus tone() options.
+ */
+export function gullCry(o) {
+  const f = noteFreq(o.freq);
+  const dur = o.dur ?? 0.4;
+  const rise = o.rise ?? 1.12;
+  const fall = o.fall ?? 0.7;
+  const rt = o.riseTime ?? 0.07;
+  const freqFn = (t) => {
+    const w = 1 + 0.012 * Math.sin(TAU * 23 * t);
+    if (t < rt) return f * 0.92 * (rise / 0.92) ** (t / rt) * w;
+    return f * rise * (fall / rise) ** Math.min(1, (t - rt) / Math.max(0.05, dur - rt)) * w;
+  };
+  return tone({ wave: 'triangle', env: { a: 0.02, d: 0.1, s: 0.8, r: 0.12 }, ...o, freqFn });
 }

@@ -10,7 +10,7 @@ import type { Ctx } from "../core/context";
 export const SFX = [
   "cursor", "confirm", "cancel", "buzzer", "step", "hit", "crit", "miss", "magic_fire", "magic_ice", "magic_thunder",
   "heal", "status", "ko", "levelup", "victory", "defeat", "coin", "travel", "chest", "trap", "freeze", "burn",
-  "encounter", "escape", "save", "dialog_blip", "party",
+  "encounter", "escape", "save", "dialog_blip", "party", "sleep", "zap", "gate", "splash", "grow", "cut", "gulp", "spit",
 ] as const;
 export type SfxName = (typeof SFX)[number];
 
@@ -34,6 +34,7 @@ export function getAudio(): AudioManager | null {
 export function musicTracks(db: Database): string[] {
   const set = new Set<string>(Object.values(db.config.music ?? {}));
   for (const m of db.maps.values()) if (m.music) set.add(m.music);
+  for (const e of db.enemies.values()) if (e.music) set.add(e.music);
   return [...set];
 }
 
@@ -81,6 +82,37 @@ export function sfxForEvent(ctx: Ctx, e: GameEvent) {
       break;
     case "trap":
       sfx(e.triggeredBy ? "trap" : "confirm");
+      break;
+    case "terrain":
+      sfx("burn", { rate: 0.8, volume: 0.6 });
+      break;
+    case "decor":
+      sfx(e.cause === "cut" ? "cut" : e.cause === "grown" ? "grow" : "burn", { volume: 0.6 });
+      break;
+    case "shock":
+      sfx("zap");
+      break;
+    case "gates":
+      sfx("gate", { volume: 0.7 });
+      break;
+    case "swallow":
+      sfx("gulp");
+      break;
+    case "spit":
+    case "release":
+      sfx("spit");
+      break;
+    case "summoned":
+      sfx("status", { rate: 0.6 });
+      break;
+    case "melt":
+      sfx("freeze", { rate: 0.6 });
+      break;
+    case "wake":
+      sfx("ko", { rate: 0.7 });
+      break;
+    case "uncovered":
+      sfx("chest", { rate: 1.2 });
       break;
     case "steal":
       sfx(e.item ? "coin" : "buzzer");

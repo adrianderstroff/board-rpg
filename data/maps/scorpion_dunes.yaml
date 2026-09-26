@@ -74,10 +74,14 @@ layers:
 
 spawns:
   from_village: { x: 1, y: 7, dir: E }
+  from_mountain: { x: 16, y: 6, dir: W }
+  from_south: { x: 9, y: 12, dir: N }
 
 exits:
   - { x: 0, y: 7, dir: W, to: sandhollow, spawn: from_dunes, label: Sandhollow }
-  - { x: 17, y: 6, dir: E, to: sandhollow, spawn: from_dunes, label: Road to the Oasis, enabled: { flag: road_beyond_open } }
+  - { x: 17, y: 6, dir: E, to: temple_mountain, spawn: from_dunes, label: Temple Mountain, enabled: { flag: road_beyond_open } }
+  # into the Endless Dunes (§18.10) – where the lost find the Mirage Tower
+  - { x: 9, y: 13, dir: S, to: endless_dunes, spawn: north, label: Endless Dunes, enabled: { flag: monks_trial } }
 
 enemies:
   - { id: scorp_a, enemy: sand_scorpion, x: 5, y: 9, dir: E }

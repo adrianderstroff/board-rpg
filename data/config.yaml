@@ -2,7 +2,7 @@
 title: Board RPG
 
 start:
-  map: sandhollow
+  map: saltmere_harbor
   spawn: start
   party: [aldric, mira, kit, tarek]
   gold: 300
@@ -11,7 +11,7 @@ start:
     antidote: 2
     phoenix_feather: 1
     fire_bomb: 1
-  quest: road_to_oasis
+  quest: into_the_desert
 
 maxLevel: 50
 maxPartySize: 4
@@ -38,3 +38,5 @@ music:
   boss: boss
 sellRatio: 0.5
 boardBurnMinHp: 1
+# Free exploration (no enemies): field effects (fire spreading, ice melting) advance by time.
+exploreRoundMs: 1500

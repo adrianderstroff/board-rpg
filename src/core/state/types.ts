@@ -43,6 +43,17 @@ export interface Piece {
   home?: Pos;
   /** Fallen hero marker piece: lies on the cell, no turns, passable. */
   fallen?: boolean;
+  /** Dormant enemy: looks like remains, no turns, blocks, rises when heroes come close (§7.5). */
+  dormant?: boolean;
+  /**
+   * The member whose turn start triggers the cell's field effects – the one who moved the piece
+   * there (§7.4). Falls back to the next member when that one leaves or falls.
+   */
+  anchor?: string;
+  /** Rose from dormancy (Discover) in this round: takes no turn before the next one (§7.5). */
+  waitRound?: number;
+  /** Last cell before the piece stepped onto ice: where it goes back to if the ice melts under it (§5.4). */
+  iceOrigin?: Pos;
 }
 
 export interface FieldEffectInst {
@@ -51,6 +62,8 @@ export interface FieldEffectInst {
   effect: string;
   /** Remaining rounds. */
   rounds: number;
+  /** Fire on burnt terrain: spreads to flammable neighbours at the next round start (§5.4). */
+  spreads?: boolean;
 }
 
 export interface TrapInst {
@@ -79,6 +92,9 @@ export interface BoardState {
   fieldEffects: FieldEffectInst[];
   traps: TrapInst[];
   turn: TurnState;
+  /** Gate / switch states (§5.8), kept up to date by updateGates. */
+  gates?: Record<string, boolean>;
+  switches?: Record<string, boolean>;
   /** Enemy types whose stats were revealed on this board this round (ambush reduction). */
   perceivedRound?: number;
   nextId: number;
@@ -94,6 +110,18 @@ export interface MapMemory {
   defeated: string[];
   removedEvents: string[];
   triggered: string[];
+  /** Changed terrain by cell key "x,y" (burnt flowers…, §5.4). */
+  terrain?: Record<string, string>;
+  /** Decor changed per cell "x,y": null = gone (burnt/cut), a decor id = grown (brambles) (§5.4, §5.7). */
+  decor?: Record<string, string | null>;
+  /** Ancient traps revealed by Discover (still armed, now visible). */
+  revealed?: string[];
+  /** Hidden events uncovered. */
+  discovered?: string[];
+  /** Ancient traps triggered or disarmed. */
+  sprung?: string[];
+  /** Latching switches pressed for good (§5.8). */
+  latched?: string[];
 }
 
 export interface Records {

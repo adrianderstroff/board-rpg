@@ -53,5 +53,7 @@
   "holy": 51,
   "shell": 52,
   "status_flying": 53,
-  "status_defend": 54
+  "status_defend": 54,
+  "status_empower": 55,
+  "status_bolster": 56
 }

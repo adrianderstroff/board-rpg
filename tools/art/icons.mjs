@@ -13,7 +13,7 @@ export const ICON_NAMES = [
   'sign_weapon', 'sign_item', 'sign_magic', 'sign_inn',
   'heart', 'star', 'fire', 'ice', 'thunder', 'earth', 'holy', 'shell',
   // appended later – keep existing indices stable
-  'status_flying', 'status_defend',
+  'status_flying', 'status_defend', 'status_empower', 'status_bolster',
 ];
 
 // ---------------------------------------------------------------- helpers
@@ -380,8 +380,22 @@ I.status_defend = (c) => {
   c.fillRect(7, 4, 1, 8, P.yellow); c.fillRect(4, 6, 9, 1, P.yellow);
 };
 
+I.status_empower = (c) => {
+  // red fist-and-arrow: strength up
+  c.polygon([[8, 1], [14, 7], [10, 7], [10, 14], [6, 14], [6, 7], [2, 7]], P.red);
+  c.polygon([[8, 1], [8, 14], [6, 14], [6, 7], [2, 7]], P.hotRed);
+  c.line(8, 2, 4, 6, P.white); c.line(10, 8, 10, 13, P.darkRed);
+};
+I.status_bolster = (c) => {
+  // grey stone shield with a green up arrow: defence up
+  c.polygon([[2, 1], [14, 1], [14, 8], [8, 15], [2, 8]], P.slate);
+  c.polygon([[2, 1], [8, 1], [8, 15], [2, 8]], P.grey3);
+  c.polygon([[8, 3], [12, 7], [10, 7], [10, 12], [6, 12], [6, 7], [4, 7]], P.green);
+  c.line(8, 3, 5, 6, P.white);
+};
+
 // ---------------------------------------------------------------- 10x10 status icons
-export const STATUS_NAMES = ['poison', 'sleep', 'stun', 'blind', 'slow', 'haste', 'protect', 'regen', 'hidden', 'stuck', 'flying', 'defend'];
+export const STATUS_NAMES = ['poison', 'sleep', 'stun', 'blind', 'slow', 'haste', 'protect', 'regen', 'hidden', 'stuck', 'flying', 'defend', 'empower', 'bolster'];
 // 8x8 templates; a 1px #181425 outline is added around them (10x10 total).
 const ST = {
   poison: [['...p....', '..pp....', '..pPp...', '.pPPpp..', '.pPpppp.', '.ppppqp.', '.pppqqp.', '..pqqq..'], { p: P.magenta, P: P.pink, q: P.purple }],
@@ -395,6 +409,8 @@ const ST = {
   hidden: [['..ssss..', '.sSssss.', '.sSkkks.', 'sSkwkwks', 'sskkkkss', 'ssskksss', 'ssssssss', 'ssssssss'], { s: P.grey3, S: P.grey2, k: P.navy, w: P.grey1 }],
   stuck: [['...mm...', '..mMmm..', '..mmmm.m', '.mMmmmmm', 'mMmmmmmm', 'mmmmmmmd', 'mmmmmddd', '.dddddd.'], { m: P.clay, M: P.tan, d: P.brown }],
   flying: [['......ww', '....wwwg', '..wwwwwg', 'wwwwwwg.', '.wwwgwg.', '..wg.g..', '..g.....', '........'], { w: P.white, g: P.grey1 }],
+  empower: [['...rr...', '..rRRr..', '.rRRRRr.', 'rrrRRrrr', '...RR...', '...RR...', '...rr...', '...rr...'], { r: P.red, R: P.hotRed }],
+  bolster: [['ssssssss', 'sSssgsss', 'sssgggss', 'ssgggggs', '.sssgss.', '.sssgss.', '..ssss..', '...ss...'], { s: P.slate, S: P.grey2, g: P.green }],
   defend: [['ssssssss', 'sSsyysss', 'syyyyyyq', 'syyyyyyq', '.ssyysq.', '.ssyysq.', '..sssq..', '...sq...'], { s: P.grey2, S: P.white, y: P.gold, q: P.grey3 }],
 };
 export function statusIconSheet() {

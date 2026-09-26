@@ -1,5 +1,5 @@
 import type Phaser from "phaser";
-import { board, charsAt, exitAt, grid, piecesAt } from "../../core/board/board";
+import { board, charsAt, exitAt, grid, isExploring, piecesAt } from "../../core/board/board";
 import { computeStats } from "../../core/chars/character";
 import type { Ctx } from "../../core/context";
 import { currentObjective } from "../../core/script/quests";
@@ -17,6 +17,8 @@ export class Hud {
   private toastY = 44;
   /** Hidden while full-screen-ish UI (the interaction close-up) is open. */
   private hidden = false;
+  /** Selected hero while exploring (§8.10), shown when no one has the turn. */
+  explorer?: string;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -36,8 +38,10 @@ export class Hud {
 
     this.turn?.destroy();
     const b = board(c);
-    const actor = actorId ? (c.state.heroes[actorId] ?? b.chars[actorId]) : undefined;
-    const t = `Round ${b.turn.round}${actor ? ` - ${actor.name}` : ""}`;
+    const exploring = isExploring(c);
+    const id = actorId ?? (exploring ? this.explorer : undefined);
+    const actor = id ? (c.state.heroes[id] ?? b.chars[id]) : undefined;
+    const t = `${exploring ? "Exploring" : `Round ${b.turn.round}`}${actor ? ` - ${actor.name}` : ""}`;
     const tw = measureText(this.scene, t) + 16;
     this.turn = new Panel(this.scene, this.scene.scale.width - tw - 4, 4, tw, 20);
     this.turn.text(8, 5, t, { color: actor?.kind === "enemy" ? COLORS.bad : COLORS.text });

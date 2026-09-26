@@ -43,16 +43,20 @@ await until(`d.activeScenes().includes("title")`);
 await sleep(1500);
 await shot("title");
 
-// Village: command box with the acting hero
+// Village: free exploration (no enemies, §8.10)
 await choose("New Game");
-await until(`!!d.heroTurn() && !!d.menu()`);
+await until(`d.activeScenes().includes("board") && !!d.state().board`);
+await sleep(400);
+await dbg(`(d.skipPrologue(), true)`);
+await until(`d.state().board && d.state().board.mapId === "sandhollow" && !!d.explorer()`);
 await sleep(2500); // let the "new quest" toast fade
 await shot("village");
 
 // Talking to the elder in the interaction close-up
-const actor = await dbg(`d.heroTurn()`);
-await dbg(`(d.place("${actor}", 6, 4), true)`);
-await choose("Move");
+await dbg(`(d.travel("elder_house", "from_town"), true)`);
+await until(`d.state().board.mapId === "elder_house" && !!d.explorer()`);
+const actor = await dbg(`d.explorer()`);
+await dbg(`(d.place("${actor}", 3, 3), true)`);
 await key("ArrowUp", 1, 200);
 await key("Enter", 1, 800);
 await choose("Talk");

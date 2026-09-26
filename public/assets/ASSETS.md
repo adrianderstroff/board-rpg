@@ -14,11 +14,17 @@ All images are RGBA 8-bit with transparent backgrounds, unless a section below s
 - Anchor: bottom-center. The lowest opaque pixel (the feet outline) is on y=31 for the idle SE frame, and every frame of a sheet uses the same anchor. No shadow is baked in (use `system/shadow.png`).
 - `enemy_condor` hovers: its lowest pixel is about 5 px above the bottom of the frame, and its columns are wing flap up / mid / down.
 - IDs: `hero_knight hero_magician hero_thief hero_monk npc_elder npc_villager_m npc_villager_f npc_child npc_guard npc_smith npc_merchant npc_mage npc_innkeeper enemy_scorpion enemy_condor enemy_emperor_scorpion`.
+- Mountain Temple chapter (all listed in `data/graphics.yaml`):
+  - 24×32: `npc_monk npc_monk_b npc_monk_old npc_islander enemy_fishfolk enemy_bone_acolyte enemy_shadow_knight enemy_shadow_mage enemy_shadow_thief enemy_shadow_monk enemy_tomato enemy_lemon enemy_watermelon enemy_chili enemy_bog_toad enemy_mirage_phantom`.
+  - 32×32 (sheet 96×128): `enemy_pumpkin_king enemy_mirage_djinn enemy_grave_toad`.
+  - The shadows are the heroes' own specs recoloured violet-black with glowing red eyes (`shadowTwin` in `tools/art/characters.mjs`). The djinn and the phantom hover 1–4 px above the bottom row.
 
 ## 2. Battlers: `battlers/<id>.png`
 There is one horizontal row of frames. Heroes face **left** and enemies face **right**. The lowest pixel sits on the bottom row of the frame, except the condor, which is vertically centered because it flies.
 - Heroes `hero_knight|hero_magician|hero_thief|hero_monk`: 32×32 × 6 frames (192×32). The frames are 0 idle, 1 idle-breathe, 2 attack, 3 cast/skill (arms raised), 4 hurt, 5 KO (lying down, bottom-aligned).
 - `enemy_scorpion` is 48×40 × 4 frames. `enemy_condor` is 48×48 × 4. `enemy_emperor_scorpion` is 96×72 × 4. The frames are 0 idle, 1 idle-alt, 2 attack, 3 hurt.
+- `enemy_skeleton` is a humanoid: the 6 hero poses (32×32, same order as the heroes), mirrored to face right. So are `enemy_fishfolk`, `enemy_bone_acolyte` and the four `enemy_shadow_*`.
+- Creatures of the Mountain Temple chapter use 4 frames (idle, idle-alt, attack, hurt): `enemy_tomato`, `enemy_lemon` and `enemy_chili` 40×40; `enemy_watermelon` and `enemy_mirage_phantom` 48×48 (the phantom centred); `enemy_bog_toad` 48×40; `enemy_pumpkin_king` and `enemy_grave_toad` 96×80; `enemy_mirage_djinn` 96×96 (centred). Their faces are turned toward the camera so they read in battle.
 
 ## 3. Faces: `faces/<id>.png`
 Each face is a single opaque 48×48 bust portrait in the **flat graphic** style:
@@ -28,10 +34,10 @@ Each face is a single opaque 48×48 bust portrait in the **flat graphic** style:
 
 The faces are designed to read at 48, 24 and 14 px. `tools/art/flatfaces.mjs` generates them and holds the reusable `FlatPortrait` builder and part helpers.
 Style study: `hero_magician-var1..5.png` show the same portrait in the five candidate styles (1 SNES JRPG, 2 chunky cute, 3 HD-2D painterly, 4 flat graphic, 5 woodcut dark). Var4 was chosen and is identical to `hero_magician.png`.
-IDs: `hero_knight hero_magician hero_thief hero_monk elder smith merchant mage innkeeper child guard villager_m villager_f generic enemy_scorpion enemy_condor enemy_emperor_scorpion`.
+IDs: `hero_knight hero_magician hero_thief hero_monk elder smith merchant mage innkeeper child guard villager_m villager_f generic enemy_scorpion enemy_condor enemy_emperor_scorpion captain sailor sailor_b elf elf_b elf_elder elf_mage enemy_skeleton monk monk_b monk_old islander` plus a face for every enemy of the Mountain Temple chapter (same ids as its charset). The shadows' faces are the hero portraits recoloured violet-black on a dark backdrop.
 
 ## 4. Chipset: `chipsets/desert.png`
-- Frames are **32×24**, in **8 columns**, indexed row-major (sheet 256×72).
+- Frames are **32×24**, in **8 columns**, indexed row-major (sheet 256×192).
 - Each frame is one cube block. The top diamond takes rows 0..15. The side faces are 8 px tall below the diamond edges: the left face is x 0..15 and the right face is x 16..31. The bottom of the block is row 23 at the front corner.
 - The upper diamond edges have a subtle 2px highlight, so neighbouring cells stay distinguishable. Each side face's top row is a lighter lip.
 - Stacking: draw a block at height h at a y offset of −8·h. Fill blocks go underneath.
@@ -49,31 +55,59 @@ IDs: `hero_knight hero_magician hero_thief hero_monk elder smith merchant mage i
 | 7 | water_b | 17 | dirt |
 | 8 | quicksand | 18 | tiled_roof (terracotta top, adobe sides) |
 | 9 | rock | 19 | oasis_edge |
+| 20 | sea_a (deep sea, sunk like water) | 28 | stairs (stone slab, bright front lip) |
+| 21 | sea_b | 29 | overgrown_step (stairs covered in flowers) |
+| 22 | cobble (quay) | 30 | ruin_floor (cracked sandstone flags) |
+| 23 | deck (ship planks, hull sides) | 31 | ruin_wall |
+| 24 | hull_fill (tarred hull planks) | 32 | elf_roof (leaf shingles, timber sides) |
+| 25 | forest_floor | 33 | elf_wall (round window / door) |
+| 26 | flowers (dense flower bed) | 34 | moss_stone |
+| 27 | scorched (burnt ground) | 35 | doorway (dark opening, walkable) |
+| 36 | floorboards | 37 | plaster_wall |
+| 38 | rug | 39 | shallow_a (shallow water, sandy bottom) |
+| 40 | shallow_b | 41 | deep_a (deep water, sunk like water) |
+| 42 | deep_b | 43 | cliff (mountain rock face) |
+| 44 | mountain_path | 45 | tatami |
+| 46 | temple_wall (red pillars, white plaster) | 47 | temple_roof (dark tiles) |
+| 48 | jungle_floor | 49 | tower_floor (sandstone tiles) |
+| 50 | tower_wall | 51 | dark_floor (Hall of Fears) |
+| 52 | garden_soil (planted rows) | 53 | bamboo_wall |
+| 54 | thatch_roof | 55 | cave_floor |
+| 56 | cave_wall (glowing moss) | | |
+
+The stair risers are the side faces, so they show best when the stairs rise away from the viewer (toward lower grid x/y at rotation 0).
 
 ## 5. Decor: `chipsets/desert_decor.png`
-- Frames are **32×48**, in **8 columns**, indexed row-major (sheet 256×144).
+- Frames are **32×48**, in **8 columns**, indexed row-major (sheet 256×240).
 - Anchor: the tile center, where the object stands, is at pixel **(16, 40)**. Draw the frame at `(tileCenterX − 16, tileCenterY − 40)`.
 - Objects are rendered with a true 2:1 dimetric camera, so their boxes line up with the grid.
 
-0 palm, 1 cactus, 2 cactus_small, 3 rock_small, 4 rock_big, 5 well, 6 stall_red, 7 stall_green, 8 stall_purple, 9 crate, 10 barrel, 11 sign_post, 12 pot, 13 chest_closed, 14 chest_open, 15 fence, 16 dead_tree, 17 bones, 18 tent, 19 bed, 20 anvil, 21 bush, 22 lamp_post, 23 sparkle.
+0 palm, 1 cactus, 2 cactus_small, 3 rock_small, 4 rock_big, 5 well, 6 stall_red, 7 stall_green, 8 stall_purple, 9 crate, 10 barrel, 11 sign_post, 12 pot, 13 chest_closed, 14 chest_open, 15 fence, 16 dead_tree, 17 bones, 18 tent, 19 bed, 20 anvil, 21 bush, 22 lamp_post, 23 sparkle,
+24 skeleton (lying remains – also the look of dormant skeleton enemies), 25 mast, 26 tree_oak, 27 tree_pine, 28 mushroom, 29 pillar, 30 pillar_broken, 31 rubble, 32 rope_coil, 33 anchor, 34 bollard, 35 fern, 36 lantern_elf, 37 net_rack,
+38 counter, 39 inn_sign, 40 magic_sign, 41 bookshelf, 42 table, 43 stairs_up, 44 stairs_down, 45 scroll_shelf,
+46 pillow (meditation cushion), 47 incense_burner, 48 buddha_statue, 49 stone_lantern, 50 prayer_flags, 51 bamboo, 52 reeds, 53 lily_pad, 54 jungle_tree, 55 banana_plant, 56 switch_up (floor plate, raised), 57 switch_down (pressed), 58 gate_bars (closed gate, drawn by the board over gate cells), 59 seed_sprout, 60 bramble, 61 mirage_crystal, 62 pedestal, 63 dark_brazier, 64–67 ship_wheel (a directional object: one view per quarter turn of the board – 64 as placed, 65–67 after one, two, three turns; `views: 4` in the chipset).
+The sheet is 256×432 (9 rows).
 
 ## 6. System: `system/`
 - `window.png` is a 48×48 window skin for 9-slice scaling, with **8 px borders** (corners 8×8). The outer ring is, from the edge inward: 1px ink, 1px gold (yellow on the upper half), 1px tan, 1px ink. The corners are rounded with a radius of about 4. The fill is a dithered vertical gradient from `#124e89` to `#262b44`, and the center region (8..39) can be stretched or tiled.
 - `cursor.png` is 32×16: 2 frames of 16×16. It is a white glove pointing right, and frame 1 is shifted 1 px to the right of frame 0.
 - `board_cursor.png` is 64×24: 2 frames of 32×24. Yellow/white corner brackets outline the 32×16 diamond at rows 0..15. Frame 0 is yellow and frame 1 is white, for blinking. Rows 16..23 are empty.
 - `highlight.png` is 192×16: 6 frames of 32×16, each a semi-transparent diamond fill with a brighter 2px edge. The frames are 0 move (blue), 1 attack (red), 2 ability (green), 3 area of effect (orange/yellow), 4 path (white, subtle), 5 disabled (grey, hatched).
-- `field_effects.png` has frames of **32×24** in 8 columns (sheet 256×120). The diamond sits at **y 8..23**, and effects may rise above it.
+- `field_effects.png` has frames of **32×24** in 8 columns (sheet 256×168). The diamond sits at **y 8..23**, and effects may rise above it.
   - Row 0: burning, 4 animation frames.
   - Row 1: poisonous, 4 frames.
   - Row 2: frozen, 4 frames.
   - Row 3: sticky, 4 frames.
-  - Row 4: trap, frame 0 only (a metal snare).
+  - Row 4: frame 0 trap (a metal snare); frame 1 a "?" marker (currently unused).
+  - Row 5: soaked (wet puddles), 4 frames.
+  - Row 6: seeds (sown furrows with tiny sprouts), 4 frames.
   - Unused cells are transparent.
+- `wall_signs.png` is 96×14: 2 frames of 48×14 with flat lettering the board paints onto wall faces (skewed there): 0 "INN" in small 7px capitals, 1 a potion bottle (spell shop). Transparent background.
 - `exit_arrows.png` is 256×16: 8 frames of 32×16, each an arrow drawn flat on the diamond. The frames are 0 NE (grid −y), 1 SE (grid +x), 2 SW (grid +y), 3 NW (grid −x), all golden (enabled). Frames 4–7 are the same four directions, disabled (grey, semi-transparent).
 - `icons.png` holds 16×16 icons in 16 columns (256×64). `icons.json` maps each name to its index:
-  sword 0, staff 1, dagger 2, claw 3, armor 4, robe 5, vest 6, ring 7, anklet 8, amulet 9, band 10, potion 11, hipotion 12, ether 13, antidote 14, eyedrops 15, remedy 16, feather 17, bomb 18, shard 19, powder 20, glue 21, scroll 22, key 23, charm 24, coin 25, status_poison 26, status_sleep 27, status_stun 28, status_blind 29, status_slow 30, status_haste 31, status_protect 32, status_regen 33, status_hidden 34, status_stuck 35, type_magic 36, type_swordart 37, type_skill 38, type_ki 39, type_party 40, sign_weapon 41, sign_item 42, sign_magic 43, sign_inn 44, heart 45, star 46, fire 47, ice 48, thunder 49, earth 50, holy 51, shell 52, status_flying 53, status_defend 54. New icons are always appended at the end, so existing indices never change.
-- `status_icons.png` is 120×10: 12 frames of **10×10** in one row. These are compact status markers, shown side by side above characters on the board and in battle. Each is a bold silhouette with a baked 1px `#181425` outline, in colours that match the 16px `status_*` icons, and each reads on sand, stone and sky. `status_icons.json` maps each name to its frame index:
-  poison 0 (purple droplet), sleep 1 ("z"), stun 2 (yellow star), blind 3 (crossed eye), slow 4 (hourglass), haste 5 (double chevron), protect 6 (blue shield), regen 7 (green plus), hidden 8 (grey hood), stuck 9 (mud blob), flying 10 (white wing), defend 11 (silver shield with a gold plus).
+  sword 0, staff 1, dagger 2, claw 3, armor 4, robe 5, vest 6, ring 7, anklet 8, amulet 9, band 10, potion 11, hipotion 12, ether 13, antidote 14, eyedrops 15, remedy 16, feather 17, bomb 18, shard 19, powder 20, glue 21, scroll 22, key 23, charm 24, coin 25, status_poison 26, status_sleep 27, status_stun 28, status_blind 29, status_slow 30, status_haste 31, status_protect 32, status_regen 33, status_hidden 34, status_stuck 35, type_magic 36, type_swordart 37, type_skill 38, type_ki 39, type_party 40, sign_weapon 41, sign_item 42, sign_magic 43, sign_inn 44, heart 45, star 46, fire 47, ice 48, thunder 49, earth 50, holy 51, shell 52, status_flying 53, status_defend 54, status_empower 55 (red arrow up), status_bolster 56 (stone shield with a green arrow). New icons are always appended at the end, so existing indices never change.
+- `status_icons.png` is 140×10: 14 frames of **10×10** in one row. These are compact status markers, shown side by side above characters on the board and in battle. Each is a bold silhouette with a baked 1px `#181425` outline, in colours that match the 16px `status_*` icons, and each reads on sand, stone and sky. `status_icons.json` maps each name to its frame index:
+  poison 0 (purple droplet), sleep 1 ("z"), stun 2 (yellow star), blind 3 (crossed eye), slow 4 (hourglass), haste 5 (double chevron), protect 6 (blue shield), regen 7 (green plus), hidden 8 (grey hood), stuck 9 (mud blob), flying 10 (white wing), defend 11 (silver shield with a gold plus), empower 12 (red arrow), bolster 13 (slate shield with a green arrow).
 - `font.png` and `font.json` hold a proportional bitmap font.
   - The sheet is 128×72: cells of 8×12 in 16 columns, covering ASCII 32..126 in order (index = code − 32).
   - Glyphs are white with a baked 1px `#181425` drop shadow at (+1,+1).
@@ -83,4 +117,4 @@ IDs: `hero_knight hero_magician hero_thief hero_monk elder smith merchant mage i
 - `title_bg.png` is 480×270 and opaque: a desert sunset turning to night, with a moon, stars, mesas, dunes and a camel caravan silhouette. It has no text.
 
 ## 7. Battle backgrounds: `battlebacks/`
-`desert.png` and `village.png` are 480×190 and opaque. The sky and background sit above y≈105, and the ground plane, where combatants stand, runs from about y 110 to 190.
+`desert.png`, `village.png`, `harbor.png`, `forest.png`, `ruins.png`, `elvenglade.png`, `interior.png`, `elfshop.png` and the Mountain Temple chapter's `mountain.png` (pagoda crag above the clouds), `temple.png` (golden Buddha hall), `pond.png` (reeds and lily pads), `mirage.png` (glyph-carved tower hall), `jungle.png` (rainforest clearing), `fear.png` (violet void with ghosts) and `cave.png` (bone-strewn cavern with a green glow) are 480×190 and opaque. Each has a `floor` row in `data/graphics.yaml` (where the ground starts; the interaction close-up stands the villager ~14 px below it). The sky and background sit above y≈105, and the ground plane, where combatants stand, runs from about y 110 to 190.

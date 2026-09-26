@@ -13,6 +13,7 @@ import {
   exitEnabled,
   fieldEffectsAt,
   grid,
+  isExploring,
   isHidden,
   mustPieceOf,
   pageOfPiece,
@@ -20,6 +21,7 @@ import {
   piecesAt,
   reconcile,
 } from "./board";
+import { hiddenStop, interruptionAt, revealedTraps } from "./hidden";
 import { resolveMoves, resolvePatternRef, type Occupancy, type Reach } from "./patterns";
 
 export type MoveKind = "move" | "engage" | "interact" | "exit";
@@ -66,13 +68,17 @@ function interactable(ctx: Ctx, npc: Piece): boolean {
 }
 
 export function occupancyFor(ctx: Ctx, mover: Piece): (p: Pos) => Occupancy {
+  const knownTraps = mover.faction === "hero" ? revealedTraps(ctx) : [];
   return (p: Pos) => {
+    // Heroes walk around ancient traps they know about (§7.5).
+    if (knownTraps.some((t) => samePos(t, p))) return "block";
     const exit = exitAt(ctx, p);
     if (exit) {
       if (mover.faction !== "hero" || !exitEnabled(ctx, exit)) return "block";
     }
     const others = piecesAt(ctx, p).filter((pc) => pc.id !== mover.id);
     if (!others.length) return exit ? "stop" : "free";
+    if (others.some((o) => o.dormant)) return "block"; // lies there like remains (§7.5)
     if (mover.faction === "npc") return "block";
     // Hostile pieces first: standing next to/with an NPC never protects anyone.
     const hostile = others.filter((o) => o.faction !== mover.faction && o.faction !== "npc");
@@ -98,20 +104,38 @@ export function occupancyFor(ctx: Ctx, mover: Piece): (p: Pos) => Occupancy {
 /** Destinations for the piece of `charId`: union of member patterns cut at the party reach (§8.2). */
 export function moveOptions(ctx: Ctx, charId: string, opts: { ignoreMoved?: boolean } = {}): Map<string, MoveOption> {
   const piece = mustPieceOf(ctx, charId);
+  if (piece.faction === "hero" && isExploring(ctx)) return exploreOptions(ctx, piece);
   const out = new Map<string, MoveOption>();
   if (!opts.ignoreMoved && !canPieceMove(ctx, piece)) return out;
   const reach = pieceReach(ctx, piece);
   const occupancy = occupancyFor(ctx, piece);
   const g = grid(ctx);
+  const canEnter = swimAccess(ctx, piece);
   for (const c of aliveMembers(ctx, piece)) {
     const pattern = resolvePatternRef(ctx.db, movePatternOf(ctx.db, c));
-    const moves = resolveMoves({ grid: g, origin: piece, pattern, maxReach: reach, occupancy });
+    const moves = resolveMoves({ grid: g, origin: piece, pattern, maxReach: reach, occupancy, canEnter });
     for (const [k, r] of moves) {
       const prev = out.get(k);
       if (prev && (prev.mode === "walk" || r.mode === "leap") && prev.path.length <= r.path.length) continue;
       out.set(k, classify(ctx, piece, r));
     }
   }
+  return out;
+}
+
+/**
+ * Free exploration (§8.10): every cell the piece can walk to (orthogonal steps, height rule of its
+ * members, allies and villagers passable), regardless of move patterns and of having moved.
+ */
+function exploreOptions(ctx: Ctx, piece: Piece): Map<string, MoveOption> {
+  const out = new Map<string, MoveOption>();
+  const members = aliveMembers(ctx, piece);
+  if (piece.fallen || !members.length || pieceReach(ctx, piece) <= 0) return out;
+  const maxHeightDiff = Math.min(...members.map((c) => resolvePatternRef(ctx.db, movePatternOf(ctx.db, c)).maxHeightDiff));
+  const g = grid(ctx);
+  const reach = g.width * g.height;
+  const pattern = { parts: [{ walk: reach, dirs: "orthogonal" as const }], reach, ignoreHeight: false, ignoreBlocking: false, includeOrigin: false, maxHeightDiff };
+  for (const [k, r] of resolveMoves({ grid: g, origin: piece, pattern, occupancy: occupancyFor(ctx, piece) })) out.set(k, classify(ctx, piece, r));
   return out;
 }
 
@@ -146,35 +170,83 @@ export interface MoveResult {
   events: GameEvent[];
   /** Cell where the piece finally stands. */
   final: Pos;
+  /** Stopped early by a trap, ice or a rising enemy (§7.4, §7.5): don't continue the flow. */
+  interrupted?: boolean;
+  /** A dormant enemy that rose within reach and attacks right away (ambush, §7.5). */
+  ambush?: string;
 }
 
 /**
- * Moves a piece along a path and applies landing rules: frozen sliding, field effects, traps.
+ * Moves a piece along a path and applies the cell rules (§7.4, §7.5):
+ * - every field effect on a cell the piece walks *through* hits it once on the way
+ * - walking onto ice ends the walk there: the piece slips on until it leaves the ice or is blocked
+ * - hidden traps / rising enemies stop heroes, thief traps stop enemies
+ * - landing applies the field effects of the final cell
+ * `mover` (the character who moved it) becomes the piece's anchor for start-of-turn effects.
  * Used for normal moves, post-battle capture moves and interaction approaches.
  */
-export function movePiece(ctx: Ctx, piece: Piece, path: Pos[], mode: "walk" | "leap"): MoveResult {
+export function movePiece(ctx: Ctx, piece: Piece, path: Pos[], mode: "walk" | "leap", mover?: string): MoveResult {
   const events: GameEvent[] = [];
   if (!path.length) return { events, final: { x: piece.x, y: piece.y } };
-  const prev = path.length > 1 ? path[path.length - 2] : { x: piece.x, y: piece.y };
-  const last = path[path.length - 1];
-  piece.facing = dirFromStep(prev, last);
-  piece.x = last.x;
-  piece.y = last.y;
-  events.push({ type: "move", piece: piece.id, path, mode });
+  if (mover && piece.members.includes(mover)) piece.anchor = mover;
+  const start: Pos = { x: piece.x, y: piece.y };
+  const flying = isFlyingPiece(ctx, piece);
+  const cut = interruptionAt(ctx, piece, path, mode, flying);
+  if (cut >= 0) path = path.slice(0, cut + 1);
+  // Stepping onto ice ends the walk: the piece slips from there (§5.4).
+  const iceAt = flying || mode !== "walk" ? -1 : path.findIndex((p) => isFrozen(ctx, p));
+  const iceCut = iceAt >= 0 && iceAt < path.length - 1;
+  if (iceAt >= 0) path = path.slice(0, iceAt + 1);
 
-  // Frozen: slide in facing direction (§7.4).
-  const slide = slidePath(ctx, piece);
+  // Walk, stopping on every crossed cell with a field effect to apply it (§7.4).
+  let seg: Pos[] = [];
+  const advance = () => {
+    if (!seg.length) return;
+    const prev = seg.length > 1 ? seg[seg.length - 2] : { x: piece.x, y: piece.y };
+    const last = seg[seg.length - 1];
+    piece.facing = dirFromStep(prev, last);
+    piece.x = last.x;
+    piece.y = last.y;
+    events.push({ type: "move", piece: piece.id, path: seg, mode });
+    seg = [];
+  };
+  for (let i = 0; i < path.length; i++) {
+    seg.push(path[i]);
+    const crossing = i < path.length - 1 && mode === "walk" && !flying;
+    if (!crossing || !fieldEffectsAt(ctx, path[i]).length) continue;
+    advance();
+    events.push(...cellEffects(ctx, piece), ...reconcile(ctx));
+    if (!board(ctx).pieces[piece.id] || !aliveMembers(ctx, piece).length) {
+      return { events, final: { x: piece.x, y: piece.y }, interrupted: true };
+    }
+  }
+  advance();
+
+  // Ice: remember the shore it came from (fallback if the ice melts under it), then slip.
+  if (iceAt >= 0 && !isFrozen(ctx, start)) piece.iceOrigin = iceAt > 0 ? path[iceAt - 1] : start;
+  let slide = cut >= 0 ? [] : slidePath(ctx, piece);
+  const slideCut = interruptionAt(ctx, piece, slide, "walk", flying);
+  if (slideCut >= 0) slide = slide.slice(0, slideCut + 1);
   if (slide.length) {
     const end = slide[slide.length - 1];
     piece.x = end.x;
     piece.y = end.y;
     events.push({ type: "move", piece: piece.id, path: slide, mode: "slide" });
   }
-  events.push(...applyLanding(ctx, piece));
-  return { events, final: { x: piece.x, y: piece.y } };
+  if (!isFrozen(ctx, piece)) delete piece.iceOrigin;
+  events.push(...applyLanding(ctx, piece)); // (its reconcile also updates plates and gates)
+  // The piece didn't end where it was sent: callers skip close-ups / travel.
+  const interrupted = cut >= 0 || slideCut >= 0 || iceCut || slide.length > 0;
+  let ambush: string | undefined;
+  if (cut >= 0 || slideCut >= 0) {
+    const stop = hiddenStop(ctx, piece, flying);
+    events.push(...stop.events);
+    ambush = stop.ambush;
+  }
+  return { events, final: { x: piece.x, y: piece.y }, interrupted, ambush };
 }
 
-function isFrozen(ctx: Ctx, p: Pos) {
+export function isFrozen(ctx: Ctx, p: Pos) {
   return fieldEffectsAt(ctx, p).some((e) => ctx.db.fieldEffect(e).slide);
 }
 
@@ -228,13 +300,29 @@ export function executeMove(ctx: Ctx, charId: string, dest: Pos): MoveResult & {
   markMoved(ctx, piece);
   if (option.kind === "interact") {
     const npc = board(ctx).pieces[option.targets![0]];
-    if (samePos(option.approach!, option.pos)) return { ...movePiece(ctx, piece, option.path, option.mode), option };
+    if (samePos(option.approach!, option.pos)) return { ...movePiece(ctx, piece, option.path, option.mode, charId), option };
     const path = option.mode === "walk" ? option.path.slice(0, option.path.findIndex((p) => samePos(p, option.approach!)) + 1) : [];
-    const res = movePiece(ctx, piece, path, "walk");
-    if (npc && !samePos(piece, npc)) piece.facing = dirFromStep(piece, npc);
+    const res = movePiece(ctx, piece, path, "walk", charId);
+    if (npc && !samePos(piece, npc) && !res.interrupted) piece.facing = dirFromStep(piece, npc);
     return { ...res, option };
   }
-  return { ...movePiece(ctx, piece, option.path, option.mode), option };
+  return { ...movePiece(ctx, piece, option.path, option.mode, charId), option };
+}
+
+/** Swimmers (§5.5): which cells an enemy piece may enter; undefined = only walkable ones. */
+export function swimAccess(ctx: Ctx, piece: Piece): ((cell: import("./grid").Cell) => boolean) | undefined {
+  if (piece.faction !== "enemy") return undefined;
+  const leader = aliveMembers(ctx, piece)[0];
+  const swims = leader ? ctx.db.enemy(leader.def).swims : undefined;
+  if (!swims) return undefined;
+  const water = (cell: import("./grid").Cell) => !!grid(ctx).chipset.terrains[cell.terrain].water;
+  return swims === "water" ? water : (cell) => cell.walkable || water(cell);
+}
+
+/** The member whose turn start triggers the piece's cell effects (§7.4). */
+export function anchorOf(ctx: Ctx, piece: Piece): string | undefined {
+  const alive = aliveMembers(ctx, piece).map((c) => c.id);
+  return piece.anchor && alive.includes(piece.anchor) ? piece.anchor : alive[0];
 }
 
 // ---------- per-turn cell effects ----------

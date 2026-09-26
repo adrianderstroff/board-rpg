@@ -1,0 +1,86 @@
+# Endless Dunes (§18.10): the edges lead back into the dunes. Whoever gets lost (the third
+# crossing) sees the Mirage Tower appear.
+name: Endless Dunes
+kind: wild
+chipset: desert
+battleback: desert
+music: dunes
+onEnter: [{ addVar: { name: lost, value: 1 } }]
+
+legend:
+  terrain:
+    s: sand
+    d: sand_dark
+    e: sand_ripple
+  decor:
+    C: cactus
+    c: cactus_small
+    X: bones
+    T: dead_tree
+    o: rock_small
+
+layers:
+  terrain: |
+    edsdssdsdsddss
+    ddsssssdseddes
+    dssssdddssedse
+    ssdddssesdssds
+    dssdsessssssss
+    dssssessdsddds
+    sdssdsssssesss
+    sddddssedddsss
+    sssdssssssdsdd
+    ddeddddsdssdee
+    sdssssddeesdds
+    sdsdssssesdsss
+  height: |
+    01010010101100
+    11000001001100
+    10000111000200
+    00122000010010
+    10020000000000
+    10000000101110
+    01001000000000
+    01111000122000
+    00010000002011
+    11011210100100
+    01000011000110
+    01010000001000
+  decor: |
+    ..............
+    .....o........
+    ..C...........
+    ..............
+    .........X.C..
+    ..............
+    ......X.......
+    ..............
+    ..............
+    .T..........c.
+    ........c.....
+    ..............
+
+spawns:
+  north: { x: 7, y: 1, dir: S }
+  west: { x: 1, y: 6, dir: E }
+  east: { x: 12, y: 5, dir: W }
+  south: { x: 7, y: 10, dir: N }
+
+exits:
+  - { x: 7, y: 0, dir: N, to: scorpion_dunes, spawn: from_south, label: Scorpion Dunes }
+  - { x: 0, y: 6, dir: W, to: endless_dunes, spawn: east, label: The dunes go on… }
+  - { x: 13, y: 5, dir: E, to: endless_dunes, spawn: west, label: The dunes go on… }
+  - { x: 7, y: 11, dir: S, to: endless_dunes, spawn: north, label: The dunes go on… }
+
+events:
+  - id: dunes_intro
+    x: 7
+    y: 1
+    pages:
+      - { trigger: auto, dialog: endless_enter }
+  - id: mirage
+    x: 7
+    y: 5
+    pages:
+      - { trigger: none }
+      - { when: { var: { name: lost, op: ">=", value: 4 } }, trigger: auto, once: false, dialog: mirage_appears }

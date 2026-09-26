@@ -10,13 +10,13 @@ Your heroes travel across isometric boards — villages, dunes, dungeons. Everyt
 
 Heroes can **team up into parties** that move as one. When a piece moves onto an enemy, the game switches to a **Final-Fantasy-style side-view battle**, then returns to the board.
 
-On the board you prepare those fights. You set cells on fire, freeze the sand so enemies slide, hide traps, or float over quicksand. Between fights you talk to villagers, trade in shops and follow quests.
+On the board you prepare those fights. You set cells on fire, freeze the sand so enemies slide, hide traps, or float over quicksand. When no enemies are around, the turns stop and you walk freely: talk to villagers, trade in shops and follow quests.
 
 ![Sandhollow village](docs/images/village.png)
 
 ## Highlights
 
-- **Tactical boards:** move patterns, heights, parties, and field effects (burning, poison, ice, sticky mud) that hit whoever lands on them. You can rotate the map in 90° steps to see behind hills and houses.
+- **Tactical boards:** move patterns, heights, parties, and field effects (burning, poison, ice, sticky mud) that hit whoever lands on them. Ice bridges rivers, fire burns flowers and spreads over grass. You can rotate the map in 90° steps to see behind hills and houses.
 - **Classic battles:** Fight / Defend / Ability / Item / Run, turn order by speed, ambushes and first strikes, elemental weaknesses and status effects.
 - **Four heroes:**
   - **Aldric** the Knight
@@ -35,12 +35,21 @@ On the board you prepare those fights. You set cells on fire, freeze the sand so
 
 ## The demo
 
-Two connected boards:
+Connected boards, from the coast into the desert and up a mountain:
 
+- **Saltmere Harbor:** the heroes arrive by ship. Sailors on the docks, and barrels and jars worth searching.
+- **Greenwood River:** a forest cut in two by a river you can only cross on ice, and old stairs overgrown with flowers that only fire clears.
+- **Elvenglade:** a village of small elves, whose mage sells the *Ice* spell.
+- **Sunken Ruins:** skeletons everywhere, and some of them get up. Hidden traps and an invisible chest that only the thief's *Discover* reveals.
 - **Sandhollow:** a peaceful desert village with a market, an inn and villagers.
 - **Scorpion Dunes:** the wild road east, full of scorpions and condors and ruled by the **Emperor Scorpion**.
+- **Temple Mountain:** a zig-zag climb to the Temple of the Still Sky. Three monks promise to teach *Holy* if the heroes bring back three stolen tokens:
+  - **Reed Pond:** fish-folk in deep water, which only lightning reaches (and it runs through the whole pond).
+  - **Mirage Tower:** it only appears to those lost in the Endless Dunes. The heroes split up and climb in two teams, opening floor gates for each other.
+  - **Verdant Isle:** by ship, a jungle of fruit and vegetables that fight together – soak the ground, zap it, wall you in with brambles, burn it.
+- **Hall of Fears and the Grave Toad:** the heroes face shadows of themselves, and the orb's light opens a cave where an undead toad swallows heroes whole.
 
-There is one main quest (with a sub-quest that has a hidden ending) and one side quest.
+There is a prologue quest, two main quest chains (one with a sub-quest that has a hidden ending) and one side quest.
 
 ## Running it
 

@@ -61,14 +61,41 @@ class Driver {
   expect(cond, msg) {
     if (!cond) throw new Error(`assertion failed: ${msg}`);
   }
-  /** Fresh page, empty saves, new game, first hero turn with the command box open. */
-  async newGame({ keepSaves = false } = {}) {
+  /**
+   * Fresh page, empty saves, new game. By default the prologue (harbor → forest → ruins) is
+   * skipped and the party starts in Sandhollow like the original demo; `prologue: true` keeps
+   * the real start at Saltmere Harbor.
+   */
+  async newGame({ keepSaves = false, prologue = false } = {}) {
     await this.page.goto(url);
     if (!keepSaves) await this.ev(() => localStorage.clear());
     await this.page.reload();
     await this.waitFor(`d.activeScenes().includes("title")`);
     await this.choose("New Game");
-    await this.waitHeroTurn();
+    await this.waitFor(`d.activeScenes().includes("board") && !!d.state().board`, 20000, "board");
+    if (!prologue) {
+      await sleep(400);
+      await this.dbg(`(d.skipPrologue(), true)`);
+      await this.waitFor(`d.state().board && d.state().board.mapId === "sandhollow"`, 20000, "sandhollow");
+    } else return; // the captain's intro dialog is showing
+    await this.waitReady();
+  }
+  /**
+   * Waits until the player can act: a hero's command box in turn-based mode, or the idle map
+   * while exploring (§8.10). Returns the acting / selected hero.
+   */
+  async waitReady() {
+    await this.waitFor(`(!!d.heroTurn() && !!d.menu()) || !!d.explorer()`, 40000, "hero turn or exploration");
+    await sleep(200);
+    return this.dbg(`d.heroTurn() || d.explorer()`);
+  }
+  /** Opens the selected hero's commands while exploring (Enter on its own cell, first party member). */
+  async openCommands() {
+    await this.waitFor(`!!d.explorer()`, 10000, "exploring");
+    await this.dbg(`(p => (d.place(d.explorer(), p.x, p.y), true))(Object.values(d.state().board.pieces).find(p => p.members.includes(d.explorer())))`);
+    await this.key("Enter", 1, 400);
+    if (await this.dbg(`d.menu() && d.menu().title === "Who?"`)) await this.key("Enter", 1, 400);
+    await this.waitFor(`d.menu() && d.menu().items.some(i => i.label === "Stats")`, 5000, "command box");
   }
   /** Waits for a hero's turn with the command box open (optionally a different hero than `not`). */
   async waitHeroTurn(not) {
@@ -99,6 +126,18 @@ class Driver {
       if (Date.now() - start > timeout) throw new Error(`no menu entry "${label}" (menu: ${JSON.stringify(m)})`);
       await sleep(120);
     }
+  }
+  /** After an action the menus close: select the hero again (the cursor is back on it) for the command box. */
+  async reopenBox() {
+    await sleep(300);
+    if (!(await this.dbg(`!!d.menu() && d.menu().items.some(i => i.label === "Stats")`))) await this.key("Enter", 1, 400);
+    await this.waitFor(`d.menu() && d.menu().items.some(i => i.label === "Stats")`, 5000, "command box");
+  }
+  /** Picks an ability-type level (Magic, Skill…) only if the menu shows one (single types go straight to the list). */
+  async chooseType(label) {
+    await this.waitFor(`!!d.menu()`, 5000, "a menu");
+    await sleep(150);
+    if (await this.dbg(`d.menu().items.some(i => i.label === ${JSON.stringify(label)})`)) await this.choose(label);
   }
   /** Converts virtual 480x270 coordinates to page coordinates. */
   async pagePos(x, y) {
@@ -143,10 +182,15 @@ class Driver {
     await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     await sleep(250);
   }
-  /** From the open command box: Move → cursor steps → select the cell. */
-  async moveTo(keys) {
-    await this.choose("Move");
+  /** Turn-based: Move from the command box. Exploring: the map is already waiting for a cell. */
+  async startMove() {
+    if (await this.dbg(`d.exploring()`)) await this.waitFor(`!!d.explorer()`, 10000, "exploring");
+    else await this.choose("Move");
     await sleep(250);
+  }
+  /** Move → cursor steps → select the cell. */
+  async moveTo(keys) {
+    await this.startMove();
     for (const k of keys) await this.key(k, 1, 150);
     await this.key("Enter", 1, 500);
   }
@@ -173,22 +217,288 @@ async function d_endParty(d) {
 // ---------------- scenarios ----------------
 
 const scenarios = {
+  /** The Gull (§5.9): a pointed bow and a flared hull, from all four sides and mid-spin. */
+  async shipLook(d) {
+    await d.newGame({ prologue: true });
+    await d.pressUntil(`!!d.explorer()`, "Enter", 30, 400);
+    await d.dbg(`(d.cursorTo(2, 4), true)`);
+    await sleep(600);
+    await d.shot("ship-0");
+    for (let i = 1; i <= 4; i++) {
+      await d.key("e", 1, 250);
+      if (i === 1) await d.shot("mid-spin");
+      await d.waitFor(`d.rotation() === ${i % 4}`, 8000, "rotation");
+      await sleep(500);
+      await d.shot(`ship-${i % 4 === 0 ? "0-again" : i}`);
+      // close-up of the steering wheel on the stern (it turns with the board)
+      const w = await d.dbg(`d.cellScreen(2, 9)`);
+      const c = await d.pagePos(w.x, w.y);
+      await d.page.screenshot({ path: `${OUT}/shipLook-wheel-r${i % 4}.png`, clip: { x: c.x - 60, y: c.y - 90, width: 120, height: 110 } });
+    }
+    d.expect(!(await d.dbg(`__game.core.moveOptions(d.ctx(), d.explorer()).has("2,1")`)), "the bow tip is not walkable");
+  },
+
+  /** Visits every map of the Mountain Temple chapter (§18.7-12) and takes a screenshot of each. */
+  async chapterTour(d) {
+    await d.newGame();
+    for (const h of ["aldric", "mira", "kit", "tarek"]) await d.dbg(`d.setLevel("${h}", 30)`);
+    const stops = [
+      ["temple_mountain", "from_dunes"], ["temple_mountain", "from_temple"], ["temple", "from_mountain"], ["hall_of_fears", "from_temple"],
+      ["reed_pond", "from_mountain"], ["endless_dunes", "north"], ["mirage_sands", "from_dunes"], ["mirage_tower_1", "start"],
+      ["mirage_tower_2", "west"], ["mirage_tower_3", "west"], ["mirage_tower_4", "west"], ["mirage_tower_5", "west"],
+      ["verdant_isle", "from_ship"], ["grove_garden", "from_isle"], ["mora_house", "from_garden"], ["grave_cave", "from_mountain"],
+    ];
+    for (const [map, spawn] of stops) {
+      await d.dbg(`(d.travel("${map}", "${spawn}"), true)`);
+      await d.waitFor(`d.state().board && d.state().board.mapId === "${map}"`, 20000, map);
+      await d.pressUntil(`!d.activeScenes().includes("battle") && ((!!d.heroTurn() && !!d.menu()) || !!d.explorer())`, "Enter", 200, 300);
+      await d.shot(`${map}-${spawn}`);
+    }
+  },
+  /** Temple (§18.8): sitting on the free cushion starts the monks' talk; then Rhea sails to the Verdant Isle. */
+  async templeTrial(d) {
+    await d.newGame();
+    await d.dbg(`(d.travel("temple", "from_mountain"), true)`);
+    await d.waitFor(`d.state().board && d.state().board.mapId === "temple"`);
+    await d.waitReady();
+    await d.dbg(`(d.cursorTo(5, 5), true)`);
+    await d.key("Enter", 1, 1500); // onto the cushion
+    await d.shot("cushion");
+    const speakers = [];
+    for (let i = 0; i < 60 && !(await d.dbg(`!!d.explorer()`)); i++) {
+      const who = await d.ev(() => {
+        const s = __game.phaser.scene.getScenes(true).map((x) => x.sys.settings.key);
+        return s.join(",");
+      });
+      speakers.push(who);
+      if (i === 4) await d.shot("monks-talk");
+      await d.key("Enter", 1, 350);
+    }
+    d.expect(await d.dbg(`d.state().flags.monks_trial === true`), "the monks gave the task");
+    // Saltmere: Captain Rhea now sails to the island
+    await d.dbg(`(d.travel("saltmere_harbor", "start"), true)`);
+    await d.waitFor(`d.state().board && d.state().board.mapId === "saltmere_harbor"`);
+    await d.pressUntil(`!!d.explorer()`, "Enter", 30, 400);
+    await d.dbg(`(d.cursorTo(2, 6), true)`);
+    await d.key("Enter", 1, 800);
+    await d.choose("Talk");
+    await d.pressUntil(`d.menu() && d.menu().items.some(i => i.label.startsWith("Sail"))`, "Enter", 20, 400);
+    await d.shot("captain");
+    await d.choose("Sail to the Verdant Isle");
+    await d.waitFor(`d.state().board && d.state().board.mapId === "verdant_isle"`, 20000, "sailed to the isle");
+    await sleep(1200);
+    await d.shot("isle");
+  },
+
+  /** Reed Pond (§5.6): Thunder into the water runs through the connected water and hits the swimmers. */
+  async pondLightning(d) {
+    await d.newGame();
+    for (const h of ["aldric", "mira", "kit", "tarek"]) await d.dbg(`d.setLevel("${h}", 10)`);
+    await d.ev(() => {
+      __game.debug.state().maps.reed_pond = { defeated: [], removedEvents: [], triggered: ["pond_intro#0"] };
+      __game.debug.travel("reed_pond", "from_mountain");
+    });
+    await d.waitFor(`d.state().board && d.state().board.mapId === "reed_pond"`);
+    let t = await d.waitHeroTurn();
+    await d.dbg(`d.place("${t}", 1, 4)`);
+    for (let i = 0; i < 6 && t !== "mira"; i++) {
+      await d.choose("End Turn");
+      t = await d.waitHeroTurn(t);
+    }
+    d.expect(t === "mira", "Mira's turn");
+    const hp = () => d.ev(() => Object.fromEntries(Object.values(__game.debug.state().board.chars).map((c) => [c.id, c.hp])));
+    const before = await hp();
+    const heroesBefore = await d.dbg(`d.state().roster.map(id => d.state().heroes[id].hp)`);
+    await d.choose("Ability");
+    await d.chooseType("Magic");
+    await d.chooseType("Attack");
+    await d.choose("Thunder");
+    await d.dbg(`(d.cursorTo(3, 4), true)`);
+    await sleep(300);
+    await d.shot("aim");
+    await d.key("Enter", 1, 300);
+    await sleep(1600);
+    await d.shot("shock");
+    const after = await hp();
+    const hit = Object.keys(before).filter((id) => after[id] === undefined || after[id] < before[id]);
+    d.expect(hit.length >= 1, `lightning ran through the water into the swimmers (${hit})`);
+    const heroesAfter = await d.dbg(`d.state().roster.map(id => d.state().heroes[id].hp)`);
+    d.expect(JSON.stringify(heroesAfter) === JSON.stringify(heroesBefore), "the heroes on dry land were not hit");
+  },
+
+  /** Verdant Isle (§18.11): the produce fights together on the board – spit (soaked), zap, seeds, fire. */
+  async islandCombo(d) {
+    await d.newGame();
+    for (const h of ["aldric", "mira", "kit", "tarek"]) await d.dbg(`d.setLevel("${h}", 16)`);
+    await d.ev(() => {
+      for (const e of __game.debug.ctx().db.enemies.values()) for (const a of e.boardAi.abilities ?? []) a.chance = 1;
+      __game.debug.state().maps.verdant_isle = { defeated: [], removedEvents: [], triggered: ["isle_intro#0"] };
+      __game.debug.travel("verdant_isle", "from_ship");
+    });
+    await d.waitFor(`d.state().board && d.state().board.mapId === "verdant_isle"`);
+    const first = await d.waitHeroTurn();
+    await d.dbg(`d.place("${first}", 6, 9)`);
+    // record what the board plays (abilities, field effects, lightning)
+    await d.ev(() => {
+      const scene = __game.phaser.scene.getScene("board");
+      const play = scene.play.bind(scene);
+      window.__seen = [];
+      scene.play = (events) => {
+        for (const e of events) window.__seen.push(e.type === "fieldEffect" ? `fx:${e.effect}` : e.type === "action" ? `ability:${e.ability ?? e.name}` : e.type);
+        return play(events);
+      };
+    });
+    for (let i = 0; i < 4; i++) {
+      await d.choose("End Party");
+      await d.pressUntil(`!d.activeScenes().includes("battle") && !!d.heroTurn() && !!d.menu()`, "Enter", 150, 300);
+      await d.shot(`round${i}`);
+      if (await d.ev(() => window.__seen.includes("shock"))) break;
+    }
+    const seen = await d.ev(() => [...new Set(window.__seen)]);
+    d.expect(seen.includes("fx:soaked"), `the tomato soaked the ground (${seen})`);
+    d.expect(seen.includes("shock"), `the lemon sent lightning into the wet ground (${seen})`);
+  },
+
+  /** Mirage Tower 1F (§5.8, §5.3): the gate closes behind the plate, the heroes split up, each team climbs its own stairs. */
+  async towerSplit(d) {
+    await d.newGame();
+    await d.ev(() => {
+      __game.debug.state().maps.mirage_tower_1 = { defeated: [], removedEvents: [], triggered: ["tower_intro#0"] };
+      __game.debug.travel("mirage_tower_1", "start");
+    });
+    await d.waitFor(`d.state().board && d.state().board.mapId === "mirage_tower_1"`);
+    await d.waitReady();
+    const walk = async (x, y) => {
+      await d.waitFor(`!!d.explorer()`, 15000, "exploring");
+      await d.dbg(`(d.cursorTo(${x}, ${y}), true)`);
+      await d.key("Enter", 1, 500);
+    };
+    const at = (id) => d.dbg(`(p => [p.x, p.y])(Object.values(d.state().board.pieces).find(p => p.members.includes("${id}")))`);
+    await walk(3, 8); // everyone onto the plate
+    await d.waitFor(`d.state().board.gates.east_gate === true`, 10000, "east gate open");
+    await d.shot("plate");
+    await walk(5, 8); // and off again: the gate slams shut
+    await d.pressUntil(`!!d.explorer()`, "Enter", 30, 400);
+    d.expect(await d.dbg(`d.state().flags.tower_split && d.state().board.gates.east_gate === false`), "gate closed, split flag set");
+    await d.shot("closed");
+    // Aldric leaves the party and holds the plate
+    await d.openCommands();
+    await d.choose("Party");
+    await d.choose("Leave Party");
+    await walk(3, 8);
+    await d.waitFor(`d.state().board.gates.east_gate === true`, 10000, "east gate open for the others");
+    // the others go through and step on the inner plate
+    await walk(5, 8); // selects their piece
+    await walk(9, 2);
+    await d.waitFor(`d.state().board.gates.west_gate === true`, 10000, "west gate open");
+    await d.shot("split");
+    const others = await at("mira");
+    d.expect(others[0] === 9 && others[1] === 2, `the team crossed to the inner plate (${others})`);
+    // Aldric climbs the west stairs, the others the east stairs
+    await walk(3, 8); // select Aldric
+    await walk(2, 1);
+    await sleep(800);
+    d.expect((await d.dbg(`d.state().board.mapId`)) === "mirage_tower_1", "waits for the others");
+    await walk(9, 2); // select the others
+    await walk(10, 1);
+    await d.waitFor(`d.state().board && d.state().board.mapId === "mirage_tower_2"`, 20000, "2F");
+    await d.pressUntil(`!!d.explorer()`, "Enter", 30, 400);
+    const aldric = await at("aldric");
+    const kit = await at("kit");
+    d.expect(aldric[0] === 3 && aldric[1] === 9 && kit[0] === 9 && kit[1] === 9, `teams arrive apart (${aldric} / ${kit})`);
+    await d.shot("2F");
+  },
+
+  /** The Grave Toad (§12.7): swallow → digest → spit, acolytes raised again for gold, release on death. */
+  async graveToad(d) {
+    await d.newGame();
+    for (const h of ["aldric", "mira", "kit", "tarek"]) await d.dbg(`d.setLevel("${h}", 14)`);
+    await d.ev(() => {
+      const db = __game.debug.ctx().db;
+      // make the rare moves happen right away for this check
+      db.enemies.get("grave_toad").ai = [
+        { action: "swallow", weight: 1, priority: true, when: { cooldown: 4 } },
+        { action: "raise_dead", weight: 1, priority: true, when: { alone: true } },
+        { action: "attack", weight: 1 },
+      ];
+      const s = __game.debug.state();
+      s.flags.orb_claimed = true;
+      s.maps.grave_cave = { defeated: ["cave_skel_a", "cave_skel_b"], removedEvents: [], triggered: ["cave_intro#0"] };
+      __game.debug.travel("grave_cave", "from_mountain");
+    });
+    await d.waitFor(`d.state().board && d.state().board.mapId === "grave_cave"`);
+    const a = await d.waitReady();
+    await d.dbg(`d.place("${a}", 5, 4)`);
+    await d.moveTo(["ArrowUp"]); // onto the toad
+    await d.waitFor(`d.activeScenes().includes("battle") && !!d.state().battle`);
+    await d.ev(() => (__game.debug.state().board.chars["grave_toad#0"].hp = 3000));
+    await sleep(1200);
+    await d.shot("layout");
+    const toad = `d.state().battle`;
+    await d.pressUntil(`${toad}.swallowed && ${toad}.swallowed.length > 0`, "Enter", 150, 300);
+    await sleep(900);
+    await d.shot("swallowed");
+    const victim = await d.dbg(`${toad}.swallowed[0].target`);
+    const hp0 = await d.dbg(`d.state().heroes["${victim}"].hp`);
+    await d.pressUntil(`${toad}.swallowed.length === 0`, "Enter", 150, 300);
+    await sleep(700);
+    await d.shot("spat");
+    const hp1 = await d.dbg(`d.state().heroes["${victim}"].hp`);
+    d.expect(hp1 < hp0, `${victim} lost HP in the stomach (${hp0} → ${hp1})`);
+    // both acolytes down → the toad pays for new ones
+    await d.ev(() => {
+      const c = __game.debug.state().board.chars;
+      c["grave_toad#1"].hp = 0;
+      c["grave_toad#2"].hp = 0;
+    });
+    await d.pressUntil(`${toad}.combatants.some(c => c.summoned)`, "Enter", 150, 300);
+    await sleep(1500);
+    await d.shot("summoned");
+    d.expect((await d.dbg(`${toad}.spent`)) === 120, "raising the dead cost 120 G");
+    // swallowed again – and the toad falls with a hero inside: out without the loss
+    await d.pressUntil(`${toad}.swallowed.length > 0`, "Enter", 200, 300);
+    const inside = await d.dbg(`${toad}.swallowed[0].target`);
+    const hpIn = await d.dbg(`d.state().heroes["${inside}"].hp`);
+    await d.ev(() => {
+      const c = __game.debug.state().board.chars;
+      for (const ch of [...Object.values(c), ...Object.values(__game.debug.state().battle.guests)]) if (ch.kind === "enemy" && ch.hp > 0) ch.hp = 1;
+    });
+    await d.pressUntil(`!d.activeScenes().includes("battle")`, "Enter", 200, 300);
+    d.expect((await d.dbg(`d.state().heroes["${inside}"].hp`)) === hpIn, "released hero kept its HP");
+    await sleep(1500);
+    await d.shot("demo-end");
+    d.expect(await d.dbg(`d.state().maps.grave_cave.triggered.includes("toad_defeated#1")`), "the end-of-demo scene ran");
+    await d.pressUntil(`!!d.explorer()`, "Enter", 30, 400);
+    await d.shot("after");
+  },
+
   async inn(d) {
     await d.newGame();
-    const actor = await d.dbg(`d.heroTurn()`);
-    await d.dbg(`d.place("${actor}", 10, 4)`);
+    const actor = await d.waitReady();
+    await d.dbg(`d.place("${actor}", 10, 3)`);
     const other = actor === "mira" ? "tarek" : "mira";
-    await d.dbg(`d.setHp("${other}", 0)`);
     await d.dbg(`d.setHp("${actor}", 3)`);
-    d.expect(await d.dbg(`Object.values(d.state().board.pieces).some(p => p.fallen)`), "a fallen hero lies on the board");
-    await d.shot("fallen");
-    await d.moveTo(["ArrowUp"]); // onto the innkeeper
-    await d.shot("options");
+    await d.shot("outside");
+    // stepping into the doorway enters the inn (no question)
+    await d.moveTo(["ArrowUp"]);
+    await d.waitFor(`d.state().board.mapId === "sandhollow_inn"`, 10000, "inside the inn");
+    await sleep(1200);
+    const a2 = await d.waitReady();
+    await d.dbg(`d.setHp("${other}", 0)`);
+    d.expect(await d.dbg(`Object.values(d.state().board.pieces).some(p => p.fallen)`), "a fallen hero lies on the floor");
+    await d.shot("inside");
+    // talk to Dara across the counter
+    await d.dbg(`d.place("${a2}", 3, 3)`);
+    await d.moveTo(["ArrowUp"]);
+    await d.waitFor(`d.menu() && d.menu().title === "Choose"`, 10000, "counter close-up");
+    await d.shot("counter");
     await d.choose("Rest");
     await d.choose("Rest (");
-    await sleep(1200);
-    await d.shot("rested");
-    await d.pressUntil(`!!d.menu()`, "Enter", 8, 400);
+    // black screen, sleep jingle → the party wakes up upstairs by the beds
+    await d.waitFor(`d.state().board.mapId === "sandhollow_inn_upper"`, 15000, "woke up upstairs");
+    await sleep(1500);
+    await d.shot("upstairs");
+    await d.pressUntil(`!!d.explorer()`, "Enter", 10, 400); // "The party has recovered!"
     const r = await d.ev(() => {
       const s = __game.debug.state();
       return { gold: s.gold, fallen: Object.values(s.board.pieces).filter((p) => p.fallen).length, hp: s.roster.map((id) => s.heroes[id].hp) };
@@ -196,11 +506,23 @@ const scenarios = {
     d.expect(r.gold === 260, `inn cost 40 gold (gold ${r.gold})`);
     d.expect(r.fallen === 0, "no fallen heroes after resting");
     d.expect(r.hp.every((h) => h > 20), `everyone healed ${r.hp}`);
+    // down the stairs and out: the party stands in front of the door, not on it
+    await d.dbg(`d.place("${actor}", 4, 4)`);
+    await d.moveTo(["ArrowRight"]);
+    await d.waitFor(`d.state().board.mapId === "sandhollow_inn"`, 10000, "downstairs");
+    await sleep(1200);
+    const a3 = await d.waitReady();
+    await d.dbg(`d.place("${a3}", 3, 5)`);
+    await d.moveTo(["ArrowDown"]);
+    await d.waitFor(`d.state().board.mapId === "sandhollow"`, 10000, "back outside");
+    await sleep(1200);
+    const pos = await d.dbg(`(p => [p.x, p.y])(Object.values(d.state().board.pieces).find(p => p.faction === "hero" && !p.fallen))`);
+    d.expect(pos[0] === 10 && pos[1] === 3, `outside, in front of the inn door (${pos})`);
   },
 
   async exitWalk(d) {
     await d.newGame();
-    const actor = await d.dbg(`d.heroTurn()`);
+    const actor = await d.waitReady();
     await d.dbg(`d.setFlag("gate_open")`);
     await d.dbg(`d.place("${actor}", 12, 5)`);
     await d.moveTo(["ArrowRight"]);
@@ -250,7 +572,7 @@ const scenarios = {
 
   async shopScrollEquip(d) {
     await d.newGame();
-    const actor = await d.dbg(`d.heroTurn()`);
+    const actor = await d.waitReady();
     await d.dbg(`(d.give("scroll_venom_mist"), d.give("iron_sword"), true)`);
     const gold0 = await d.dbg(`d.state().gold`);
     await d.dbg(`d.place("${actor}", 6, 9)`);
@@ -266,8 +588,8 @@ const scenarios = {
     await d.choose("Leave"); // shop
     await d.waitFor(`d.menu() && d.menu().title === "Choose"`);
     await d.choose("Leave"); // close-up
-    // read the scroll from the main menu (menu key works from the command box)
-    await d.waitFor(`d.menu() && d.menu().items.some(i => i.label === "Stats")`);
+    // read the scroll from the main menu (the menu key works on the idle map)
+    await d.waitReady();
     await d.key("m", 1, 500);
     await d.choose("Items");
     await d.choose("Scroll: Venom Mist");
@@ -291,8 +613,7 @@ const scenarios = {
 
   async stealNpc(d) {
     await d.newGame();
-    const actor = await d.dbg(`d.heroTurn()`);
-    d.expect(actor === "kit", `Kit acts first (${actor})`);
+    // exploring: whoever leads the party talks, Kit steals for them
     await d.dbg(`d.place("kit", 8, 9)`);
     await d.moveTo(["ArrowUp"]); // Salma
     await d.shot("options");
@@ -319,7 +640,7 @@ const scenarios = {
     await d.dbg(`d.place("kit", 3, 4)`);
     // Trap: Ability → Skill → Trap → click an empty cell
     await d.choose("Ability");
-    await d.choose("Skill");
+    await d.chooseType("Skill");
     await d.choose("Trap");
     await d.clickCell(3, 6);
     await sleep(800);
@@ -340,18 +661,20 @@ const scenarios = {
     });
     d.expect(trapped.traps === 0 && trapped.stuck && trapped.hp < 30, `trap triggered ${JSON.stringify(trapped)}`);
     await d.shot("trapped");
+    await d.reopenBox();
     await d.choose("End Turn");
     const next = await d.waitHeroTurn("kit");
     // Ability → Magic → (Attack) → Ice at (5,4)
     await d.choose("Ability");
-    await d.choose("Magic");
-    if (next === "mira") await d.choose("Attack");
+    await d.chooseType("Magic");
+    if (next === "mira") await d.chooseType("Attack");
     await d.choose("Ice");
     await d.clickCell(5, 4);
     await sleep(900);
     await d.shot("frozen");
     const frozen = await d.dbg(`d.state().board.fieldEffects.filter(f => f.effect === "frozen").map(f => f.x + "," + f.y)`);
-    d.expect(frozen.length === 5 && frozen.includes("5,4"), `ice froze a cross of 5 cells (${frozen})`);
+    await d.reopenBox();
+    d.expect(frozen.length === 3 && ["4,4", "5,4", "6,4"].every((c) => frozen.includes(c)), `on land, ice freezes a line of 3 (${frozen})`);
     await d.choose("Move");
     await d.key("ArrowRight", 1, 150); // onto (4,4) → slides east
     await d.key("Enter", 1, 500);
@@ -366,16 +689,24 @@ const scenarios = {
 
   async hiddenEnding(d) {
     await d.newGame();
-    const actor = await d.dbg(`d.heroTurn()`);
-    await d.dbg(`d.place("${actor}", 6, 4)`);
+    const actor = await d.waitReady();
+    // the Elder is at home: in through his door, up to him
+    await d.dbg(`d.place("${actor}", 6, 3)`);
+    await d.moveTo(["ArrowUp"]);
+    await d.waitFor(`d.state().board.mapId === "elder_house"`, 10000, "inside the elder's house");
+    await sleep(1200);
+    const a1 = await d.waitReady();
+    await d.dbg(`d.place("${a1}", 3, 3)`);
     await d.moveTo(["ArrowUp"]); // elder
     await d.pressUntil(`d.state().flags.gate_open && d.menu() && d.menu().title === "Choose"`, "Enter", 40, 400);
     d.expect((await d.dbg(`d.state().quests.active`)) === "clear_dunes", "sub quest active after talking");
     await d.choose("Leave");
     for (const h of ["aldric", "mira", "kit", "tarek"]) await d.dbg(`d.setLevel("${h}", 18)`);
-    // the party already moved this round: End Party, then walk through the east exit
-    await d.endParty();
-    const a3 = await d.waitHeroTurn();
+    await d.dbg(`(d.travel("sandhollow", "from_elder"), true)`);
+    await d.waitFor(`d.state().board.mapId === "sandhollow"`);
+    await sleep(1200);
+    // exploring the village: walk straight on through the east exit
+    const a3 = await d.waitReady();
     await d.dbg(`d.place("${a3}", 12, 5)`);
     // everything but the Emperor is already gone → defeating him triggers the hidden ending
     await d.ev(() => {
@@ -388,8 +719,7 @@ const scenarios = {
     await d.waitFor(`d.state().board.mapId === "scorpion_dunes"`);
     const a4 = await d.waitHeroTurn();
     await d.dbg(`d.place("${a4}", 14, 6)`);
-    await d.moveTo(["ArrowRight"]); // onto the Emperor
-    await d.choose("Yes");
+    await d.moveTo(["ArrowRight"]); // onto the Emperor: attacks right away
     await d.waitFor(`d.activeScenes().includes("battle")`);
     await sleep(1500);
     await d.shot("boss");
@@ -397,16 +727,19 @@ const scenarios = {
     d.expect((await d.dbg(`d.state().quests.entries.clear_dunes.ending`)) === "cleansed", "hidden ending reached");
     d.expect(!!(await d.dbg(`d.state().flags.dunes_cleansed`)), "dunes_cleansed flag set");
     await d.shot("after-boss");
-    // back to the village and report
-    await d.waitHeroTurn();
-    await d.endParty();
-    const a6 = await d.waitHeroTurn();
+    // the dunes are clear → free exploration; back to the village and report
+    const a6 = await d.waitReady();
+    d.expect(await d.dbg(`d.exploring()`), "exploring the cleared dunes");
     await d.dbg(`d.place("${a6}", 1, 7)`);
     await d.moveTo(["ArrowLeft"]);
     await d.choose("Yes");
     await d.waitFor(`d.state().board.mapId === "sandhollow"`);
-    const a7 = await d.waitHeroTurn();
-    await d.dbg(`d.place("${a7}", 6, 4)`);
+    await sleep(1200);
+    await d.dbg(`(d.travel("elder_house", "from_town"), true)`);
+    await d.waitFor(`d.state().board.mapId === "elder_house"`);
+    await sleep(1200);
+    const a7 = await d.waitReady();
+    await d.dbg(`d.place("${a7}", 3, 3)`);
     await d.moveTo(["ArrowUp"]);
     await d.pressUntil(`d.state().quests.entries.road_to_oasis.status === "done" && !!d.menu()`, "Enter", 40, 400);
     await d.shot("reward");
@@ -419,21 +752,24 @@ const scenarios = {
     await d.page.reload();
     await d.waitFor(`d.activeScenes().includes("title")`);
     await d.tapMenu("New Game");
-    const actor = await d.waitHeroTurn();
+    await d.waitFor(`d.activeScenes().includes("board") && !!d.state().board`, 20000, "board");
+    await sleep(400);
+    await d.dbg(`(d.skipPrologue(), true)`);
+    await d.waitFor(`d.state().board && d.state().board.mapId === "sandhollow"`, 20000, "sandhollow");
+    const actor = await d.waitReady();
     await d.shot("board");
-    // Move: first tap previews, second tap confirms
-    await d.tapMenu("Move");
-    await sleep(300);
+    // Exploring the village: one tap on a cell walks there
     const before = await d.dbg(`(p => [p.x, p.y])(Object.values(d.state().board.pieces).find(p => p.members.includes("${actor}")))`);
     const target = { x: before[0] + 1, y: before[1] };
     await d.tapCell(target.x, target.y);
-    await d.shot("preview");
-    const still = await d.dbg(`(p => [p.x, p.y])(Object.values(d.state().board.pieces).find(p => p.members.includes("${actor}")))`);
-    d.expect(still[0] === before[0] && still[1] === before[1], "first tap only previews");
-    await d.tapCell(target.x, target.y);
     await sleep(800);
     const after = await d.dbg(`(p => [p.x, p.y])(Object.values(d.state().board.pieces).find(p => p.members.includes("${actor}")))`);
-    d.expect(after[0] === target.x && after[1] === target.y, `second tap moved the party (${after})`);
+    d.expect(after[0] === target.x && after[1] === target.y, `a tap moved the party (${after})`);
+    // tapping the party opens its commands (after choosing who)
+    await d.waitReady();
+    await d.tapCell(target.x, target.y);
+    await d.waitFor(`d.menu() && d.menu().title === "Who?"`, 5000, "member choice");
+    await d.tapMenu(await d.dbg(`d.menu().items[0].label`));
     // Back button closes a sub menu
     await d.waitFor(`d.menu() && d.menu().items.some(i => i.label === "Stats")`);
     await d.tapMenu("Item");
@@ -460,48 +796,47 @@ const scenarios = {
 
   async interactCancelRotate(d) {
     await d.newGame();
-    const actor = await d.dbg(`d.heroTurn()`);
-    await d.dbg(`d.place("${actor}", 6, 4)`);
-    await d.moveTo(["ArrowUp"]); // onto Elder Hamid's cell → close-up
+    const actor = await d.waitReady();
+    await d.dbg(`d.place("${actor}", 8, 9)`);
+    await d.moveTo(["ArrowUp"]); // onto Salma's cell → close-up
     await d.waitFor(`d.menu() && d.menu().title === "Choose"`);
     await d.shot("close-up");
-    const onElder = await d.dbg(`(p => [p.x, p.y])(Object.values(d.state().board.pieces).find(p => p.members.includes("${actor}")))`);
-    d.expect(onElder[0] === 6 && onElder[1] === 3, `hero stands on the elder's cell (${onElder})`);
+    const onNpc = await d.dbg(`(p => [p.x, p.y])(Object.values(d.state().board.pieces).find(p => p.members.includes("${actor}")))`);
+    d.expect(onNpc[0] === 8 && onNpc[1] === 8, `hero stands on Salma's cell (${onNpc})`);
     await d.key("Escape", 1, 500); // back out → the move is undone
     const back = await d.dbg(`(p => [p.x, p.y])(Object.values(d.state().board.pieces).find(p => p.members.includes("${actor}")))`);
-    d.expect(back[0] === 6 && back[1] === 4, `cancel returned the hero (${back})`);
+    d.expect(back[0] === 8 && back[1] === 9, `cancel returned the hero (${back})`);
     d.expect(!(await d.dbg(`d.state().board.turn.moved.some(id => !!d.state().heroes[id])`)), "move not spent");
-    // walk *through* a villager: elder at (6,3); from (6,4) the rook/queen slides north past him
-    await d.waitFor(`d.menu() && d.menu().items.some(i => i.label === "Move" && !i.disabled)`);
+    await d.waitReady();
     // rotating keeps the cursor cell in place on screen – also at a map corner (0,0)
     await d.key("Escape", 1, 300); // roam
     await d.dbg(`(d.place("${actor}", 1, 1), true)`);
     for (let i = 0; i < 4; i++) {
       const cell = await d.dbg(`d.cursor()`);
       const s0 = await d.dbg(`d.cellScreen(${cell.x}, ${cell.y})`);
-      await d.key("e", 1, 300);
+      await d.key("e", 1, 1200); // animated turn
       const s1 = await d.dbg(`d.cellScreen(${cell.x}, ${cell.y})`);
       d.expect(Math.abs(s0.x - s1.x) <= 1 && Math.abs(s0.y - s1.y) <= 1, `cursor cell stayed in place on turn ${i + 1} (${JSON.stringify(s0)} → ${JSON.stringify(s1)})`);
     }
     d.expect((await d.dbg(`d.rotation()`)) === 0, "four quarter turns = full circle");
     await d.dbg(`(d.place("${actor}", 6, 4), true)`);
-    await d.pressUntil(`d.menu() && d.menu().items.some(i => i.label === "Move")`, "Enter", 5, 400);
+    await d.waitReady();
     // rotate the map and move by clicking a cell
-    await d.key("e", 1, 400);
+    await d.key("e", 1, 1200);
     d.expect((await d.dbg(`d.rotation()`)) === 1, "map rotated a quarter turn");
     await d.shot("rotated");
-    await d.choose("Move");
+    await d.startMove();
     await d.clickCell(4, 4);
     await sleep(900);
     const moved = await d.dbg(`(p => [p.x, p.y])(Object.values(d.state().board.pieces).find(p => p.members.includes("${actor}")))`);
     d.expect(moved[0] === 4 && moved[1] === 4, `clicking a cell on the rotated map moved there (${moved})`);
-    await d.key("q", 1, 300);
+    await d.key("q", 1, 1200);
     d.expect((await d.dbg(`d.rotation()`)) === 0, "rotated back");
   },
 
   async actAndShop(d) {
     await d.newGame();
-    const actor = await d.dbg(`d.heroTurn()`);
+    const actor = await d.waitReady();
     await d.dbg(`d.place("${actor}", 8, 9)`);
     await d.moveTo(["ArrowUp"]); // onto Salma (item shop)
     await d.waitFor(`d.menu() && d.menu().title === "Choose"`);
@@ -526,7 +861,8 @@ const scenarios = {
     await d.choose("Talk");
     await d.pressUntil(`d.menu() && d.menu().title === "Choose"`, "Enter", 20, 400);
     await d.choose("Leave");
-    // the move was spent (Leave keeps the hero there); "Act" reopens the close-up any number of times
+    // Leave keeps the hero there; "Act" reopens the close-up any number of times
+    await d.openCommands();
     await d.waitFor(`d.menu() && d.menu().items.some(i => i.label === "Act")`);
     const pos = await d.dbg(`(p => [p.x, p.y])(Object.values(d.state().board.pieces).find(p => p.members.includes("${actor}")))`);
     d.expect(pos[0] === 8 && pos[1] === 8, `hero stays on Salma's cell after Leave (${pos})`);
@@ -577,20 +913,195 @@ const scenarios = {
 
   async undoMove(d) {
     await d.newGame();
-    const actor = await d.dbg(`d.heroTurn()`);
-    await d.dbg(`d.place("${actor}", 3, 7)`);
-    await d.moveTo(["ArrowRight"]); // (4,7): plain sand, no effects
+    await d.travelToDunes(["scorp_a"]); // a (sleeping) enemy keeps the board turn-based
+    await d.ev(() => __game.debug.state().board.chars["scorp_a#0"].statuses.push({ id: "sleep", turns: 9 }));
+    const actor = await d.waitHeroTurn();
+    await d.dbg(`d.place("${actor}", 3, 4)`);
+    await d.moveTo(["ArrowRight"]); // (4,4): plain sand, no effects
     await d.waitFor(`d.menu() && d.menu().items.some(i => i.label === "Undo Move")`);
     await d.shot("undo-offered");
     await d.choose("Undo Move");
     const back = await d.dbg(`(p => [p.x, p.y])(Object.values(d.state().board.pieces).find(p => p.members.includes("${actor}")))`);
-    d.expect(back[0] === 3 && back[1] === 7, `undo returned the party (${back})`);
+    d.expect(back[0] === 3 && back[1] === 4, `undo returned the party (${back})`);
     d.expect(await d.dbg(`d.menu().items.some(i => i.label === "Move" && !i.disabled)`), "Move is available again");
     // move onto a burning cell: effects happened → no undo
-    await d.ev(() => { __game.debug.state().board.fieldEffects.push({ x: 4, y: 7, effect: "burning", rounds: 3 }); __game.debug.resync(); });
+    await d.ev(() => { __game.debug.state().board.fieldEffects.push({ x: 4, y: 4, effect: "burning", rounds: 3 }); __game.debug.resync(); });
     await d.moveTo(["ArrowRight"]);
     await d.waitFor(`d.menu() && d.menu().items.some(i => i.label === "Stats")`);
     d.expect(!(await d.dbg(`d.menu().items.some(i => i.label === "Undo Move")`)), "no undo after taking fire damage");
+  },
+
+  async explore(d) {
+    await d.newGame();
+    const actor = await d.waitReady();
+    d.expect(await d.dbg(`d.exploring()`), "the peaceful village is explored freely");
+    const pos = () => d.dbg(`(p => [p.x, p.y])(Object.values(d.state().board.pieces).find(p => p.members.includes("${actor}")))`);
+    const start = await pos();
+    // a far cell, beyond any move pattern: one click walks there
+    const far = await d.ev(() => {
+      const o = [...__game.core.moveOptions(__game.debug.ctx(), __game.debug.explorer()).values()].filter((o) => o.kind === "move");
+      const best = o.reduce((a, b) => (b.path.length > a.path.length && b.path.length < 12 ? b : a));
+      return { x: best.pos.x, y: best.pos.y, steps: best.path.length };
+    });
+    d.expect(far.steps > 4, `far cell is ${far.steps} steps away`);
+    await d.clickCell(far.x, far.y);
+    await sleep(500);
+    await d.waitFor(`!!d.explorer()`, 20000, "walk finished");
+    let p = await pos();
+    d.expect(p[0] === far.x && p[1] === far.y, `walked to ${far.x},${far.y} (at ${p})`);
+    // and again right away (keyboard this time) – no turns, no End Turn
+    await d.dbg(`(d.cursorTo(${start[0]}, ${start[1]}), true)`);
+    await d.key("Enter", 1, 300);
+    await sleep(500);
+    await d.waitFor(`!!d.explorer()`, 20000, "walk back finished");
+    p = await pos();
+    d.expect(p[0] === start[0] && p[1] === start[1], `walked back to ${start} (at ${p}; far ${JSON.stringify(far)}, cursor ${JSON.stringify(await d.dbg(`d.cursor()`))})`);
+    d.expect((await d.dbg(`d.state().board.turn.current`)) === null, "nobody's turn while exploring");
+    await d.shot("village");
+    // villagers wander on their own while the player idles
+    const npcs0 = await d.dbg(`JSON.stringify(Object.values(d.state().board.pieces).filter(p => p.faction === "npc").map(p => [p.x, p.y]))`);
+    await d.waitFor(`JSON.stringify(Object.values(d.state().board.pieces).filter(p => p.faction === "npc").map(p => [p.x, p.y])) !== ${JSON.stringify(npcs0)}`, 15000, "a villager wandered");
+    // wild map: tactics while an enemy lives, exploration once it's gone
+    await d.travelToDunes(["scorp_a"]);
+    await d.ev(() => __game.debug.state().board.chars["scorp_a#0"].statuses.push({ id: "sleep", turns: 9 }));
+    await d.waitHeroTurn();
+    d.expect(!(await d.dbg(`d.exploring()`)), "turn-based with an enemy around");
+    await d.dbg(`d.setHp("scorp_a#0", 0)`);
+    await d.choose("Stats");
+    await d.key("Escape", 1, 400);
+    await d.waitFor(`!!d.explorer()`, 10000, "exploring the cleared dunes");
+    await d.shot("dunes-clear");
+  },
+
+  async harborSearch(d) {
+    await d.newGame({ prologue: true });
+    d.expect((await d.dbg(`d.state().board.mapId`)) === "saltmere_harbor", "the journey starts at the harbor");
+    await d.shot("arrival");
+    await d.pressUntil(`!!d.explorer()`, "Enter", 30, 400); // captain's intro
+    await d.shot("harbor");
+    const actor = await d.waitReady();
+    const potions = await d.dbg(`d.state().inventory.potion ?? 0`);
+    await d.dbg(`d.place("${actor}", 8, 4)`);
+    await d.moveTo(["ArrowUp"]); // the herring barrel at (8,3)
+    await d.waitFor(`d.menu() && d.menu().title === "Choose"`);
+    await d.shot("barrel-close-up");
+    await d.choose("Search");
+    await d.pressUntil(`d.menu() && d.menu().title === "Choose"`, "Enter", 10, 400);
+    d.expect((await d.dbg(`d.state().inventory.potion`)) === potions + 1, "found a potion in the barrel");
+    // searching again only tells what's left – no second potion
+    await d.choose("Search");
+    await d.pressUntil(`d.menu() && d.menu().title === "Choose"`, "Enter", 10, 400);
+    d.expect((await d.dbg(`d.state().inventory.potion`)) === potions + 1, "only one potion in the barrel");
+    await d.choose("Leave");
+  },
+
+  async riverIce(d) {
+    await d.newGame({ prologue: true });
+    await d.pressUntil(`!!d.explorer()`, "Enter", 30, 400);
+    await d.ev(() => {
+      const s = __game.debug.state();
+      s.heroes.mira.learned.push("ice", "fire");
+      __game.debug.travel("greenwood", "from_harbor");
+    });
+    await d.waitFor(`d.state().board.mapId === "greenwood"`);
+    await sleep(1500); // scene restart + intro dialog
+    await d.pressUntil(`!!d.explorer()`, "Enter", 30, 400); // forest intro
+    const actor = await d.waitReady();
+    await d.dbg(`d.place("${actor}", 16, 6)`);
+    await sleep(400);
+    d.expect(!(await d.dbg(`__game.core.moveOptions(d.ctx(), "${actor}").has("20,6")`)), "the river blocks the way");
+    // Mira casts Ice on the river
+    await d.key("Enter", 1, 400);
+    await d.choose("Mira");
+    await d.choose("Ability");
+    await d.chooseType("Magic");
+    await d.chooseType("Attack");
+    await d.choose("Ice");
+    await d.dbg(`(d.cursorTo(18, 6), true)`);
+    await d.key("Enter", 1, 300);
+    await sleep(1200);
+    await d.shot("frozen-river");
+    const frozen = await d.dbg(`d.state().board.fieldEffects.filter(f => f.effect === "frozen").length`);
+    d.expect(frozen === 9, `ice froze 9 cells (${frozen})`);
+    await d.key("Escape", 2, 300);
+    await d.waitReady();
+    await d.dbg(`(d.cursorTo(21, 6), true)`);
+    await d.key("Enter", 1, 300);
+    await d.waitFor(`!!d.explorer()`, 20000, "walked across");
+    const pos = await d.dbg(`(p => [p.x, p.y])(Object.values(d.state().board.pieces).find(p => p.members.includes("${actor}")))`);
+    d.expect(pos[0] >= 20, `crossed the river on the ice (at ${pos})`);
+    // Fire burns away the two cacti blocking the stairs (it spreads from one to the other)
+    await d.dbg(`d.place("${actor}", 26, 5)`);
+    await sleep(300);
+    await d.key("Enter", 1, 400);
+    await d.choose("Mira");
+    await d.choose("Ability");
+    await d.chooseType("Magic");
+    await d.chooseType("Attack");
+    await d.choose("Fire");
+    await d.dbg(`(d.cursorTo(28, 5), true)`);
+    await d.key("Enter", 1, 300);
+    await sleep(1200);
+    await d.key("Escape", 2, 300);
+    await sleep(600);
+    await d.shot("burning-stairs");
+    const gone = await d.dbg(`d.state().maps.greenwood.decor ?? {}`);
+    d.expect(gone["28,5"] === null && gone["28,6"] === null, `both cacti burnt away (${JSON.stringify(gone)})`);
+  },
+
+  async ruinsHidden(d) {
+    await d.newGame({ prologue: true });
+    await d.pressUntil(`!!d.explorer()`, "Enter", 30, 400);
+    await d.dbg(`(d.travel("sunken_ruins", "from_forest"), true)`);
+    await d.waitFor(`d.state().board.mapId === "sunken_ruins"`);
+    await sleep(1500); // scene restart + intro dialog
+    await d.pressUntil(`!!d.explorer()`, "Enter", 30, 400); // ruins intro
+    const actor = await d.waitReady();
+    d.expect(await d.dbg(`d.exploring()`), "dormant skeletons don't count as enemies");
+    await d.shot("ruins");
+    const kitCast = async (skill, pickTarget = false) => {
+      await d.key("Enter", 1, 400);
+      await d.choose("Kit");
+      await d.choose("Ability");
+      await d.chooseType("Skill");
+      await d.choose(skill);
+      await sleep(300);
+      if (pickTarget) await d.key("Enter", 1, 300); // cursor starts on the first valid target (Discover goes off at once)
+      await sleep(1600);
+      await d.key("Escape", 2, 300);
+      await d.waitReady();
+    };
+    // Discover near the invisible chest: its reach lights up, then the chest appears
+    await d.dbg(`d.place("${actor}", 7, 12)`);
+    await sleep(300);
+    await kitCast("Discover");
+    d.expect(await d.dbg(`Object.values(d.state().board.pieces).some(p => p.sourceId === "hidden_chest")`), "the invisible chest appeared");
+    await d.shot("chest-found");
+    // Discover next to a trap reveals it; Defuse turns it into a Snare
+    await d.dbg(`d.place("${actor}", 3, 8)`); // out of the skeletons' reach, next to the trap at 4,7
+    await sleep(300);
+    await kitCast("Discover");
+    d.expect((await d.dbg(`(d.state().maps.sunken_ruins.revealed ?? []).length`)) === 1, "Discover revealed the trap next to Kit");
+    await d.shot("trap-revealed");
+    await kitCast("Defuse", true);
+    d.expect((await d.dbg(`d.state().inventory.snare ?? 0`)) === 1, "the defused trap is a Snare now");
+    // walking along the road: a trap nobody found stops the party
+    await d.dbg(`d.place("${actor}", 6, 6)`);
+    await sleep(300);
+    await d.dbg(`(d.cursorTo(10, 6), true)`);
+    await d.key("Enter", 1, 300);
+    await sleep(1500);
+    const at = await d.dbg(`(p => [p.x, p.y])(Object.values(d.state().board.pieces).find(p => p.members.includes("${actor}")))`);
+    d.expect(at[0] === 8 && at[1] === 6, `stopped on the hidden trap at 8,6 (at ${at})`);
+    await d.shot("trapped");
+    // ...and within reach of the "remains", a skeleton rises and ambushes
+    await d.waitReady();
+    await d.dbg(`(d.cursorTo(5, 6), true)`);
+    await d.key("Enter", 1, 300);
+    await d.waitFor(`!d.exploring()`, 10000, "a skeleton rose");
+    await d.waitFor(`d.activeScenes().includes("battle") && d.state().battle && d.state().battle.kind === "ambush"`, 15000, "the skeleton ambushes the party");
+    await sleep(1500);
+    await d.shot("ambush");
   },
 
   async enemyAi(d) {

@@ -16,3 +16,8 @@ sandhollow_magic:
   type: magic
   items: [scroll_venom_mist, scroll_quagmire, scroll_cross_slash, scroll_aura, fire_bomb, frost_shard,
           sleep_powder, glue_pot, levitation_draught, ruby_rod, frost_rod, mana_ring]
+
+elvenglade_magic:
+  name: Faelar's Glade Magic
+  type: magic
+  items: [scroll_ice, ether, frost_shard, potion, antidote]

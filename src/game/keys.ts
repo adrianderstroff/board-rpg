@@ -16,6 +16,7 @@ export const K = {
   boardCursor: "board_cursor",
   highlight: "highlight",
   fieldEffects: "field_effects",
+  wallSigns: "wall_signs",
   exitArrows: "exit_arrows",
   shadow: "shadow",
   titleBg: "title_bg",

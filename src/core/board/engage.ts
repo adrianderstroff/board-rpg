@@ -22,8 +22,8 @@ export function rollBattleKind(ctx: Ctx, attackerFaction: "hero" | "enemy", atta
   return ctx.rng.chance(chance) ? "ambush" : "normal";
 }
 
-/** Starts a battle for moving `charId`'s piece onto a hostile cell. */
-export function engage(ctx: Ctx, charId: string, dest: Pos): BattleState {
+/** Starts a battle for moving `charId`'s piece onto a hostile cell (`kind` forces e.g. an ambush). */
+export function engage(ctx: Ctx, charId: string, dest: Pos, opts: { kind?: BattleKind } = {}): BattleState {
   const piece = mustPieceOf(ctx, charId);
   const option = moveOptions(ctx, charId).get(key(dest));
   if (!option || option.kind !== "engage") throw new Error(`No engagement at ${dest.x},${dest.y}`);
@@ -31,7 +31,7 @@ export function engage(ctx: Ctx, charId: string, dest: Pos): BattleState {
   const defenders = piecesAt(ctx, dest).filter((p) => p.faction !== piece.faction);
   const attackers = aliveMembers(ctx, piece).map((c) => c.id);
   const defending = defenders.flatMap((p) => aliveMembers(ctx, p).map((c) => c.id));
-  const kind = rollBattleKind(ctx, piece.faction, isHidden(ctx, piece));
+  const kind = opts.kind ?? rollBattleKind(ctx, piece.faction, isHidden(ctx, piece));
   markMoved(ctx, piece);
   const heroesAttack = piece.faction === "hero";
   return startBattle(ctx, {
@@ -65,6 +65,7 @@ export function resolveEngagement(ctx: Ctx, result: BattleState): GameEvent[] {
   const fallenAt: Record<string, Pos> = {};
   const attacker = b.pieces[src.attackerPiece];
   for (const c of result.combatants) {
+    if (result.guests[c.id]) continue; // summoned for this battle only (§12.7)
     const ch = getChar(ctx, c.id);
     if (ch.kind !== "hero" || isAlive(ch)) continue;
     const onAttacker = attacker?.members.includes(c.id);

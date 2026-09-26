@@ -22,7 +22,8 @@ export function validateContent(db: Database): string[] {
     for (const e of list ?? []) {
       if (e.type === "applyStatus") has(db.statuses, e.status, where, "status");
       if (e.type === "cureStatus") for (const s of e.statuses ?? []) has(db.statuses, s, where, "status");
-      if (e.type === "fieldEffect") has(db.fieldEffects, e.effect, where, "field effect");
+      if (e.type === "defuse") has(db.items, e.item, where, "item");
+      if (e.type === "fieldEffect" || e.type === "freezeArea") has(db.fieldEffects, e.effect, where, "field effect");
       if (e.type === "placeTrap" && e.status) has(db.statuses, e.status, where, "status");
       if (e.type === "learnAbility") has(db.abilities, e.ability, where, "ability");
     }
@@ -93,6 +94,7 @@ export function validateContent(db: Database): string[] {
   // abilities & items
   for (const a of db.abilities.values()) {
     battleUse(a.battle, `ability ${a.id}`);
+    for (const e of a.battle?.summon?.enemies ?? []) has(db.enemies, e, `ability ${a.id}`, "enemy");
     boardUse(a.board, `ability ${a.id}`);
   }
   for (const i of db.items.values()) {
@@ -113,6 +115,7 @@ export function validateContent(db: Database): string[] {
     has(db.patterns, e.move, w, "pattern");
     graphics(e, w);
     for (const r of e.ai) if (r.action !== "attack") has(db.abilities, r.action, w, "ability");
+    for (const r of e.ai) if (r.when?.targetLacksStatus) has(db.statuses, r.when.targetLacksStatus, w, "status");
     for (const s of e.statuses ?? []) has(db.statuses, s, w, "status");
     for (const a of e.boardAi.abilities ?? []) {
       has(db.abilities, a.ability, w, "ability");
@@ -159,6 +162,13 @@ export function validateContent(db: Database): string[] {
       actions(e.onComplete, `${w}/ending ${e.id}`);
     }
   }
+  // chipsets: terrain that burns must burn into a known terrain
+  for (const chip of db.chipsets.values()) {
+    for (const [id, t] of Object.entries(chip.terrains)) {
+      if (t.flammable && !t.burnsTo) err(`chipset ${chip.id}`, `flammable terrain "${id}" needs burnsTo`);
+      if (t.burnsTo && !chip.terrains[t.burnsTo]) err(`chipset ${chip.id}`, `terrain "${id}" burns to unknown terrain "${t.burnsTo}"`);
+    }
+  }
   // maps
   for (const m of db.maps.values()) {
     const w = `map ${m.id}`;
@@ -190,6 +200,8 @@ export function validateContent(db: Database): string[] {
     for (const e of m.enemies ?? []) {
       onGrid(e.x, e.y, `enemy ${e.id}`);
       for (const id of [e.enemy, ...(e.party ?? [])]) has(db.enemies, id, w, "enemy");
+      const dormant = db.enemies.get(e.enemy)?.boardAi.dormant;
+      if (dormant && !chip.decor[dormant.decor]) err(w, `enemy ${e.id}: dormant decor "${dormant.decor}" not in chipset ${chip.id}`);
       condition(e.when, `${w} enemy ${e.id}`);
     }
     for (const ev of m.events ?? []) {
@@ -198,18 +210,41 @@ export function validateContent(db: Database): string[] {
         const pw = `${w} event ${ev.id}`;
         condition(p.when, pw);
         has(db.npcs, p.npc, pw, "npc");
+        has(db.npcs, p.keeper, pw, "npc");
         if (p.decor && !chip.decor[p.decor]) err(pw, `unknown decor "${p.decor}"`);
         has(db.dialogs, p.dialog, pw, "dialog");
         actions(p.actions, pw);
         for (const i of p.interactions ?? []) {
           if (i.type === "talk") has(db.dialogs, i.dialog, pw, "dialog");
           if (i.type === "shop") has(db.shops, i.shop, pw, "shop");
+          if (i.type === "inn" && i.wakeAt) {
+            const to = db.maps.get(i.wakeAt.map);
+            if (!to) err(pw, `inn wakes up on unknown map "${i.wakeAt.map}"`);
+            else if (!to.spawns[i.wakeAt.spawn]) err(pw, `inn wakes up at unknown spawn "${i.wakeAt.spawn}"`);
+          }
           if (i.type === "examine") {
             has(db.dialogs, i.dialog, pw, "dialog");
             actions(i.actions, pw);
           }
         }
       }
+    }
+    const gateIds = new Set((m.gates ?? []).map((g) => g.id));
+    for (const g of m.gates ?? []) {
+      onGrid(g.x, g.y, `gate ${g.id}`);
+      condition(g.openWhen, `${w} gate ${g.id}`);
+    }
+    for (const sw of m.switches ?? []) {
+      onGrid(sw.x, sw.y, `switch ${sw.id}`);
+      for (const gid of sw.opens) if (!gateIds.has(gid)) err(w, `switch ${sw.id} opens unknown gate "${gid}"`);
+    }
+    for (const wd of m.wallDecor ?? []) {
+      onGrid(wd.x, wd.y, `wall sign ${wd.sign}`);
+      if (db.graphics.wallSigns?.frames[wd.sign] === undefined) err(w, `wall decor: unknown sign "${wd.sign}"`);
+    }
+    for (const t of m.traps ?? []) {
+      onGrid(t.x, t.y, `trap ${t.id}`);
+      has(db.statuses, t.status, w, "status");
     }
     actions(m.onEnter, w);
   }

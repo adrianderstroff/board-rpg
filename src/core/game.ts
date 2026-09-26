@@ -52,6 +52,16 @@ export class Game {
     return out;
   }
 
+  /** Split floors (§5.3): every group of heroes arrives at its own spawn on `mapId`. */
+  enterGroups(mapId: string, groups: { members: string[]; spawn: string }[]): EnterResult {
+    const out: EnterResult = { ...emptyResult(), dialogs: [] };
+    out.events.push(...enterMap(this.ctx, mapId, groups[0].spawn, groups));
+    merge(out, runActions(this.ctx, this.db.map(mapId).onEnter));
+    for (const r of autoTriggers(this.ctx)) collect(out, r);
+    merge(out, evaluateQuests(this.ctx));
+    return out;
+  }
+
   travel(exit: ExitDef): EnterResult {
     if (!exitEnabled(this.ctx, exit)) throw new Error("Exit disabled");
     return this.enter(exit.to, exit.spawn);

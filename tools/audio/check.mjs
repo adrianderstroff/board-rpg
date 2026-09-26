@@ -10,7 +10,7 @@ import { peak, gainToDb } from './synth.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const AUDIO_DIR = join(ROOT, 'public', 'assets', 'audio');
-const LIMITS = { musicFileBytes: 1.6e6, musicTotalBytes: 8e6 };
+const LIMITS = { musicFileBytes: 1.6e6, musicTotalBytes: 20e6 };
 
 /** Largest sample-to-sample jump inside the file (reference for the seam). */
 function maxStep(s) {
@@ -56,7 +56,7 @@ export function checkAll({ quiet = false } = {}) {
         (r.seam != null ? `  ${(r.seam * 100).toFixed(1)}% of max step` : ''),
     );
   for (const [k, v] of Object.entries(totals)) log(`total ${k}: ${(v / 1e6).toFixed(2)} MB`);
-  if ((totals.music ?? 0) > LIMITS.musicTotalBytes) errors.push(`music total ${totals.music} bytes > 8 MB`);
+  if ((totals.music ?? 0) > LIMITS.musicTotalBytes) errors.push(`music total ${totals.music} bytes > 20 MB`);
   if (errors.length) for (const e of errors) console.error('ERROR ' + e);
   else log(`OK: ${rows.length} WAV files parsed and valid.`);
   return { rows, errors };

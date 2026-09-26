@@ -3,6 +3,7 @@ import { board, reconcile } from "../../core/board/board";
 import { canEquip, computeStats, knownAbilities } from "../../core/chars/character";
 import type { Ctx } from "../../core/context";
 import type { EquipSlot } from "../../core/data/types";
+import { equipCompare } from "./compare";
 import { applyEffects } from "../../core/effects/effects";
 import { canLearnScroll, equip, inventoryList, readScroll, unequip } from "../../core/items/inventory";
 import { canSwitchQuest, questLog, switchQuest } from "../../core/script/quests";
@@ -93,25 +94,19 @@ async function equipPage(scene: Phaser.Scene, input: InputRouter, heroId: string
     if (r === null) return;
     const slot = slots[r];
     const options = inventoryList(ctx, (d) => d.equip?.slot === slot && canEquip(ctx.db, hero, d.id));
-    const items: MenuItem[] = [{ label: "(Remove)" }, ...options.map((o) => ({ label: o.item.name, right: statDiff(ctx, o.item.id, hero.equipment[slot]), icon: icon(o.item.icon) }))];
-    const c = await pick(scene, input, items, { x: 150, y: 80, width: 220, title: slot });
+    // stronger than what's worn → green, weaker → red (§15)
+    const items: MenuItem[] = [
+      { label: "(Remove)" },
+      ...options.map((o) => {
+        const cmp = equipCompare(ctx, o.item.id, hero.equipment[slot]);
+        return { label: o.item.name, right: cmp.text, rightColor: cmp.color, icon: icon(o.item.icon) };
+      }),
+    ];
+    const c = await pick(scene, input, items, { x: 150, y: 80, width: 220, title: slot.charAt(0).toUpperCase() + slot.slice(1) });
     if (c === null) continue;
     if (c === 0) unequip(ctx, hero, slot);
     else equip(ctx, hero, options[c - 1].item.id);
   }
-}
-
-function statDiff(ctx: Ctx, itemId: string, currentId?: string): string {
-  const a = ctx.db.item(itemId).equip?.stats ?? {};
-  const b = currentId ? (ctx.db.item(currentId).equip?.stats ?? {}) : {};
-  const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])] as (keyof typeof a)[];
-  const names: Record<string, string> = { str: "ATK", def: "DEF", mag: "MAG", mdef: "MDF", spd: "SPD", maxHp: "HP", maxMp: "MP" };
-  return keys
-    .map((k) => ({ k, d: (a[k] ?? 0) - (b[k] ?? 0) }))
-    .filter((x) => x.d !== 0)
-    .slice(0, 2)
-    .map((x) => `${names[x.k]}${x.d > 0 ? "+" : ""}${x.d}`)
-    .join(" ");
 }
 
 async function abilitiesPage(scene: Phaser.Scene, input: InputRouter, heroId: string) {
@@ -301,6 +296,7 @@ async function systemPage(scene: Phaser.Scene, input: InputRouter): Promise<Menu
         { label: "Text speed", right: cur },
         { label: "Music", right: pct(s.settings.musicVolume) },
         { label: "Sound", right: pct(s.settings.sfxVolume) },
+        { label: "Turn speed", right: `${s.settings.rotateSpeed}` },
         { label: "Fullscreen", right: scene.scale.isFullscreen ? "On" : "Off" },
         { label: "Back to title" },
         { label: "Exit game" },
@@ -320,11 +316,15 @@ async function systemPage(scene: Phaser.Scene, input: InputRouter): Promise<Menu
       s.saveSettings();
       sfx("confirm");
     } else if (r === 3) {
+      s.settings.rotateSpeed = (s.settings.rotateSpeed % 5) + 1; // 1…5, how fast the map turns
+      s.saveSettings();
+      sfx("confirm");
+    } else if (r === 4) {
       toggleFullscreen(scene);
     } else {
       const ok = await pick(scene, input, [{ label: "Yes" }, { label: "No" }], { x: 200, y: 80, title: "Unsaved progress is lost." });
       if (ok !== 0) continue;
-      if (r === 5) {
+      if (r === 6) {
         window.close();
       }
       return "title";

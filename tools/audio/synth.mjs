@@ -300,6 +300,19 @@ export function normalize(buf, db) {
   return p > 0 ? scale(buf, dbToGain(db) / p) : buf;
 }
 
+/**
+ * Soft-clip (tanh) for peaky mixes: scales the peak to 1, then y = tanh(k x) / tanh(k).
+ * Quiet parts gain k / tanh(k); only the loudest transients get squashed.
+ * Stateless per sample, so a seamless loop stays seamless.
+ */
+export function saturate(buf, k = 1.5) {
+  const p = peak(buf);
+  if (!(p > 0) || !(k > 0)) return buf;
+  const n = Math.tanh(k);
+  for (let i = 0; i < buf.length; i++) buf[i] = Math.tanh((k * buf[i]) / p) / n;
+  return buf;
+}
+
 /** Linear fade in/out (ms) to kill clicks at the edges. */
 export function fadeEdges(buf, inMs = 5, outMs = 5, sr = SR) {
   const fi = Math.min(buf.length, secs(inMs / 1000, sr));

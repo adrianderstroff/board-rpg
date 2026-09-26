@@ -1,0 +1,77 @@
+# Mirage Tower F2 (§18.10): two halves – each team's plate opens the other team's gate, so they take turns.
+name: Mirage Tower 2F
+kind: wild
+chipset: desert
+battleback: mirage
+music: mirage
+
+legend:
+  terrain:
+    f: tower_floor
+    W: tower_wall
+    i: ice
+    O: doorway
+  decor:
+    M: mirage_crystal
+    U: stairs_up
+    o: rubble
+
+layers:
+  terrain: |
+    WWWWWWWWWWWWW
+    WfffffWfffffW
+    WfffffWfffffW
+    WfffffWfffffW
+    WWWfWWWWWfWWW
+    WfffffWfffffW
+    WfffffWfffffW
+    WfffffWfffffW
+    WfffffWfffffW
+    WfffffWfffffW
+    WfffffWfffffW
+  height: |
+    4444443444444
+    4000003000004
+    4000003000004
+    4000003000004
+    4330333330334
+    4000003000004
+    4000003000004
+    4000003000004
+    4000003000004
+    4000003000004
+    4000003000004
+  decor: |
+    .............
+    ...U.....U...
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .....M.M.....
+    .............
+
+spawns:
+  west: { x: 3, y: 9, dir: N }
+  east: { x: 9, y: 9, dir: N }
+
+exits:
+  - { x: 3, y: 1, dir: N, to: mirage_tower_3, spawn: west, label: Upstairs, door: true, together: true }
+  - { x: 9, y: 1, dir: N, to: mirage_tower_3, spawn: east, label: Upstairs, door: true, together: true }
+
+gates:
+  - { id: west_gate, x: 3, y: 4 }
+  - { id: east_gate, x: 9, y: 4 }
+switches:
+  - { id: west_plate, x: 2, y: 7, opens: [east_gate] }
+  - { id: east_plate, x: 10, y: 2, opens: [west_gate] }
+
+events:
+  - id: f2_intro
+    x: 3
+    y: 9
+    pages:
+      - { trigger: auto, dialog: tower_f2 }

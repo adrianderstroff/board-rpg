@@ -113,3 +113,23 @@ stuck:
   negative: true
   reachModifier: -1
   defaultTurns: 2
+
+empowered:
+  name: Empowered
+  icon: status_empower
+  description: Dark strength – attacks hit much harder.
+  scope: [battle]
+  persists: false
+  negative: false
+  modifiers: { str: 1.5 }
+  defaultTurns: 4
+
+bolstered:
+  name: Bolstered
+  icon: status_bolster
+  description: Warded by bone magic – takes less damage.
+  scope: [battle]
+  persists: false
+  negative: false
+  modifiers: { def: 1.5, mdef: 1.3 }
+  defaultTurns: 4

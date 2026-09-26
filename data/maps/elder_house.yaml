@@ -1,0 +1,68 @@
+# Elder Hamid's house in Sandhollow (§18). Door: the doorway on the front row.
+name: Elder's House
+kind: peaceful
+chipset: desert
+battleback: interior
+music: village
+
+legend:
+  terrain:
+    W: plaster_wall
+    f: floorboards
+    r: rug
+    O: doorway
+  decor:
+    B: bookshelf
+    t: table
+    b: bed
+    C: counter
+    U: stairs_up
+    D: stairs_down
+    s: scroll_shelf
+
+layers:
+  terrain: |
+    WWWWWW
+    Wfffff
+    Wfrrff
+    Wfrrff
+    Wfffff
+    WffOff
+  height: |
+    333333
+    300000
+    300000
+    300000
+    300000
+    300000
+  decor: |
+    ......
+    .B..B.
+    .....t
+    ......
+    ......
+    ......
+
+spawns:
+  from_town: { x: 3, y: 4, dir: N }
+
+exits:
+  - { x: 3, y: 5, dir: S, to: sandhollow, spawn: from_elder, label: Sandhollow, door: true }
+
+events:
+  - id: elder
+    x: 3
+    y: 2
+    pages:
+      - { npc: elder, dir: S, dialog: elder_intro }
+      - { when: { questStep: { quest: road_to_oasis, step: clear } }, npc: elder, dir: S, dialog: elder_waiting }
+      - { when: { questStep: { quest: road_to_oasis, step: report } }, npc: elder, dir: S, dialog: elder_report }
+      - { when: { questDone: road_to_oasis }, npc: elder, dir: S, dialog: elder_after }
+
+  - id: elder_jar
+    x: 5
+    y: 1
+    pages:
+      - decor: pot
+        interactions:
+          - { type: examine, label: Search, dialog: search_elder_jar }

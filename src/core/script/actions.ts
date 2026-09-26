@@ -10,7 +10,7 @@ import { completeQuest, evaluateQuests, setQuestStep, startQuest } from "./quest
 export type UiRequest =
   | { type: "dialog"; id: string }
   | { type: "shop"; id: string }
-  | { type: "inn"; price: number }
+  | { type: "inn"; price: number; wakeAt?: { map: string; spawn: string } }
   | { type: "message"; text: string }
   | { type: "teleport"; map: string; spawn: string };
 

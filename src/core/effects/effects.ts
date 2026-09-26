@@ -154,7 +154,12 @@ export function applyEffect(ec: EffectContext, target: Character, e: EffectDef):
       return [{ type: "learn", target: target.id, ability: e.ability }];
     }
     case "fieldEffect":
+    case "freezeArea":
     case "placeTrap":
+    case "discover":
+    case "defuse":
+    case "shock":
+    case "cut":
       return []; // cell effects are handled by the board layer
   }
 }

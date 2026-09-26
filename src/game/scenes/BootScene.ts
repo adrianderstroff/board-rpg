@@ -33,6 +33,8 @@ export class BootScene extends Phaser.Scene {
     loadSheet(this, { key: K.boardCursor, path: "system/board_cursor.png", frameWidth: 32, frameHeight: 24 });
     loadSheet(this, { key: K.highlight, path: "system/highlight.png", frameWidth: 32, frameHeight: 16 });
     loadSheet(this, { key: K.fieldEffects, path: "system/field_effects.png", frameWidth: 32, frameHeight: 24 });
+    const ws = g.wallSigns;
+    if (ws) loadSheet(this, { key: K.wallSigns, path: ws.image, frameWidth: ws.frameWidth, frameHeight: ws.frameHeight });
     loadSheet(this, { key: K.exitArrows, path: "system/exit_arrows.png", frameWidth: 32, frameHeight: 16 });
     loadSheet(this, { key: ICONS_KEY, path: "system/icons.png", frameWidth: 16, frameHeight: 16 });
     loadSheet(this, { key: K.statusMini, path: "system/status_icons.png", frameWidth: 10, frameHeight: 10 });

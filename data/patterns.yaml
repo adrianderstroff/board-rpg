@@ -66,6 +66,23 @@ cross1:
   parts: [{ area: 1, shape: cross }]
   ignoreHeight: true
 
+square1:
+  parts: [{ area: 1, shape: square }]
+  ignoreHeight: true
+
+square3:
+  parts: [{ area: 3, shape: square }]
+  includeOrigin: true
+  ignoreHeight: true
+
+ring1:
+  parts: [{ area: 1, shape: square }]
+  ignoreHeight: true
+
+rook2:
+  name: Shamble
+  parts: [{ ray: 2, dirs: orthogonal }]
+
 diamond1:
   parts: [{ area: 1 }]
   ignoreHeight: true

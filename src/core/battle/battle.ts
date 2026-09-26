@@ -1,4 +1,6 @@
 import {
+  computeStats,
+  createEnemy,
   addStatus,
   removeStatus,
   dropNonPersistent,
@@ -111,6 +113,11 @@ export function nextBattleTurn(ctx: Ctx): BattleTurn {
       if (ctx.db.status(st.id).consumeOnTurnStart && removeStatus(c, st.id)) events.push({ type: "status", target: id, status: st.id, added: false });
     }
     events.push({ type: "turnStart", actor: id, round: b.round });
+    if (swallowedEntry(ctx, id)) {
+      events.push({ type: "turnSkipped", actor: id, reason: "swallowed" });
+      events.push(...endBattleTurn(ctx, id));
+      continue;
+    }
     if (hasFlagStatus(ctx.db, c, "battle", "skipTurn")) {
       events.push({ type: "turnSkipped", actor: id, reason: c.statuses.map((s) => s.id).join(",") });
       events.push(...endBattleTurn(ctx, id));
@@ -125,6 +132,7 @@ function endBattleTurn(ctx: Ctx, id: string): GameEvent[] {
   const b = battle(ctx);
   const events = tickStatuses(ctx, getChar(ctx, id), "battle");
   if (b.current === id) b.current = null;
+  events.push(...releaseFromFallen(ctx));
   events.push(...checkOutcome(ctx));
   return events;
 }
@@ -133,6 +141,7 @@ function endBattleTurn(ctx: Ctx, id: string): GameEvent[] {
 
 export function isTargetable(ctx: Ctx, actorId: string, targetId: string): boolean {
   const t = getChar(ctx, targetId);
+  if (swallowedEntry(ctx, targetId)) return false; // inside a stomach: out of reach for everyone
   if (sideOf(ctx, actorId) === sideOf(ctx, targetId)) return true;
   return !hasFlagStatus(ctx.db, t, "battle", "untargetable");
 }
@@ -180,7 +189,111 @@ export function battleItems(ctx: Ctx): string[] {
 
 export function canUseBattleAbility(ctx: Ctx, id: string, abilityId: string): boolean {
   const a = ctx.db.ability(abilityId);
-  return !!a.battle && getChar(ctx, id).mp >= a.mp;
+  if (!a.battle || getChar(ctx, id).mp < a.mp) return false;
+  if (a.battle.swallow) {
+    // one at a time, and never the last one standing
+    if (holding(ctx, id)) return false;
+    if (targetCandidates(ctx, id, "enemy").length < 2) return false;
+  }
+  if (a.battle.summon && (battle(ctx).spent ?? 0) + a.battle.summon.cost > purse(ctx, id)) return false;
+  return true;
+}
+
+// ---------- swallow & summon (§12.7) ----------
+
+/** The entry of a combatant that sits in someone's stomach. */
+export function swallowedEntry(ctx: Ctx, id: string) {
+  return ctx.state.battle?.swallowed?.find((s) => s.target === id);
+}
+
+/** The entry of a swallower with a full stomach (its turns are forced: digest, spit). */
+export function holding(ctx: Ctx, id: string) {
+  return ctx.state.battle?.swallowed?.find((s) => s.by === id);
+}
+
+function swallow(ctx: Ctx, actorId: string, targetId: string, take: { hp: number; mp: number }): GameEvent[] {
+  const b = battle(ctx);
+  const t = getChar(ctx, targetId);
+  if (!isAlive(t)) return [];
+  (b.swallowed ??= []).push({ by: actorId, target: targetId, hp: Math.floor(t.hp * take.hp), mp: Math.floor(t.mp * take.mp), stage: 0 });
+  return [{ type: "swallow", actor: actorId, target: targetId }];
+}
+
+function gain(ctx: Ctx, id: string, hp: number, mp: number): GameEvent[] {
+  const c = getChar(ctx, id);
+  const s = computeStats(ctx.db, c);
+  const events: GameEvent[] = [];
+  if (hp > 0) {
+    c.hp = Math.min(s.maxHp, c.hp + hp);
+    events.push({ type: "heal", target: id, amount: hp });
+  }
+  if (mp > 0) {
+    c.mp = Math.min(s.maxMp, c.mp + mp);
+    events.push({ type: "mp", target: id, amount: mp });
+  }
+  return events;
+}
+
+/** First forced turn: shows half of what will be absorbed; second: the rest, then spits the victim out. */
+function digest(ctx: Ctx, actorId: string): GameEvent[] {
+  const b = battle(ctx);
+  const s = holding(ctx, actorId);
+  if (!s) return [];
+  const victim = getChar(ctx, s.target);
+  const events: GameEvent[] = [];
+  const half = { hp: Math.ceil(s.hp / 2), mp: Math.ceil(s.mp / 2) };
+  if (s.stage === 0) {
+    s.stage = 1;
+    events.push({ type: "action", actor: actorId, name: "Digest", targets: [] });
+    events.push(...gain(ctx, actorId, half.hp, half.mp));
+    return events;
+  }
+  events.push({ type: "action", actor: actorId, name: "Spit Out", targets: [s.target] });
+  events.push(...gain(ctx, actorId, s.hp - half.hp, s.mp - half.mp));
+  b.swallowed = b.swallowed!.filter((x) => x !== s);
+  const hp = Math.min(s.hp, Math.max(0, victim.hp - 1)); // never digested to death
+  const mp = Math.min(s.mp, victim.mp);
+  victim.hp -= hp;
+  victim.mp -= mp;
+  events.push({ type: "spit", actor: actorId, target: s.target, hp, mp });
+  return events;
+}
+
+/** A swallower that fell lets its victim go without the loss; a victim that fell inside is let go too. */
+function releaseFromFallen(ctx: Ctx): GameEvent[] {
+  const b = battle(ctx);
+  const events: GameEvent[] = [];
+  for (const s of [...(b.swallowed ?? [])]) {
+    if (isAlive(getChar(ctx, s.by)) && isAlive(getChar(ctx, s.target))) continue;
+    b.swallowed = b.swallowed!.filter((x) => x !== s);
+    events.push({ type: "release", actor: s.by, target: s.target });
+  }
+  return events;
+}
+
+/** Gold a summoner can spend on the battle: its own reward. */
+function purse(ctx: Ctx, id: string): number {
+  const c = getChar(ctx, id);
+  return c.kind === "enemy" ? ctx.db.enemy(c.def).gold : 0;
+}
+
+function summon(ctx: Ctx, actorId: string, what: { enemies: string[]; cost: number }): GameEvent[] {
+  const b = battle(ctx);
+  const side = sideOf(ctx, actorId);
+  b.spent = (b.spent ?? 0) + what.cost;
+  // the new ones take the places of the fallen first
+  const mine = b.combatants.filter((c) => c.side === side);
+  const taken = new Set(mine.filter((c) => isAlive(getChar(ctx, c.id))).map((c) => c.slot));
+  const free = [...new Set(mine.map((c) => c.slot).filter((s) => !taken.has(s)))].sort((x, y) => x - y);
+  let next = Math.max(...mine.map((c) => c.slot)) + 1;
+  const ids: string[] = [];
+  for (const enemyId of what.enemies) {
+    const id = `${actorId}~${b.combatants.length}`;
+    b.guests[id] = createEnemy(ctx.db, id, enemyId);
+    b.combatants.push({ id, side, ai: true, slot: free.shift() ?? next++, summoned: true });
+    ids.push(id);
+  }
+  return [{ type: "summoned", actor: actorId, ids, cost: what.cost }];
 }
 
 export function escapeChance(ctx: Ctx): number {
@@ -212,8 +325,14 @@ export function performAction(ctx: Ctx, actorId: string, action: BattleAction): 
       if (a.mp) events.push({ type: "mp", target: actorId, amount: -a.mp });
       if (a.offensive ?? isOffensive(a.battle.effects)) events.push(...breakOnOffense(ctx, actor));
       for (const t of targets) events.push(...applyEffects(ec, getChar(ctx, t), a.battle.effects));
+      if (a.battle.swallow && targets[0]) events.push(...swallow(ctx, actorId, targets[0], a.battle.swallow));
+      if (a.battle.summon) events.push(...summon(ctx, actorId, a.battle.summon));
+      (b.used ??= {})[`${actorId}:${a.id}`] = b.round;
       break;
     }
+    case "digest":
+      events.push(...digest(ctx, actorId));
+      break;
     case "item": {
       const item = ctx.db.item(action.item);
       if (!item.battle || !removeItem(ctx, action.item)) throw new Error(`Cannot use ${action.item}`);
@@ -264,9 +383,10 @@ function grantRewards(ctx: Ctx): GameEvent[] {
     if (ch.kind !== "enemy") continue;
     const def = ctx.db.enemy(ch.def);
     rewards.exp += def.exp;
-    rewards.gold += def.gold;
+    if (!c.summoned) rewards.gold += def.gold;
     for (const d of def.drops ?? []) if (ctx.rng.chance(d.chance)) rewards.items.push(d.item);
   }
+  rewards.gold = Math.max(0, rewards.gold - (b.spent ?? 0)); // what the boss paid for its summons
   b.rewards = rewards;
   const heroes = living(ctx, "hero")
     .filter((c) => c.kind === "hero")

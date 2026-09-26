@@ -80,9 +80,9 @@ frost_shard:
   category: battle
   price: 60
   icon: shard
-  description: "Battle: 45 ice damage to one enemy. Board: freezes a cell."
+  description: "Battle: 45 ice damage to one enemy. Board: freezes like Ice – water around the target, or a line of 3."
   battle: { target: enemy, effects: [{ type: fixedDamage, amount: 45, element: ice }] }
-  board: { range: range3, targets: [anyCell], effects: [{ type: fieldEffect, effect: frozen, rounds: 3 }] }
+  board: { range: range3, targets: [anyCell], effects: [{ type: freezeArea, effect: frozen, rounds: 4, size: 3 }] }
 
 sleep_powder:
   name: Sleep Powder
@@ -144,6 +144,39 @@ scroll_aura:
   description: Teaches a Monk Aura.
   learn: { ability: aura, classes: [monk] }
 
+scroll_ice:
+  name: "Scroll: Ice"
+  category: scroll
+  price: 150
+  icon: scroll
+  description: Teaches a Magician Ice – freezes even water.
+  learn: { ability: ice, classes: [magician] }
+
+# Not sold anywhere in the demo (later shops).
+scroll_ice2:
+  name: "Scroll: Ice 2"
+  category: scroll
+  price: 600
+  icon: scroll
+  description: Teaches a Magician Ice 2 – freezes 5 wide.
+  learn: { ability: ice2, classes: [magician] }
+
+scroll_ice3:
+  name: "Scroll: Ice 3"
+  category: scroll
+  price: 1400
+  icon: scroll
+  description: Teaches a Magician Ice 3 – freezes 7 wide.
+  learn: { ability: ice3, classes: [magician] }
+
+snare:
+  name: Snare
+  category: consumable
+  price: 40
+  icon: status_stuck
+  description: "A defused trap. Board (wild boards only): hide it on an empty cell – enemies stepping on it get hurt and stuck."
+  board: { range: range2, targets: [emptyCell], wildOnly: true, effects: [{ type: placeTrap, damage: 15, status: stuck }] }
+
 # ---------------- key items ----------------
 village_charm:
   name: Village Charm
@@ -159,7 +192,7 @@ bronze_sword:
   price: 100
   icon: sword
   description: A dependable blade.
-  equip: { slot: weapon, kind: sword, stats: { str: 8 } }
+  equip: { slot: weapon, kind: sword, stats: { str: 8 }, grants: [cut] }
 
 iron_sword:
   name: Iron Sword
@@ -167,7 +200,7 @@ iron_sword:
   price: 350
   icon: sword
   description: Heavier, sharper.
-  equip: { slot: weapon, kind: sword, stats: { str: 14 } }
+  equip: { slot: weapon, kind: sword, stats: { str: 14 }, grants: [cut] }
 
 flame_blade:
   name: Flame Blade
@@ -175,7 +208,7 @@ flame_blade:
   price: 900
   icon: sword
   description: Burns with inner fire. Grants Fire.
-  equip: { slot: weapon, kind: sword, stats: { str: 18, mag: 5 }, element: fire, grants: [fire] }
+  equip: { slot: weapon, kind: sword, stats: { str: 18, mag: 5 }, element: fire, grants: [cut, fire] }
 
 great_sword:
   name: Great Sword
@@ -183,7 +216,7 @@ great_sword:
   price: 700
   icon: sword
   description: Huge and slow.
-  equip: { slot: weapon, kind: sword, stats: { str: 24, spd: -3 } }
+  equip: { slot: weapon, kind: sword, stats: { str: 24, spd: -3 }, grants: [cut] }
 
 oak_staff:
   name: Oak Staff
@@ -322,3 +355,34 @@ power_band:
   price: 350
   icon: band
   equip: { slot: accessory, kind: accessory, stats: { str: 4 } }
+
+# ---------------- The Mountain Temple (§18)
+token_serenity:
+  name: Token of Serenity
+  category: key
+  price: 0
+  icon: charm
+  description: A smooth jade token from the temple, cool as still water.
+
+token_foresight:
+  name: Token of Foresight
+  category: key
+  price: 0
+  icon: charm
+  description: A golden token with an open eye. It hums faintly.
+
+token_life:
+  name: Token of Life
+  category: key
+  price: 0
+  icon: charm
+  description: A wooden token carved with a sprouting seed.
+
+holy_orb:
+  name: Holy Orb
+  category: scroll
+  price: 0
+  icon: holy
+  description: A sphere of sacred light. A Monk who meditates on it learns Holy.
+  learn: { ability: holy, classes: [monk] }
+

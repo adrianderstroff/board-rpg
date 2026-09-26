@@ -79,3 +79,306 @@ emperor_scorpion:
   gold: 60
   drops: [{ item: scorpion_shell, chance: 1 }]
   steal: [{ item: hi_potion, chance: 1 }]
+
+skeleton:
+  name: Skeleton
+  description: The bones of a temple guard. Lies still among the other remains – until someone comes close.
+  level: 3
+  stats: { maxHp: 34, maxMp: 0, str: 11, def: 7, mag: 2, mdef: 4, spd: 7 }
+  move: rook2
+  elements: { fire: 1.5, ice: 0.5, holy: 2 }
+  immune: [poison]
+  charset: enemy_skeleton
+  battler: enemy_skeleton
+  face: enemy_skeleton
+  ai:
+    - { action: attack, weight: 3 }
+    - { action: bone_rattle, weight: 1, when: { targetLacksStatus: slow } }
+  boardAi:
+    behavior: aggressive
+    dormant: { decor: skeleton }   # rises when a hero comes within its reach (and attacks)
+  exp: 14
+  gold: 9
+  drops: [{ item: potion, chance: 0.2 }]
+
+
+# ---------------- The Mountain Temple chapter (§18) ----------------
+fishfolk:
+  name: Fishfolk
+  description: Scaly spear-fishers of the Reed Pond. At home in deep water where no hero can follow.
+  level: 5
+  stats: { maxHp: 48, maxMp: 0, str: 14, def: 9, mag: 5, mdef: 8, spd: 9 }
+  move: walk1
+  swims: amphibious
+  elements: { thunder: 1.5, ice: 0.5, fire: 0.5 }
+  charset: enemy_fishfolk
+  battler: enemy_fishfolk
+  face: enemy_fishfolk
+  ai:
+    - { action: attack, weight: 3 }
+    - { action: spear_jab, weight: 2 }
+    - { action: bubble, weight: 1, when: { targetLacksStatus: slow } }
+  boardAi: { behavior: guard, aggroRange: 4, pack: true }
+  exp: 20
+  gold: 14
+  drops: [{ item: potion, chance: 0.2 }]
+
+bog_toad:
+  name: Bog Toad
+  description: Croaks people to sleep, then eats their lunch.
+  level: 4
+  stats: { maxHp: 40, maxMp: 0, str: 12, def: 8, mag: 3, mdef: 5, spd: 6 }
+  move: king1
+  swims: amphibious
+  elements: { thunder: 1.5, earth: 0.5 }
+  charset: enemy_bog_toad
+  battler: enemy_bog_toad
+  face: enemy_bog_toad
+  ai:
+    - { action: attack, weight: 3 }
+    - { action: tongue_lash, weight: 2 }
+    - { action: croak, weight: 1 }
+  boardAi: { behavior: guard, aggroRange: 3 }
+  exp: 16
+  gold: 10
+  drops: [{ item: antidote, chance: 0.25 }]
+
+mirage_phantom:
+  name: Mirage Phantom
+  description: A shimmer given a will. Hollow eyes, cold touch.
+  level: 6
+  stats: { maxHp: 50, maxMp: 20, str: 13, def: 7, mag: 12, mdef: 12, spd: 11 }
+  move: flyer
+  statuses: [flying]
+  elements: { holy: 2, fire: 0.5, ice: 0.5 }
+  charset: enemy_mirage_phantom
+  battler: enemy_mirage_phantom
+  face: enemy_mirage_phantom
+  ai:
+    - { action: attack, weight: 3 }
+    - { action: mirage_touch, weight: 2, when: { targetLacksStatus: blind } }
+  boardAi: { behavior: aggressive, aggroRange: 6 }
+  exp: 24
+  gold: 16
+  drops: [{ item: ether, chance: 0.15 }]
+
+mirage_djinn:
+  name: Mirage Djinn
+  description: Master of the Mirage Tower. It stole the Token of Foresight to see every traveller coming.
+  level: 9
+  boss: true
+  stats: { maxHp: 320, maxMp: 60, str: 18, def: 12, mag: 20, mdef: 16, spd: 12 }
+  move: king1
+  statuses: [flying]
+  elements: { holy: 1.5, ice: 1.5, fire: 0.5, earth: 0.5 }
+  charset: enemy_mirage_djinn
+  battler: enemy_mirage_djinn
+  face: enemy_mirage_djinn
+  ai:
+    - { action: attack, weight: 3 }
+    - { action: sand_blade, weight: 2 }
+    - { action: mirage_storm, weight: 1, when: { round: 3 } }
+  boardAi: { behavior: guard, aggroRange: 3 }
+  exp: 150
+  gold: 120
+
+tomato:
+  name: Tomato
+  description: Round, red and full of water – which it spits at people.
+  level: 6
+  stats: { maxHp: 44, maxMp: 0, str: 12, def: 8, mag: 8, mdef: 8, spd: 10 }
+  move: walk1
+  elements: { fire: 1.5 }
+  charset: enemy_tomato
+  battler: enemy_tomato
+  face: enemy_tomato
+  ai:
+    - { action: attack, weight: 3 }
+    - { action: splat, weight: 2 }
+  boardAi: { behavior: aggressive, aggroRange: 5, abilities: [{ ability: water_spit, chance: 0.7 }] }
+  exp: 18
+  gold: 12
+  drops: [{ item: potion, chance: 0.2 }]
+
+lemon:
+  name: Lemon
+  description: Crackles with sour electricity. Loves wet targets.
+  level: 6
+  stats: { maxHp: 38, maxMp: 0, str: 9, def: 7, mag: 14, mdef: 10, spd: 9 }
+  move: diagonal2
+  elements: { earth: 1.5, thunder: 0.5 }
+  charset: enemy_lemon
+  battler: enemy_lemon
+  face: enemy_lemon
+  ai:
+    - { action: attack, weight: 2 }
+    - { action: sour_spray, weight: 2, when: { targetLacksStatus: blind } }
+  boardAi: { behavior: aggressive, aggroRange: 5, abilities: [{ ability: zap, chance: 0.8 }] }
+  exp: 18
+  gold: 12
+  drops: [{ item: eye_drops, chance: 0.25 }]
+
+watermelon:
+  name: Watermelon
+  description: Heavy, slow – and its seeds sprout into thorns a round later.
+  level: 7
+  stats: { maxHp: 70, maxMp: 0, str: 15, def: 12, mag: 6, mdef: 8, spd: 5 }
+  move: walk1
+  elements: { fire: 1.5 }
+  charset: enemy_watermelon
+  battler: enemy_watermelon
+  face: enemy_watermelon
+  ai:
+    - { action: attack, weight: 3 }
+    - { action: body_slam, weight: 2 }
+  boardAi: { behavior: aggressive, aggroRange: 5, abilities: [{ ability: seed_ring, chance: 0.5 }] }
+  exp: 22
+  gold: 14
+  drops: [{ item: hi_potion, chance: 0.1 }]
+
+chili:
+  name: Chili
+  description: Hot-headed in every sense.
+  level: 7
+  stats: { maxHp: 42, maxMp: 0, str: 13, def: 7, mag: 13, mdef: 9, spd: 13 }
+  move: rook2
+  elements: { ice: 1.5, fire: 0 }
+  charset: enemy_chili
+  battler: enemy_chili
+  face: enemy_chili
+  ai:
+    - { action: attack, weight: 2 }
+    - { action: hot_pepper, weight: 2 }
+  boardAi: { behavior: aggressive, aggroRange: 5, abilities: [{ ability: flame_spit, chance: 0.5 }] }
+  exp: 22
+  gold: 14
+  drops: [{ item: fire_bomb, chance: 0.2 }]
+
+pumpkin_king:
+  name: Pumpkin King
+  description: Self-crowned ruler of the Verdant Isle garden. Holds Old Mora hostage.
+  level: 10
+  boss: true
+  stats: { maxHp: 380, maxMp: 40, str: 20, def: 15, mag: 14, mdef: 12, spd: 8 }
+  move: king1
+  elements: { fire: 1.5, earth: 0.5 }
+  charset: enemy_pumpkin_king
+  battler: enemy_pumpkin_king
+  face: enemy_pumpkin_king
+  ai:
+    - { action: attack, weight: 3 }
+    - { action: vine_lash, weight: 2 }
+    - { action: harvest_moon, weight: 1, when: { round: 3 } }
+  boardAi: { behavior: guard, aggroRange: 3, abilities: [{ ability: seed_ring, chance: 0.4 }] }
+  exp: 180
+  gold: 150
+
+shadow_knight:
+  name: Shadow Knight
+  description: Aldric's fear – failing to protect the ones he loves.
+  level: 10
+  stats: { maxHp: 170, maxMp: 20, str: 20, def: 16, mag: 6, mdef: 10, spd: 8 }
+  move: knight
+  elements: { holy: 2 }
+  charset: enemy_shadow_knight
+  battler: enemy_shadow_knight
+  face: enemy_shadow_knight
+  ai:
+    - { action: attack, weight: 3 }
+    - { action: shadow_strike, weight: 2 }
+  boardAi: { behavior: aggressive }
+  exp: 60
+  gold: 0
+
+shadow_mage:
+  name: Shadow Mage
+  description: Mira's fear – the knowledge she was never meant to find.
+  level: 10
+  stats: { maxHp: 130, maxMp: 80, str: 8, def: 8, mag: 22, mdef: 18, spd: 10 }
+  move: diagonal2
+  elements: { holy: 2 }
+  charset: enemy_shadow_mage
+  battler: enemy_shadow_mage
+  face: enemy_shadow_mage
+  ai:
+    - { action: attack, weight: 1 }
+    - { action: dark_wave, weight: 3 }
+  boardAi: { behavior: aggressive }
+  exp: 60
+  gold: 0
+
+shadow_thief:
+  name: Shadow Thief
+  description: Kit's fear – being alone again in the back alleys.
+  level: 10
+  stats: { maxHp: 140, maxMp: 20, str: 18, def: 11, mag: 8, mdef: 11, spd: 16 }
+  move: queen3
+  elements: { holy: 2 }
+  charset: enemy_shadow_thief
+  battler: enemy_shadow_thief
+  face: enemy_shadow_thief
+  ai:
+    - { action: attack, weight: 3 }
+    - { action: shadow_strike, weight: 2 }
+  boardAi: { behavior: aggressive }
+  exp: 60
+  gold: 0
+
+shadow_monk:
+  name: Shadow Monk
+  description: Tarek's fear – that the Mirage Oasis is only a mirage.
+  level: 10
+  stats: { maxHp: 160, maxMp: 30, str: 19, def: 13, mag: 12, mdef: 13, spd: 11 }
+  move: rook3
+  elements: { holy: 2 }
+  charset: enemy_shadow_monk
+  battler: enemy_shadow_monk
+  face: enemy_shadow_monk
+  ai:
+    - { action: attack, weight: 3 }
+    - { action: shadow_strike, weight: 2 }
+  boardAi: { behavior: aggressive }
+  exp: 60
+  gold: 0
+
+grave_toad:
+  name: Grave Toad
+  description: A bloated undead toad wearing the skulls of those it swallowed. Lurks in the cave beneath the temple.
+  level: 12
+  boss: true
+  music: final
+  stats: { maxHp: 640, maxMp: 60, str: 24, def: 16, mag: 18, mdef: 14, spd: 7 }
+  move: king1
+  elements: { holy: 2, fire: 1.25 }
+  immune: [poison]
+  charset: enemy_grave_toad
+  battler: enemy_grave_toad
+  face: enemy_grave_toad
+  ai:
+    - { action: raise_dead, weight: 1, priority: true, when: { alone: true, chance: 0.4 } }
+    - { action: attack, weight: 4 }
+    - { action: bad_breath, weight: 2, when: { cooldown: 3 } }
+    - { action: swallow, weight: 2, when: { cooldown: 5, chance: 0.5 } }
+  boardAi: { behavior: static }
+  exp: 400
+  gold: 480
+
+bone_acolyte:
+  name: Bone Acolyte
+  description: A dead priest bound to the Grave Toad. Blesses its master before it fights.
+  level: 10
+  stats: { maxHp: 120, maxMp: 60, str: 12, def: 10, mag: 17, mdef: 14, spd: 9 }
+  move: king1
+  elements: { holy: 2, fire: 1.5 }
+  immune: [poison]
+  charset: enemy_bone_acolyte
+  battler: enemy_bone_acolyte
+  face: enemy_bone_acolyte
+  ai:
+    - { action: dark_blessing, weight: 1, priority: true, target: boss, when: { targetLacksStatus: empowered } }
+    - { action: bone_ward, weight: 1, priority: true, target: boss, when: { targetLacksStatus: bolstered } }
+    - { action: attack, weight: 2 }
+    - { action: bone_bolt, weight: 3 }
+  boardAi: { behavior: static }
+  exp: 60
+  gold: 20

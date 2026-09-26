@@ -1,15 +1,19 @@
 import Phaser from "phaser";
 import { board, exitEnabled, grid, pageOfPiece } from "../../core/board/board";
+import { DOOR_CLEARANCE } from "../../core/board/grid";
 import { graphicsOf } from "../../core/chars/character";
 import type { Ctx } from "../../core/context";
 import type { Piece } from "../../core/state/types";
 import { DIR_VEC, dirFromStep, type Dir, type Pos } from "../../core/util/grid";
-import { isoDepth, LAYER } from "../../engine/iso";
+import { LAYER } from "../../engine/iso";
 import { IsoMapView, type IsoCellSource, type OverlayCell } from "../../engine/iso/IsoMapView";
+import { cutSquare } from "../../engine/iso/shapes";
+import type { Corner, TerrainDef } from "../../core/data/types";
 import { CharSprite } from "../../engine/sprites/CharSprite";
 import { CURSOR_KEY, ICONS_KEY, UI_DEPTH } from "../../engine/ui/widgets";
 import { DIR_ROW, EXIT_FRAME, K, icon, miniStatusIconsOf } from "../keys";
 import { isFlyingPiece } from "../../core/board/moves";
+import { revealedTraps } from "../../core/board/hidden";
 
 interface PieceVisual {
   sprites: Map<string, Phaser.GameObjects.Sprite>;
@@ -48,6 +52,49 @@ const rotate = (p: Pos, quarters: number): Pos => {
   return { x, y };
 };
 
+/** Continuous rotation of grid coordinates by `quarters` quarter turns (fractional while animating). */
+const rotateContinuous = (x: number, y: number, quarters: number): Pos => {
+  const a = (quarters * Math.PI) / 2;
+  const c = Math.cos(a);
+  const s = Math.sin(a);
+  return { x: x * c - y * s, y: x * s + y * c };
+};
+
+/** Grid offset signs of the named cell corners (N = -y, W = -x). */
+const CORNERS: Record<Corner, { x: number; y: number }> = { NW: { x: -1, y: -1 }, NE: { x: 1, y: -1 }, SE: { x: 1, y: 1 }, SW: { x: -1, y: 1 } };
+
+/** Sides of a hull cell where a walkable non-hull cell (a gangplank, the quay) joins: no wall there. */
+function gangways(g: ReturnType<typeof grid>, cell: Pos): number[] {
+  return [
+    [1, 0],
+    [0, 1],
+    [-1, 0],
+    [0, -1],
+  ].flatMap(([dx, dy], side) => {
+    const n = g.cell({ x: cell.x + dx, y: cell.y + dy });
+    return n && n.walkable && !g.chipset.terrains[n.terrain].flare ? [side] : [];
+  });
+}
+
+/** Frames of a directional decor, one per quarter turn. */
+function decorViews(d: { frame: number; views?: number }): number[] {
+  return Array.from({ length: d.views ?? 1 }, (_, i) => d.frame + i);
+}
+
+/** The flat surface (sea) drawn under a hull at height 0. */
+function underlay(t: TerrainDef) {
+  return { frame: t.frame, height: 0, sink: t.sink ?? (t.frames ? 2 : 0) };
+}
+
+/** A door lintel: the overhead terrain's blocks above the door's clearance up to its top. */
+function overheadSource(chip: ReturnType<typeof grid>["chipset"], cell: { height: number; overhead?: { terrain: string; top: number } }) {
+  const t = chip.terrains[cell.overhead!.terrain];
+  return { from: cell.height + DOOR_CLEARANCE + 1, to: cell.overhead!.top, top: t.frame, fill: t.fill ?? t.frame };
+}
+
+/** Duration of the animated map rotation (ms). */
+const ROTATE_MS = 900;
+
 /**
  * Renders the board state: map, pieces, field effects, exits, traps, cursor and highlights.
  * The public API speaks *world* grid coordinates; internally everything is drawn in *view*
@@ -65,6 +112,9 @@ export class BoardView {
   /** Cells an attacker walked through visually before a battle (origin first). */
   private approachWalk: { pieceId: string; cells: Pos[] } | null = null;
   private cursorCell: Pos = { x: 0, y: 0 };
+  /** Current view angle in quarter turns (fractional during a rotation animation). */
+  private angle = rotation;
+  private rotating = false;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -77,7 +127,19 @@ export class BoardView {
     scene.events.on("update", this.bob, this);
     scene.events.once("shutdown", () => scene.events.off("update", this.bob, this));
     this.refreshOverlays();
+    this.refreshGates();
     this.sync();
+  }
+
+  /** Gates as bars while closed, floor switches raised or pressed (§5.8). */
+  refreshGates() {
+    const c = this.ctx();
+    const b = board(c);
+    const map = c.db.map(b.mapId);
+    const chip = grid(c).chipset;
+    const frame = (d: string) => chip.decor[d]?.frame;
+    for (const g of map.gates ?? []) this.map.setDecor(g.x, g.y, b.gates?.[g.id] ? undefined : frame("gate_bars"));
+    for (const s of map.switches ?? []) this.map.setDecor(s.x, s.y, frame(b.switches?.[s.id] ? "switch_down" : "switch_up"));
   }
 
   // ---------- rotation ----------
@@ -86,19 +148,18 @@ export class BoardView {
     return rotation;
   }
 
-  /** World grid → view grid. */
+  /** World grid → view grid for the current (possibly fractional) angle. */
   toView(p: Pos): Pos {
-    return rotate(p, rotation);
+    return rotateContinuous(p.x, p.y, this.angle);
   }
 
-  /** View grid → world grid. */
-  fromView(p: Pos): Pos {
-    return rotate(p, -rotation);
+  get isRotating() {
+    return this.rotating;
   }
 
-  /** A world direction as seen on screen. */
+  /** A world direction as seen on screen (characters switch half-way through a rotation). */
   viewDir(d: Dir): Dir {
-    return dirFromStep({ x: 0, y: 0 }, rotate(DIR_VEC[d], rotation));
+    return dirFromStep({ x: 0, y: 0 }, rotate(DIR_VEC[d], Math.round(this.angle)));
   }
 
   /** A screen-space direction (cursor keys) in world terms. */
@@ -106,13 +167,48 @@ export class BoardView {
     return rotate(DIR_VEC[d], -rotation);
   }
 
-  /** Turns the map by quarter turns and redraws everything. */
-  rotate(quarters: number) {
-    rotation = (((rotation + quarters) % 4) + 4) % 4;
-    this.map.destroy();
-    this.buildMap();
+  /**
+   * Turns the map by quarter turns, animated: the terrain spins as one solid (see
+   * IsoMapView.beginSpin) while characters and decor ride along upright. `onFrame` runs after
+   * every step (the scene keeps the pivot cell in place with it).
+   */
+  async rotate(quarters: number, onFrame?: () => void, ms = ROTATE_MS): Promise<void> {
+    if (this.rotating) return;
+    this.rotating = true;
+    const from = this.angle;
+    const to = from + quarters;
+    this.map.beginSpin();
+    this.setAngle(from);
+    this.cursor.setVisible(false);
+    this.pointer.setVisible(false);
+    await new Promise<void>((resolve) => {
+      this.scene.tweens.addCounter({
+        from: 0,
+        to: 1,
+        duration: ms,
+        ease: "Quad.easeOut", // starts turning at once, settles gently
+        onUpdate: (tw) => {
+          this.setAngle(from + (to - from) * (tw.getValue() ?? 0));
+          onFrame?.();
+        },
+        onComplete: () => resolve(),
+      });
+    });
+    rotation = (((Math.round(to) % 4) + 4) % 4);
+    this.map.endSpin();
+    this.setAngle(rotation);
+    this.cursor.setVisible(true);
+    this.pointer.setVisible(true);
     this.refreshOverlays();
-    for (const [name, h] of this.highlights) this.applyHighlight(name, h);
+    this.rotating = false;
+    onFrame?.();
+  }
+
+  private setAngle(q: number) {
+    this.angle = q;
+    this.map.setTransform((x, y) => rotateContinuous(x, y, q));
+    this.map.spinTo(q);
+    this.map.relayout();
     for (const piece of Object.values(board(this.ctx()).pieces)) {
       const v = this.visuals.get(piece.id);
       if (v) this.place(piece, v);
@@ -126,16 +222,21 @@ export class BoardView {
     const chip = g.chipset;
     const cells: IsoCellSource[] = g.allCells().map((cell) => {
       const t = chip.terrains[cell.terrain];
-      const v = this.toView(cell);
       return {
-        x: v.x,
-        y: v.y,
+        x: cell.x,
+        y: cell.y,
         height: cell.height,
         top: t.frame,
         topFrames: t.frames,
         fill: t.fill ?? t.frame,
         sink: t.sink ?? (t.frames ? 2 : 0),
         decor: cell.decor ? chip.decor[cell.decor].frame : undefined,
+        ...(cell.decor && chip.decor[cell.decor].views ? { decorViews: decorViews(chip.decor[cell.decor]) } : {}),
+        ...(cell.overhead ? { overhead: overheadSource(chip, cell) } : {}),
+        ...(cell.cut ? { outline: cutSquare(cell.cut.map((k) => CORNERS[k])) } : {}),
+        ...(t.flare ? { flare: t.flare } : {}),
+        ...(t.underlay ? { under: underlay(chip.terrains[t.underlay]) } : {}),
+        ...(t.bulwark ? { bulwark: { height: t.bulwark, thickness: 0.14, open: gangways(g, cell) } } : {}),
       };
     });
     this.map = new IsoMapView(this.scene, {
@@ -146,7 +247,20 @@ export class BoardView {
       decorTexture: K.decor(chip.id),
       decorFrameHeight: chip.decorFrameHeight,
       decorAnchorY: chip.decorAnchorY,
-    });
+    }, (x, y) => rotateContinuous(x, y, this.angle));
+    // lettering painted on one side of a block (shop signs)
+    const map = c.db.map(board(c).mapId);
+    const signs = c.db.graphics.wallSigns;
+    this.map.setWallDecor(
+      (map.wallDecor ?? []).map((w) => ({
+        x: w.x,
+        y: w.y,
+        face: DIR_VEC[w.face],
+        level: w.level ?? g.heightAt(w),
+        texture: K.wallSigns,
+        frame: signs?.frames[w.sign] ?? 0,
+      })),
+    );
   }
 
   // ---------- coordinates (world API) ----------
@@ -157,24 +271,20 @@ export class BoardView {
 
   /** Screen (world-camera) position of a world cell's top face. */
   cellTop(p: Pos): { x: number; y: number } {
-    const v = this.toView(p);
-    return this.map.cellTop(v.x, v.y);
+    return this.map.cellTop(p.x, p.y);
   }
 
   hasCell(p: Pos): boolean {
-    const v = this.toView(p);
-    return this.map.hasCell(v.x, v.y);
+    return this.map.hasCell(p.x, p.y);
   }
 
   /** World cell under a camera-world point. */
   cellAt(wx: number, wy: number): Pos | null {
-    const v = this.map.cellAt(wx, wy);
-    return v ? this.fromView(v) : null;
+    return this.map.cellAt(wx, wy);
   }
 
   private depth(p: Pos, layer: number, sub = 0) {
-    const v = this.toView(p);
-    return isoDepth(v.x, v.y, layer, sub);
+    return this.map.depthOf(p.x, p.y, layer, sub);
   }
 
   private cursorAnim() {
@@ -203,7 +313,7 @@ export class BoardView {
   // ---------- overlays ----------
 
   private overlay(name: string, texture: string, cells: OverlayCell[], opts: Parameters<IsoMapView["setOverlay"]>[3] = {}) {
-    this.map.setOverlay(name, texture, cells.map((c) => ({ ...c, ...this.toView(c) })), opts);
+    this.map.setOverlay(name, texture, cells, opts);
   }
 
   refreshOverlays() {
@@ -215,17 +325,32 @@ export class BoardView {
       if (!byRow.has(row)) byRow.set(row, []);
       byRow.get(row)!.push({ x: f.x, y: f.y, frame: row * 8 });
     }
-    for (let row = 0; row < 4; row++) {
+    const rows = Math.max(...[...c.db.fieldEffects.values()].map((f) => f.overlayRow)) + 1;
+    for (let row = 0; row < rows; row++) {
       this.overlay(`fx${row}`, K.fieldEffects, byRow.get(row) ?? [], { originY: 16 / 24, layer: LAYER.effect, animFrames: 4 });
     }
-    this.overlay("traps", K.fieldEffects, b.traps.map((t) => ({ x: t.x, y: t.y, frame: 4 * 8 })), { originY: 16 / 24, layer: LAYER.effect });
-    const exits = c.db.map(b.mapId).exits ?? [];
+    // the heroes' own traps and ancient traps revealed by Discover (§7.5)
+    const traps = [...b.traps, ...revealedTraps(c)];
+    this.overlay("traps", K.fieldEffects, traps.map((t) => ({ x: t.x, y: t.y, frame: 4 * 8 })), { originY: 16 / 24, layer: LAYER.effect });
+    const exits = (c.db.map(b.mapId).exits ?? []).filter((e) => !e.door); // doors need no arrow
     this.overlay(
       "exits",
       K.exitArrows,
       exits.map((e) => ({ x: e.x, y: e.y, frame: EXIT_FRAME[this.viewDir(e.dir)] + (exitEnabled(c, e) ? 0 : 4) })),
       { layer: LAYER.overlay - 1, blink: true },
     );
+  }
+
+  /** A cell's decor changed: burnt, cut or grown (§5.4, §5.7). */
+  setDecor(p: Pos, decor: string | null) {
+    const chip = grid(this.ctx()).chipset;
+    this.map.setDecor(p.x, p.y, decor ? chip.decor[decor]?.frame : undefined);
+  }
+
+  /** A cell's terrain changed (burnt flowers, §5.4). */
+  setTerrain(p: Pos, terrain: string) {
+    const t = grid(this.ctx()).chipset.terrains[terrain];
+    if (t) this.map.setTop(p.x, p.y, t.frame, t.frames);
   }
 
   highlight(name: string, cells: Pos[], frame: number, alpha = 0.9) {
@@ -283,7 +408,9 @@ export class BoardView {
       v = { sprites: new Map(), shadow, statusIcons: [], statusKey: "", x: piece.x, y: piece.y };
       this.visuals.set(piece.id, v);
     }
-    const members = piece.members.filter((m) => c.state.heroes[m] ?? board(c).chars[m]);
+    // Dormant enemies look exactly like the remains decor they imitate (§7.5).
+    const dormantDecor = piece.dormant ? this.dormantDecor(piece) : undefined;
+    const members = piece.dormant ? [] : piece.members.filter((m) => c.state.heroes[m] ?? board(c).chars[m]);
     for (const [id, s] of v.sprites) {
       if (id !== "decor" && !members.includes(id)) {
         s.destroy();
@@ -300,11 +427,12 @@ export class BoardView {
     }
     // object pieces (chests) use decor graphics
     const page = pageOfPiece(c, piece);
-    if (!members.length && page?.decor) {
+    const decor = dormantDecor ?? (!members.length ? page?.decor : undefined);
+    if (decor) {
       const chip = grid(c).chipset;
       if (!v.sprites.has("decor")) {
-        v.sprites.set("decor", this.scene.add.sprite(0, 0, K.decor(chip.id), chip.decor[page.decor].frame).setOrigin(0.5, chip.decorAnchorY / chip.decorFrameHeight));
-      } else v.sprites.get("decor")!.setFrame(chip.decor[page.decor].frame);
+        v.sprites.set("decor", this.scene.add.sprite(0, 0, K.decor(chip.id), chip.decor[decor].frame).setOrigin(0.5, chip.decorAnchorY / chip.decorFrameHeight));
+      } else v.sprites.get("decor")!.setFrame(chip.decor[decor].frame);
     } else if (v.sprites.has("decor")) {
       v.sprites.get("decor")!.destroy();
       v.sprites.delete("decor");
@@ -330,6 +458,12 @@ export class BoardView {
       v.y = piece.y;
       this.place(piece, v);
     }
+  }
+
+  private dormantDecor(piece: Piece): string | undefined {
+    const c = this.ctx();
+    const leader = piece.members[0] ? board(c).chars[piece.members[0]] : undefined;
+    return leader ? c.db.enemy(leader.def).boardAi.dormant?.decor : undefined;
   }
 
   /** When a villager and heroes share a cell, the villager steps back and the heroes forward. */
@@ -427,10 +561,13 @@ export class BoardView {
       return;
     }
     this.animating.add(pieceId);
-    const ms = fast ? 110 : mode === "slide" ? 90 : 160;
+    // sliding on ice is slow and deliberate so the slip reads clearly (~2-3 s over a 3-wide river)
+    const ms = mode === "slide" ? 280 : fast ? 110 : 160;
     let from = { x: v.x, y: v.y };
+    let lastFacing = piece.facing;
     for (const step of path) {
       const fakePiece = { ...piece, facing: dirFromStep(from, step) };
+      lastFacing = fakePiece.facing;
       const a = this.cellTop(from);
       const b = this.cellTop(step);
       const depthCell = this.frontCell(from, step);
@@ -452,7 +589,10 @@ export class BoardView {
     for (const s of v.sprites.values()) if (s instanceof CharSprite) s.setStepping(false);
     if (visualOnly) return;
     this.animating.delete(pieceId);
-    this.syncPiece(board(c).pieces[pieceId] ?? piece);
+    // Stay where this path ended: a move can come in several parts (crossing effects, the ice
+    // slide) and the state already holds the final cell. The full sync after playback settles it.
+    const now = board(c).pieces[pieceId] ?? piece;
+    this.place({ ...now, facing: lastFacing }, v);
   }
 
   /**

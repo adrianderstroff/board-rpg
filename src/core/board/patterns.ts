@@ -2,7 +2,7 @@ import type { Database } from "../data/database";
 import type { PatternDef, PatternPart, PatternRef } from "../data/types";
 import type { Pos } from "../util/grid";
 import { add, chebyshev, dirVectors, key, manhattan } from "../util/grid";
-import type { BoardGrid } from "./grid";
+import type { GridView } from "./grid";
 
 /**
  * Occupancy of a cell for a moving piece:
@@ -85,11 +85,13 @@ function computeReach(parts: PatternPart[]): number {
 }
 
 export interface MoveQuery {
-  grid: BoardGrid;
+  grid: GridView;
   origin: Pos;
   pattern: ResolvedPattern;
   /** Cut off everything beyond this reach (party rule). */
   maxReach?: number;
+  /** Who may enter a cell (swimmers, §5.5); default: the cell is walkable. */
+  canEnter?: (cell: import("./grid").Cell) => boolean;
   occupancy: (p: Pos) => Occupancy;
 }
 
@@ -109,7 +111,7 @@ export function resolveMoves(q: MoveQuery): Map<string, Reach> {
   const canStep = (from: Pos, to: Pos, maxDiff: number) => {
     const cell = grid.cell(to);
     if (!cell) return false;
-    if (!cell.walkable && !pattern.ignoreBlocking) return false;
+    if (!(q.canEnter ? q.canEnter(cell) : cell.walkable) && !pattern.ignoreBlocking) return false;
     if (!pattern.ignoreHeight && Math.abs(cell.height - grid.heightAt(from)) > maxDiff) return false;
     return true;
   };
@@ -201,7 +203,7 @@ export function areaCells(origin: Pos, radius: number, shape: "diamond" | "squar
  * Static target cells of a pattern (ability ranges and areas): ignores occupancy,
  * only requires the cell to exist. Rays/walks are treated as their geometric shape.
  */
-export function patternCells(grid: BoardGrid, origin: Pos, pattern: ResolvedPattern): Pos[] {
+export function patternCells(grid: GridView, origin: Pos, pattern: ResolvedPattern): Pos[] {
   const out = new Map<string, Pos>();
   if (pattern.includeOrigin && grid.has(origin)) out.set(key(origin), origin);
   const moves = resolveMoves({

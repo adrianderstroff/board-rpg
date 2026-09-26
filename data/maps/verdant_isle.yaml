@@ -1,0 +1,99 @@
+# Verdant Isle (§18.11): a rainforest of sentient fruit and vegetables that fight together –
+# Tomato soaks, Lemon zaps the wet ground, Watermelon walls in with brambles, Chili burns.
+name: Verdant Isle
+kind: wild
+chipset: desert
+battleback: jungle
+music: island
+
+legend:
+  terrain:
+    j: jungle_floor
+    p: dirt
+    b: sand
+    ~: sea
+    w: wood
+  decor:
+    J: jungle_tree
+    N: banana_plant
+    B: bush
+    P: palm
+
+layers:
+  terrain: |
+    jjjjjjjjpjjjjjjj
+    jjjjjjjjpjjjjjjj
+    jjjjjjjjpjjjjjjj
+    jjjjjjjjppjjjjjj
+    jjjjjjjjjpjjjjjj
+    jjjjjjjjppjjjjjj
+    jjjjjjjjpjjjjjjj
+    jjjjjjjppjjjjjjj
+    jjjjjpppjjjjjjjj
+    jjjpppjjjjjjjjjj
+    bbbpbbbjjjjjjjjj
+    bbbbbbbbbbbbbbbb
+    ~~ww~~~~~bbbbb~~
+    ~~ww~~~~~~~~~~~~
+    ~~ww~~~~~~~~~~~~
+    ~~w~~~~~~~~~~~~~
+  height: |
+    3332222222222233
+    3222222222222223
+    2222222222222222
+    2222222222222222
+    2222222222222222
+    2222222222222222
+    2222222222222222
+    2222222222222222
+    2222222222222222
+    2222222222222222
+    1112111222222222
+    1111111111111111
+    0011000001111100
+    0011000000000000
+    0011000000000000
+    0010000000000000
+  decor: |
+    .....J.....J....
+    ...J......B..J..
+    .J..N.......J...
+    ......N....N..J.
+    J..J............
+    .....JN.....J...
+    .J..B..........J
+    ..N.......N..N..
+    J..........J....
+    .B........J...J.
+    .....P.B....B...
+    ........P.....P.
+    ................
+    ................
+    ................
+    ................
+
+spawns:
+  from_ship: { x: 3, y: 12, dir: N }
+  from_garden: { x: 8, y: 1, dir: S }
+
+exits:
+  - { x: 8, y: 0, dir: N, to: grove_garden, spawn: from_isle, label: Grove Garden }
+
+enemies:
+  - { id: tomato_a, enemy: tomato, x: 5, y: 7, dir: S }
+  - { id: lemon_a, enemy: lemon, x: 7, y: 6, dir: S }
+  - { id: melon_a, enemy: watermelon, x: 11, y: 5, dir: W }
+  - { id: chili_a, enemy: chili, x: 4, y: 3, dir: E }
+  - { id: tomato_b, enemy: tomato, x: 10, y: 2, dir: S }
+
+events:
+  - id: isle_intro
+    x: 3
+    y: 12
+    pages:
+      - { trigger: auto, dialog: isle_enter }
+  - id: captain_isle
+    x: 3
+    y: 14
+    pages:
+      - { npc: captain, dir: N, dialog: captain_isle }
