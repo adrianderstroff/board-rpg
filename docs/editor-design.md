@@ -354,6 +354,13 @@ and **Delete group** (Del; one undo step). Esc clears the selection. A single en
 
 ## 7. Characters
 
+Heroes, Enemies and NPCs are three screens with the Items layout (§8): the list on the left
+(search, **New**, the library's marked), the form in the middle as boxes, and the inspector showing
+the character as the game does – the board sprite walking in all four facings, the battle sprite's
+poses, the face at its sizes, the stats – with **Duplicate**, **Delete** and, for the library's,
+**Copy to project**. Graphics are picked from a window of thumbnails (the Resources, §6 of
+projects.md). Ids are made from the name when the entry is made.
+
 ### 7.1 Heroes
 The game splits a hero into the **hero** (`heroes.yaml`: name, class, start level, graphics, start
 equipment) and its **class** (`classes.yaml`: base stats, growth per level, abilities by level,

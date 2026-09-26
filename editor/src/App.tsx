@@ -5,6 +5,8 @@ import type { Project } from "./project";
 import { MapsScreen } from "./screens/MapsScreen";
 import { ResourcesScreen } from "./screens/ResourcesScreen";
 import { ItemsScreen } from "./screens/ItemsScreen";
+import { HeroesScreen } from "./screens/HeroesScreen";
+import { EnemiesScreen } from "./screens/EnemiesScreen";
 import { knownFlags } from "./forms/ConditionEditor";
 import { Icon } from "./icons";
 import { usePersistentState } from "./persist";
@@ -14,8 +16,8 @@ import { IssuesButton, ProjectMenu } from "./ProjectMenu";
 const SCREENS = [
   { id: "maps", label: "Maps" },
   { id: "resources", label: "Resources" },
-  { id: "heroes", label: "Heroes", pkg: "E6" },
-  { id: "enemies", label: "Enemies", pkg: "E6" },
+  { id: "heroes", label: "Heroes" },
+  { id: "enemies", label: "Enemies" },
   { id: "npcs", label: "NPCs", pkg: "E6" },
   { id: "items", label: "Items" },
   { id: "abilities", label: "Abilities", pkg: "E8" },
@@ -145,6 +147,10 @@ export function App({ project }: { project: Project }) {
         <MapsScreen project={project} selected={map} onSelect={setMap} />
       ) : screen === "resources" ? (
         <ResourcesScreen project={project} />
+      ) : screen === "heroes" ? (
+        <HeroesScreen project={project} />
+      ) : screen === "enemies" ? (
+        <EnemiesScreen project={project} />
       ) : screen === "items" ? (
         <ItemsScreen project={project} />
       ) : (

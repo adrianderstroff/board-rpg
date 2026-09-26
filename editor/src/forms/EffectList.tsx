@@ -1,7 +1,7 @@
 import type { RawContent } from "../../../src/core/data/database";
 import { ELEMENTS, type EffectDef, type Element } from "../../../src/core/data/types";
 import { EFFECT_TYPES } from "../items/model";
-import { Check, ListEditor, MultiPick, Num, Select } from "./fields";
+import { Check, ListEditor, MultiPick, Num, Percent, Select } from "./fields";
 
 /**
  * The effect list (editor-design §8): one editor for items, abilities and enemy skills. Each row is
@@ -80,7 +80,7 @@ function EffectFields({ e, set, raw }: { e: EffectDef; set: (e: EffectDef) => vo
       return (
         <div class="row wrap">
           <Select value={e.status} options={optionsOf(raw.statuses)} onChange={(v) => set({ ...e, status: v ?? "" })} />
-          <Num value={e.chance} min={0} max={100} width={56} placeholder="100" onChange={(v) => set({ ...e, chance: v })} /> {lbl("%")}
+          <Percent value={e.chance} width={56} placeholder="100" onChange={(v) => set({ ...e, chance: v })} /> {lbl("%")}
           <Turns value={e.turns} onChange={(t) => set({ ...e, turns: t })} />
         </div>
       );

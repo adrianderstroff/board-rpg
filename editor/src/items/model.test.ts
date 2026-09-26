@@ -48,6 +48,8 @@ describe("items (editor-design §8)", () => {
     const bomb = PRESETS.find((x) => x.id === "bomb")!.item;
     expect(itemSummary(bomb)).toEqual(["Battle: all enemies – 40 fire damage"]);
     expect(itemSummary(PRESETS.find((x) => x.id === "sword")!.item)).toEqual(["Equip (weapon, sword): STR +5"]);
+    // chances are fractions in the data, percentages in words
+    expect(itemSummary(PRESETS.find((x) => x.id === "powder")!.item)).toEqual(["Battle: one enemy – sleep (80 %)"]);
   });
 });
 

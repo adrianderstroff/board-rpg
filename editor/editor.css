@@ -417,8 +417,9 @@ table.prefab-names .segmented button { white-space: nowrap; }
 .basics { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; align-items: start; }
 .basics textarea { width: 100%; resize: vertical; }
 .icon-pick { width: 64px; height: 64px; padding: 0; display: grid; place-items: center; background: var(--bg); margin-top: 6px; }
-.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 4px 10px; }
-.stat-grid label { display: flex; align-items: center; justify-content: space-between; gap: 6px; color: var(--dim); }
+.stat-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px 6px; max-width: 520px; }
+.stat-grid label { display: flex; flex-direction: column; gap: 2px; color: var(--dim); font-size: 11px; }
+.stat-grid input { width: 100% !important; }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .chip { display: inline-flex; align-items: center; gap: 2px; padding: 1px 2px 1px 8px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; font-size: 12px; }
 .chip.bad { border-color: var(--bad); }
@@ -454,3 +455,36 @@ input[type="checkbox"]:not(.box-check):disabled { cursor: default; opacity: 0.6;
 .check { cursor: pointer; }
 .check:has(input:checked) { color: var(--text); }
 .row.wrap:has(> .check) { gap: 6px 14px; }
+
+/* ---------- characters (editor-design §7) ---------- */
+.list-face { width: 20px; height: 20px; flex: none; image-rendering: pixelated; border-radius: 3px; }
+.list-face.none { border: 1px dashed var(--line); }
+.graphics-row .field { grid-template-columns: 60px minmax(0, 1fr); }
+.graphic-field { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: var(--bg); padding: 4px 8px; min-height: 44px; }
+.graphic-field.bad { border-color: var(--bad); }
+.graphic-field .thumb { max-height: 64px; }
+.graphic-field img.thumb.faces { width: 40px; height: 40px; }
+.graphic-field .thumb.none { width: 32px; text-align: center; color: var(--dim); }
+.walk-preview { display: flex; gap: 8px; align-items: flex-end; margin: 10px 0; padding: 8px; background: var(--bg); border-radius: var(--radius); justify-content: center; }
+.walk-preview span { display: inline-block; }
+.pose-preview { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.pose-preview figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; background: var(--bg); border-radius: 4px; padding: 4px; }
+.pose-preview figure span { display: inline-block; }
+.pose-preview figcaption { font-size: 11px; color: var(--dim); }
+.face-preview { display: flex; gap: 8px; align-items: flex-end; }
+.face-preview img { border-radius: 3px; background: var(--bg); }
+.face-preview img[width="48"] { image-rendering: pixelated; }
+table.stat-table { border-collapse: collapse; width: 100%; font-size: 12px; font-variant-numeric: tabular-nums; }
+table.stat-table th { color: var(--dim); font-weight: normal; text-align: right; padding: 3px 6px; border-bottom: 1px solid var(--line); }
+table.stat-table td { text-align: right; padding: 3px 6px; }
+table.stat-table th:first-child, table.stat-table td:first-child { text-align: left; }
+table.stat-table tr.on td { color: var(--accent); }
+.banner button { margin-left: 8px; font-size: 12px; padding: 2px 8px; }
+.list-sprite { display: inline-block; flex: none; }
+.element-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin: 4px 0 8px; }
+.element-grid label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--dim); text-transform: capitalize; }
+.element-grid select { width: 100%; }
+.ai-rule { display: flex; flex-direction: column; gap: 4px; }
+.ai-words { color: var(--accent); font-size: 12px; }
+.ai-when { font-size: 12px; }
+.ai-rule .row > select { flex: none; width: auto; }

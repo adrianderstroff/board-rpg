@@ -1,15 +1,16 @@
-import type { ComponentChildren } from "preact";
 import { useState } from "preact/hooks";
-import type { Document } from "yaml";
 import type { RawContent } from "../../../src/core/data/database";
-import { ELEMENTS, STAT_KEYS, type BattleUse, type BoardUse, type EquipDef, type ItemCategory, type PatternRef, type StatKey } from "../../../src/core/data/types";
+import { ELEMENTS, STAT_KEYS, type BattleUse, type BoardUse, type EquipDef, type ItemCategory, type StatKey } from "../../../src/core/data/types";
 import iconIndex from "../../../public/assets/system/icons.json";
 import { copyEntryToProject } from "../copyToProject";
 import { EffectList, optionsOf } from "../forms/EffectList";
-import { Check, Field, MultiPick, Num, Select, Text } from "../forms/fields";
+import { Check, Field, MultiPick, Num, Percent, Select, Text } from "../forms/fields";
 import { FloatingWindow } from "../forms/FloatingWindow";
+import { writeEntry } from "../forms/entries";
+import { ContentList, EntryActions } from "../forms/ContentList";
+import { Section } from "../forms/Section";
+import { PatternField } from "../forms/PatternField";
 import { BATTLE_TARGETS, BOARD_TARGETS, CATEGORIES, EMPTY_ITEM, ITEMS_FILE, PRESETS, SLOTS, addItem, categoryIsAuto, categoryLabel, deleteItem, deriveCategory, itemSummary, withChange, type Item } from "../items/model";
-import { patternOffsets } from "../items/patterns";
 import { frameStyle } from "../map/sprites";
 import { usePersistentState } from "../persist";
 import type { Project } from "../project";
@@ -22,32 +23,6 @@ import type { Project } from "../project";
 const ICONS = iconIndex as Record<string, number>;
 const STAT_LABEL: Record<StatKey, string> = { maxHp: "HP", maxMp: "MP", str: "STR", def: "DEF", mag: "MAG", mdef: "MDEF", spd: "SPD" };
 
-/**
- * Drops unset fields and empty objects – but keeps empty lists: a use section always has its
- * effects (and targets), even before the first one is added.
- */
-function tidy(v: unknown): unknown {
-  if (Array.isArray(v)) return v.map(tidy);
-  if (v && typeof v === "object") {
-    const out: Record<string, unknown> = {};
-    for (const [k, x] of Object.entries(v)) {
-      const t = tidy(x);
-      if (t === undefined || (t && typeof t === "object" && !Array.isArray(t) && !Object.keys(t).length)) continue;
-      out[k] = t;
-    }
-    return out;
-  }
-  return v;
-}
-
-/** A section as the files write it: on one line when short, else one line per field. */
-function flowNode(doc: Document, v: object) {
-  const node = doc.createNode(v) as unknown as { flow?: boolean; items?: { value?: { flow?: boolean } | null }[] };
-  if (JSON.stringify(v).length < 90) node.flow = true;
-  else for (const pair of node.items ?? []) if (pair.value && typeof pair.value === "object") pair.value.flow = true;
-  return node;
-}
-
 /** A 16px icon of the game's icon sheet (system/icons.png), scaled. */
 export function ItemIcon({ icon, scale = 2 }: { icon?: string; scale?: number }) {
   const frame = icon === undefined ? undefined : ICONS[icon];
@@ -57,66 +32,29 @@ export function ItemIcon({ icon, scale = 2 }: { icon?: string; scale?: number })
 
 export function ItemsScreen({ project }: { project: Project }) {
   const [selected, select] = usePersistentState<string | null>("items.selected", null);
-  const [filter, setFilter] = usePersistentState("items.filter", "");
-  const [newMenu, setNewMenu] = useState(false);
   const raw = project.content.raw;
   const items = raw.items as Record<string, Item>;
   const dirty = project.dirtyPaths().includes(ITEMS_FILE);
-  const shown = Object.entries(items).filter(([id, i]) => `${id} ${i.name}`.toLowerCase().includes(filter.toLowerCase()));
   const current = selected && items[selected] ? selected : null;
-
-  const create = (item: Item, label: string) => {
-    setNewMenu(false);
-    select(addItem(project, item, label));
-  };
+  const create = (item: Item, label: string) => select(addItem(project, item, label));
 
   return (
     <>
       <main class="main">
         <div class="split">
-          <div class="list">
-            <div class="list-head">
-              <input class="search" placeholder="Search items…" value={filter} onInput={(e) => setFilter(e.currentTarget.value)} />
-              <div class="menu-anchor">
-                <button class="primary" aria-haspopup="menu" aria-expanded={newMenu} title="A new item of the project: empty, or from a preset" onClick={() => setNewMenu(!newMenu)}>
-                  New ▾
-                </button>
-                {newMenu && (
-                  <div class="menu" role="menu">
-                    <button role="menuitem" onClick={() => create(EMPTY_ITEM, "New item")}>
-                      Empty
-                    </button>
-                    <hr />
-                    {PRESETS.map((p) => (
-                      <button key={p.id} role="menuitem" title={itemSummary(p.item).join("\n")} onClick={() => create(p.item, `New ${p.label.toLowerCase()}`)}>
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            {CATEGORIES.map(([cat, label]) => {
-              // the project's own first, then the library's
-              const group = shown.filter(([, i]) => i.category === cat).sort(([a], [b]) => Number(a.startsWith("lib:")) - Number(b.startsWith("lib:")));
-              if (!group.length) return null;
-              return (
-                <div key={cat}>
-                  <h4 class="list-group">{label}</h4>
-                  {group.map(([id, i]) => (
-                    <div key={id} class={`item ${current === id ? "active" : ""}`} title={id} onClick={() => select(id)}>
-                      <span class="item-name">
-                        <ItemIcon icon={i.icon} scale={1} />
-                        {i.name}
-                        {!id.startsWith("lib:") && dirty && <span class="dirty"> ●</span>}
-                      </span>
-                      {id.startsWith("lib:") && <small>library</small>}
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
+          <ContentList
+            entries={Object.entries(items).map(([id, i]) => ({ id, name: i.name, pic: <ItemIcon icon={i.icon} scale={1} />, group: categoryLabel(i.category), dirty: dirty && !id.startsWith("lib:") }))}
+            groups={CATEGORIES.map(([, label]) => label)}
+            selected={current}
+            onSelect={select}
+            searchKey="items.filter"
+            placeholder="Search items…"
+            newTitle="A new item of the project: empty, or from a preset"
+            newOptions={[
+              { label: "Empty", make: () => create(EMPTY_ITEM, "New item") },
+              ...PRESETS.map((p, i) => ({ label: p.label, title: itemSummary(p.item).join("\n"), divider: i === 0, make: () => create(p.item, `New ${p.label.toLowerCase()}`) })),
+            ]}
+          />
           <div class="form-scroll">{current ? <ItemForm project={project} id={current} /> : <p class="placeholder">Select an item, or make one with New.</p>}</div>
         </div>
       </main>
@@ -155,41 +93,17 @@ function ItemCard({ project, id, onSelect }: { project: Project; id: string; onS
         ))}
       </ul>
       <p class="hint">{lib ? `Library content (${project.info.library}) – read-only. Referenced as ${id}.` : `Referenced as ${id}.`}</p>
-      <div class="row wrap">
-        {lib && (
-          <button class="primary" title="An editable copy in the project; the project's references to it use the copy from then on" onClick={() => onSelect(copyEntryToProject(project, "items", id))}>
-            Copy to project
-          </button>
-        )}
-        <button title="A copy of this item in the project, with a new id" onClick={() => onSelect(addItem(project, { ...structuredClone(item), name: `${item.name} copy` }, `Duplicate ${id}`))}>
-          Duplicate
-        </button>
-        {!lib && (
-          <button
-            onClick={() => {
-              if (!confirm(`Delete ${item.name} (${id})? Content that uses it will show problems.`)) return;
-              deleteItem(project, id);
-              onSelect(null);
-            }}
-          >
-            Delete
-          </button>
-        )}
-      </div>
+      <EntryActions
+        id={id}
+        onCopy={() => onSelect(copyEntryToProject(project, "items", id))}
+        onDuplicate={() => onSelect(addItem(project, { ...structuredClone(item), name: `${item.name} copy` }, `Duplicate ${id}`))}
+        onDelete={() => {
+          if (!confirm(`Delete ${item.name} (${id})? Content that uses it will show problems.`)) return;
+          deleteItem(project, id);
+          onSelect(null);
+        }}
+      />
     </div>
-  );
-}
-
-/** A section of the form: a switch in its heading adds or removes it. */
-function Section({ title, on, onToggle, children, hint }: { title: string; on: boolean; onToggle: (on: boolean) => void; children: ComponentChildren; hint?: string }) {
-  return (
-    <section class={`form-section ${on ? "on" : ""}`}>
-      <label class="form-section-head" title={hint}>
-        <input type="checkbox" checked={on} onChange={(e) => onToggle(e.currentTarget.checked)} />
-        <h3>{title}</h3>
-      </label>
-      {on && <div class="form-section-body">{children}</div>}
-    </section>
   );
 }
 
@@ -209,17 +123,7 @@ function ItemForm({ project, id }: { project: Project; id: string }) {
 
   /** Writes the top-level fields that changed (the rest of the entry keeps its formatting). */
   const write = (next: Item, label: string, group?: string) => {
-    if (lib) return;
-    const keys = [...new Set([...Object.keys(item), ...Object.keys(next)])] as (keyof Item)[];
-    const changed = keys.filter((k) => JSON.stringify(item[k]) !== JSON.stringify(next[k]));
-    if (!changed.length) return;
-    project.edit(ITEMS_FILE, `${item.name}: ${label}`, (doc: Document) => {
-      for (const k of changed) {
-        const v = tidy(next[k]);
-        if (v === undefined || v === "") doc.deleteIn([id, k]);
-        else doc.setIn([id, k], v && typeof v === "object" ? flowNode(doc, v) : v);
-      }
-    }, group ? `${id}.${group}` : undefined);
+    if (!lib) writeEntry(project, ITEMS_FILE, id, item, next, `${item.name}: ${label}`, group);
   };
   /** A change to the sections: the category follows while it is the derived one. */
   const change = (next: Item, label: string, group?: string) => write(withChange(item, next), label, group);
@@ -323,10 +227,10 @@ function ItemForm({ project, id }: { project: Project; id: string }) {
               </Field>
               <Field label="On hit">
                 <div class="row">
-                  <Select value={equip.onHit?.status} options={statusOptions} empty="nothing" onChange={(v) => setEquip({ ...equip, onHit: v ? { status: v, chance: equip.onHit?.chance ?? 20 } : undefined }, "on hit")} />
+                  <Select value={equip.onHit?.status} options={statusOptions} empty="nothing" onChange={(v) => setEquip({ ...equip, onHit: v ? { status: v, chance: equip.onHit?.chance ?? 0.2 } : undefined }, "on hit")} />
                   {equip.onHit && (
                     <>
-                      <Num value={equip.onHit.chance} min={0} max={100} width={56} onChange={(v) => setEquip({ ...equip, onHit: { ...equip.onHit!, chance: v ?? 0 } }, "on-hit chance", "onHit")} /> %
+                      <Percent value={equip.onHit.chance} width={56} onChange={(v) => setEquip({ ...equip, onHit: { ...equip.onHit!, chance: v ?? 0 } }, "on-hit chance", "onHit")} /> %
                     </>
                   )}
                 </div>
@@ -426,25 +330,3 @@ function IconPicker({ value, onPick, onClose }: { value?: string; onPick: (icon:
   );
 }
 
-/** A pattern (a range or an area) from the content's patterns, with its cells around the user. */
-function PatternField({ value, onChange, project, empty }: { value: PatternRef | undefined; onChange: (v: string | undefined) => void; project: Project; empty?: string }) {
-  const raw = project.content.raw;
-  const db = project.content.db;
-  if (value !== undefined && typeof value !== "string") return <span class="dim">custom (edit in YAML)</span>;
-  const cells = db && value ? patternOffsets(db, value, 9) : null;
-  const on = new Set(cells?.map((c) => `${c.x},${c.y}`));
-  return (
-    <div class="pattern-field">
-      <Select value={value} options={optionsOf(raw.patterns)} empty={empty} onChange={onChange} />
-      {cells && (
-        <div class="pattern-preview" title="The cells it reaches from the user (the dot) on open, flat ground">
-          {Array.from({ length: 81 }, (_, i) => {
-            const x = (i % 9) - 4;
-            const y = Math.floor(i / 9) - 4;
-            return <span key={i} class={`${on.has(`${x},${y}`) ? "on" : ""} ${x === 0 && y === 0 ? "me" : ""}`} />;
-          })}
-        </div>
-      )}
-    </div>
-  );
-}

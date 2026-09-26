@@ -132,7 +132,7 @@ export function ResourcesScreen({ project }: { project: Project }) {
 }
 
 /** A resource's thumbnail: a charset's idle frame, a battler's first frame, the image, or a play button. */
-function Thumb({ graphics, kind, id }: { graphics: GraphicsDb; kind: ResourceKind; id: string }) {
+export function Thumb({ graphics, kind, id }: { graphics: GraphicsDb; kind: ResourceKind; id: string }) {
   if (kind === "music") return <span class="thumb music">♪</span>;
   const s = graphics[kind][id] as Sheet;
   if (kind === "charsets") return <span class="thumb" style={frameStyle(s.image, s.frameWidth!, s.frameHeight!, 3, 1, 2)} />;

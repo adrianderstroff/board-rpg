@@ -146,3 +146,8 @@ export function MultiPick({ value, options, onChange, addLabel = "+ add" }: { va
     </div>
   );
 }
+
+/** A chance stored as a fraction (0.25), shown and typed as a percentage (25). */
+export function Percent({ value, onChange, placeholder, width = 60 }: { value: number | undefined; onChange: (v: number | undefined) => void; placeholder?: string; width?: number }) {
+  return <Num value={value === undefined ? undefined : Math.round(value * 1000) / 10} min={0} max={100} width={width} placeholder={placeholder} onChange={(v) => onChange(v === undefined ? undefined : v / 100)} />;
+}

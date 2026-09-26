@@ -141,6 +141,7 @@ export function validateContent(db: Database): string[] {
     boardUse(i.board, w);
     for (const g of i.equip?.grants ?? []) has(db.abilities, g, w, "ability");
     if (i.equip?.onHit) has(db.statuses, i.equip.onHit.status, w, "status");
+    for (const st of i.equip?.immune ?? []) has(db.statuses, st, w, "status");
     if (i.learn) {
       has(db.abilities, i.learn.ability, w, "ability");
       for (const c of i.learn.classes) has(db.classes, c, w, "class");
@@ -178,6 +179,7 @@ export function validateContent(db: Database): string[] {
       if (item && item.equip?.slot !== slot) err(w, `"${itemId}" can't be worn as ${slot}`);
     }
     for (const s of e.statuses ?? []) has(db.statuses, s, w, "status");
+    for (const s of e.immune ?? []) has(db.statuses, s, w, "status");
     for (const a of e.boardAi.abilities ?? []) {
       has(db.abilities, a.ability, w, "ability");
       if (db.abilities.get(a.ability) && !db.abilities.get(a.ability)!.board) err(w, `board ability "${a.ability}" has no board use`);

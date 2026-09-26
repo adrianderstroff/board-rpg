@@ -81,3 +81,16 @@ describe("enemies use their own items (§12.5)", () => {
     }
   });
 });
+
+describe("immunities", () => {
+  it("an enemy's and an item's immunities keep the status off (library ids)", async () => {
+    const { isImmune, createHero } = await import("../core/chars/character");
+    const db = testDb();
+    expect(isImmune(db, createEnemy(db, "a", "lib:skeleton"), "lib:poison")).toBe(true);
+    expect(isImmune(db, createEnemy(db, "b", "lib:emperor_scorpion"), "lib:sleep")).toBe(true);
+    const kit = createHero(db, "lib:kit");
+    const charm = [...db.items.values()].find((i) => i.equip?.immune?.includes("lib:poison") && i.equip.slot === "accessory")!;
+    kit.equipment.accessory = charm.id;
+    expect(isImmune(db, kit, "lib:poison")).toBe(true);
+  });
+});

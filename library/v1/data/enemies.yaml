@@ -62,7 +62,7 @@ emperor_scorpion:
   stats: { maxHp: 180, maxMp: 0, str: 17, def: 14, mag: 8, mdef: 8, spd: 7 }
   move: lib:king1
   elements: { ice: 1.5, earth: 0.5, fire: 0.5 }
-  immune: [sleep, stun]
+  immune: [lib:sleep, lib:stun]
   charset: lib:enemy_emperor_scorpion
   battler: lib:enemy_emperor_scorpion
   face: lib:enemy_emperor_scorpion
@@ -87,7 +87,7 @@ skeleton:
   stats: { maxHp: 34, maxMp: 0, str: 11, def: 7, mag: 2, mdef: 4, spd: 7 }
   move: lib:rook2
   elements: { fire: 1.5, ice: 0.5, holy: 2 }
-  immune: [poison]
+  immune: [lib:poison]
   charset: lib:enemy_skeleton
   battler: lib:enemy_skeleton
   face: lib:enemy_skeleton
@@ -352,7 +352,7 @@ grave_toad:
   stats: { maxHp: 640, maxMp: 60, str: 24, def: 16, mag: 18, mdef: 14, spd: 7 }
   move: lib:king1
   elements: { holy: 2, fire: 1.25 }
-  immune: [poison]
+  immune: [lib:poison]
   charset: lib:enemy_grave_toad
   battler: lib:enemy_grave_toad
   face: lib:enemy_grave_toad
@@ -372,7 +372,7 @@ bone_acolyte:
   stats: { maxHp: 120, maxMp: 60, str: 12, def: 10, mag: 17, mdef: 14, spd: 9 }
   move: lib:king1
   elements: { holy: 2, fire: 1.5 }
-  immune: [poison]
+  immune: [lib:poison]
   charset: lib:enemy_bone_acolyte
   battler: lib:enemy_bone_acolyte
   face: lib:enemy_bone_acolyte

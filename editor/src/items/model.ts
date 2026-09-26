@@ -1,7 +1,6 @@
-import type { Document } from "yaml";
 import type { BattleTarget, BoardTargetFilter, EffectDef, EquipSlot, ItemCategory, ItemDef } from "../../../src/core/data/types";
 import type { Project } from "../project";
-import { projectIdFor } from "../projectFiles";
+import { addEntry, deleteEntry } from "../forms/entries";
 
 /**
  * Items (editor-design §8): one form for everything. The data keeps its shape (items.yaml); the
@@ -147,7 +146,7 @@ export const PRESETS: { id: string; label: string; item: Item }[] = [
     label: "Status item",
     item: {
       name: "Sleep Powder", category: "battle", price: 40, icon: "powder", description: "Puts an enemy to sleep.",
-      battle: { target: "enemy", effects: [{ type: "applyStatus", status: "lib:sleep", chance: 80 }] },
+      battle: { target: "enemy", effects: [{ type: "applyStatus", status: "lib:sleep", chance: 0.8 }] },
     },
   },
   {
@@ -187,36 +186,13 @@ export const PRESETS: { id: string; label: string; item: Item }[] = [
 
 export const EMPTY_ITEM: Item = { name: "New item", category: "consumable", price: 10 };
 
-/** An id for a new item from its name ("Hi-Potion" → hi_potion, then hi_potion_2 …). */
-export function itemIdFor(name: string, taken: (id: string) => boolean): string {
-  const base = projectIdFor(name || "item");
-  let id = base;
-  for (let n = 2; taken(id); n++) id = `${base}_${n}`;
-  return id;
-}
-
 /** Adds an item to the project's items.yaml (made when missing); returns its id. */
 export function addItem(project: Project, item: Item, label = `New item ${item.name}`): string {
-  const raw = project.content.raw.items;
-  const id = itemIdFor(item.name || "item", (x) => x in raw);
-  project.transaction(label, () => {
-    if (!project.paths(ITEMS_FILE).length) project.create(ITEMS_FILE, ITEMS_HEADER);
-    project.edit(ITEMS_FILE, label, (doc: Document) => {
-      doc.setIn([id], doc.createNode(structuredClone(item)));
-      // sections in flow style, as the files are written by hand
-      for (const key of ["battle", "board", "equip", "learn"]) {
-        const node = doc.getIn([id, key], true) as { flow?: boolean } | undefined;
-        if (node && JSON.stringify((item as Record<string, unknown>)[key]).length < 110) node.flow = true;
-      }
-    });
-  });
-  return id;
+  return addEntry(project, ITEMS_FILE, ITEMS_HEADER, item, (x) => x in project.content.raw.items, label, "item");
 }
 
 /** Removes one of the project's items. */
-export function deleteItem(project: Project, id: string) {
-  project.edit(ITEMS_FILE, `Delete ${id}`, (doc: Document) => doc.deleteIn([id]));
-}
+export const deleteItem = (project: Project, id: string) => deleteEntry(project, ITEMS_FILE, id);
 
 // ---------- in words ----------
 
@@ -237,7 +213,7 @@ export function effectText(e: EffectDef): string {
     case "restoreMp":
       return `restore ${e.amount} MP`;
     case "applyStatus":
-      return `${plain(e.status)}${e.chance !== undefined ? ` (${e.chance} %)` : ""}${turnsText(e.turns)}`;
+      return `${plain(e.status)}${e.chance !== undefined ? ` (${Math.round(e.chance * 100)} %)` : ""}${turnsText(e.turns)}`;
     case "cureStatus":
       return e.allNegative ? "cure all negative statuses" : `cure ${(e.statuses ?? []).map(plain).join(", ")}`;
     case "revive":
@@ -276,7 +252,7 @@ export function itemSummary(item: Item, name: (collection: "abilities" | "classe
       ...stats,
       e.element ? `${e.element} element` : "",
       e.grants?.length ? `grants ${e.grants.map((a) => name("abilities", a)).join(", ")}` : "",
-      e.onHit ? `on hit: ${name("statuses", e.onHit.status)} (${e.onHit.chance} %)` : "",
+      e.onHit ? `on hit: ${name("statuses", e.onHit.status)} (${Math.round(e.onHit.chance * 100)} %)` : "",
       e.immune?.length ? `immune to ${e.immune.map((s) => name("statuses", s)).join(", ")}` : "",
     ].filter(Boolean);
     out.push(`Equip (${e.slot}, ${e.kind})${extra.length ? `: ${extra.join(", ")}` : ""}`);

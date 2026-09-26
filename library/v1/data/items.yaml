@@ -297,7 +297,7 @@ scale_vest:
   price: 120
   icon: vest
   description: Overlapping fish scales on kelp cord. Light, and shrugs off the cold.
-  equip: { slot: armor, kind: lightArmor, stats: { def: 4, mdef: 2 }, immune: [slow] }
+  equip: { slot: armor, kind: lightArmor, stats: { def: 4, mdef: 2 }, immune: [lib:slow] }
 
 leather_vest:
   name: Leather Vest
@@ -356,7 +356,7 @@ amulet:
   price: 300
   icon: amulet
   description: Protects from poison.
-  equip: { slot: accessory, kind: accessory, immune: [poison] }
+  equip: { slot: accessory, kind: accessory, immune: [lib:poison] }
 
 mana_ring:
   name: Mana Ring
