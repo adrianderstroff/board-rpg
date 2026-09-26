@@ -1,6 +1,7 @@
 import { loadDatabase } from "./content/loader";
 import { Database } from "./core/data/database";
 import { isEditorPlaytest, receiveFromEditor } from "./game/editorLink";
+import { setAssetResolver } from "./engine/assets";
 import { validateContent } from "./core/data/validate";
 import { createGame } from "./engine/boot";
 import { BattleScene } from "./game/scenes/BattleScene";
@@ -13,6 +14,8 @@ import { installDebug } from "./game/debug";
 // Play-testing from the editor: its (possibly unsaved) content instead of the bundled files.
 const playtest = isEditorPlaytest() ? await receiveFromEditor() : null;
 const db = playtest ? new Database(playtest.raw) : loadDatabase();
+// the editor's own files (a project kept in the browser or a folder) come as blob: URLs
+if (playtest?.assets) setAssetResolver((path) => playtest.assets![path]);
 const problems = validateContent(db);
 if (problems.length) console.warn(`Content problems:\n${problems.join("\n")}`);
 const session = initSession(db, { playtest: !!playtest });

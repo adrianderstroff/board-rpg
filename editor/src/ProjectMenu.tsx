@@ -1,7 +1,9 @@
 import { useEffect, useState } from "preact/hooks";
 import { FloatingWindow } from "./forms/FloatingWindow";
 import { Field } from "./forms/fields";
-import { createProject, fetchProjects, importProjectFile, type Project } from "./project";
+import { createProject, downloadProject, fetchProjects, importProjectFile, type Project } from "./project";
+import { canOpenFolders, openFolder, reopenFolder, storage, useBrowser } from "./storage";
+import type { LibraryInfo } from "./storage/ops";
 import { projectIdFor, type ProjectInfo } from "./projectFiles";
 
 export { projectIdFor };
@@ -10,7 +12,7 @@ import { writeStored } from "./persist";
 /** Opens another project: its unsaved work stays stored with it (projects.md §6). */
 export function openProject(project: Project, id: string) {
   project.persistNow();
-  writeStored("project", id);
+  writeStored(`project.${storage().kind}`, id);
   const url = new URL(location.href);
   url.searchParams.set("project", id);
   location.href = url.href;
@@ -24,7 +26,8 @@ export function ProjectMenu({ project }: { project: Project }) {
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [projects, setProjects] = useState<ProjectInfo[] | null>(null);
-  const [libraries, setLibraries] = useState<{ id: string; name: string; bundled: boolean }[]>([]);
+  const [libraries, setLibraries] = useState<LibraryInfo[]>([]);
+  const store = storage();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -32,8 +35,8 @@ export function ProjectMenu({ project }: { project: Project }) {
     fetchProjects()
       .then(setProjects)
       .catch((e: Error) => setError(e.message));
-    fetch("/__editor/libraries")
-      .then((r) => r.json())
+    store.store
+      .listLibraries()
       .then(setLibraries)
       .catch(() => setLibraries([]));
   }, [open, creating]);
@@ -49,13 +52,15 @@ export function ProjectMenu({ project }: { project: Project }) {
   /** Checks the other version first: it only moves when that version has everything the project uses. */
   const moveLibrary = async (library: string) => {
     setOpen(false);
-    const q = `project=${encodeURIComponent(project.info.id)}&library=${encodeURIComponent(library)}`;
-    const check = (await (await fetch(`/__editor/library?${q}`)).json()) as { missing: string[] };
+    const check = await store.store.moveToLibrary(project.info.id, library);
     if (check.missing.length) return alert(`Library ${library} lacks what this project uses:\n${check.missing.join(", ")}`);
     if (project.dirtyPaths().length && !confirm("Unsaved changes stay unsaved – move anyway?")) return;
     if (!confirm(`Move ${project.info.name} to library ${library}?`)) return;
-    const r = await fetch("/__editor/library", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ project: project.info.id, library }) });
-    if (!r.ok) return alert(await r.text());
+    try {
+      await store.store.moveToLibrary(project.info.id, library, true);
+    } catch (e) {
+      return alert((e as Error).message);
+    }
     openProject(project, project.info.id);
   };
 
@@ -86,31 +91,6 @@ export function ProjectMenu({ project }: { project: Project }) {
           >
             New project…
           </button>
-          <button
-            role="menuitem"
-            title="A .brpg file with this project and the library content it uses – it opens anywhere (saved files only)"
-            onClick={() => {
-              setOpen(false);
-              if (project.dirtyPaths().length && !confirm("The export has the saved files only – export anyway?")) return;
-              const a = document.createElement("a");
-              a.href = `/__editor/export?project=${encodeURIComponent(project.info.id)}`;
-              a.download = `${project.info.id}.brpg`;
-              a.click();
-            }}
-          >
-            Export project…
-          </button>
-          <hr />
-          <div class="dim pad" title="The library version this project uses (projects.md §3)">
-            Library {project.info.library}
-          </div>
-          {libraries
-            .filter((l) => l.id !== project.info.library)
-            .map((l) => (
-              <button key={l.id} role="menuitem" title={l.bundled ? "Installed from an exported project: only what that project uses" : l.name} onClick={() => void moveLibrary(l.id)}>
-                Move to library {l.id}…
-              </button>
-            ))}
           <label role="menuitem" class="menu-file" title="Open a .brpg file as a new project">
             Import project…
             <input
@@ -128,6 +108,47 @@ export function ProjectMenu({ project }: { project: Project }) {
               }}
             />
           </label>
+          <button
+            role="menuitem"
+            title="A .brpg file with this project and the library content it uses – it opens anywhere (saved files only)"
+            onClick={() => {
+              setOpen(false);
+              if (project.dirtyPaths().length && !confirm("The export has the saved files only – export anyway?")) return;
+              downloadProject(project.info.id).catch((e: Error) => alert(e.message));
+            }}
+          >
+            Export project…
+          </button>
+          <hr />
+          <div class="dim pad" title="The library version this project uses (projects.md §3)">
+            Library {project.info.library}
+          </div>
+          {libraries
+            .filter((l) => l.id !== project.info.library)
+            .map((l) => (
+              <button key={l.id} role="menuitem" title={l.bundled ? "Installed from an exported project: only what that project uses" : l.name} onClick={() => void moveLibrary(l.id)}>
+                Move to library {l.id}…
+              </button>
+            ))}
+          <hr />
+          <div class="dim pad" title="Where the projects are kept (distribution.md §1)">
+            Storage: {store.label}
+          </div>
+          {store.folderWaiting && (
+            <button role="menuitem" title="The browser asks again before the editor may use the folder" onClick={() => void reopenFolder()}>
+              Use the folder {store.folderWaiting} again
+            </button>
+          )}
+          {store.kind !== "dev" && canOpenFolders() && (
+            <button role="menuitem" title="Keep the projects in a folder on this computer (its projects/ sub-folder)" onClick={() => void openFolder().catch(() => undefined)}>
+              Open a folder…
+            </button>
+          )}
+          {store.kind === "folder" && (
+            <button role="menuitem" title="Keep the projects in this browser" onClick={useBrowser}>
+              Use the browser's storage
+            </button>
+          )}
         </div>
       )}
       {creating && <NewProjectWindow project={project} projects={projects ?? []} onClose={() => setCreating(false)} />}

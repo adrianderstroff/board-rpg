@@ -51,8 +51,9 @@ src/…                   the game – the editor imports src/core, src/engine a
   as soon as the editor offers its field.
 - **UI.** Forms, lists and trees are DOM (Preact with JSX – small, no heavy framework). The map
   canvas is a Phaser scene inside the page, using the engine's `IsoMapView`.
-- **Files.** A browser can't write files, so the editor runs on the Vite dev server with a small
-  plugin: `GET /__editor/files` (list), `GET /__editor/file?path=` (read), `PUT /__editor/file`
+- **Files.** The editor works on a file tree (distribution.md §1): while developing the repository
+  through the Vite dev server, as a static site a folder the user picked or the browser's storage.
+  Earlier (before DS1) it ran only on the Vite dev server with a small plugin: `GET /__editor/files` (list), `GET /__editor/file?path=` (read), `PUT /__editor/file`
   (write, only the project's own `data/`; the library is read-only). It is only there in dev (`npm run editor`), never in a build.
 - **Project model.** On start the editor loads every data file into (a) a YAML document per file
   (for saving with comments intact) and (b) the same `RawContent` the game builds. Edits change the

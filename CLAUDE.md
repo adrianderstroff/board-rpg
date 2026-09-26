@@ -8,6 +8,7 @@ Web first; desktop (Tauri/Electron) and mobile (Capacitor) later.
 - Ideas designed but not built yet: [docs/todo.md](docs/todo.md) – move an item into the design doc when picking it up
 - Editor (content editor + play-testing): [docs/editor-design.md](docs/editor-design.md), packages E1–E9
 - Projects & the library (layout, `lib:` ids, versions, export): [docs/projects.md](docs/projects.md)
+- Distribution (web editor storages, Tauri player, website, releases): [docs/distribution.md](docs/distribution.md)
 - Asset sheet layouts: [public/assets/ASSETS.md](public/assets/ASSETS.md)
 
 ## Commands
@@ -15,6 +16,7 @@ Web first; desktop (Tauri/Electron) and mobile (Capacitor) later.
 - `npm run dev` – dev server at http://localhost:5173 (`npm run dev:phone` also serves on the LAN for testing on a phone; `?touch=1` forces touch controls on desktop)
 - `npm test` – unit tests (`src/**/*.test.ts`), incl. content validation and a scripted playthrough
 - `npm run build` – typecheck + production build to `dist/`
+- `npm run build:editor` – the editor as a static site to `dist-editor/` (projects in a folder or in the browser, docs/distribution.md)
 - `npm run art` – regenerate procedural placeholder art (content sheets into `library/v1/assets/`, system graphics into `public/assets/`)
 - `npm run audio` – regenerate procedural chiptune SFX (`public/assets/audio/sfx`) and music (`library/v1/assets/audio/music`) (see AUDIO.md)
 - `npm run e2e [-- scenario ...]` – Playwright end-to-end scenarios against the running dev server (keyboard-driven; `window.__game.debug` only for setup, `debug.menu()` exposes the open menu so tests pick entries by label). Screenshots in `tools/out/e2e/`

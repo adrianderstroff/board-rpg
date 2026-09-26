@@ -3,7 +3,9 @@ import { dirname, resolve } from "node:path";
 import type { Plugin } from "vite";
 import { defineConfig } from "vitest/config";
 import { libraryUsage, trimLibraryFile, usedAssets, type LibraryUsage } from "./src/content/bundle.ts";
-import { editorFiles, readProject } from "./editor/vite-plugin-files.ts";
+import { editorFiles } from "./editor/vite-plugin-files.ts";
+import { NodeTree } from "./editor/node-tree.ts";
+import { ProjectStore } from "./editor/src/storage/ops.ts";
 
 /**
  * A build ships one project (VITE_PROJECT, default the demo) with only the library content it uses
@@ -24,8 +26,8 @@ function shipProject(): Plugin {
     configResolved(c) {
       outDir = c.build.outDir;
     },
-    buildStart() {
-      const p = readProject(process.cwd(), project);
+    async buildStart() {
+      const p = await new ProjectStore(new NodeTree(process.cwd())).loadProject(project);
       library = p.project.library;
       libFiles = Object.entries(p.files).filter(([f]) => f.startsWith("library/"));
       const own = Object.entries(p.files).filter(([f]) => !f.startsWith("library/"));

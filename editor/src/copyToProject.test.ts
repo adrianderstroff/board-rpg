@@ -6,7 +6,8 @@ import { parseDocument } from "yaml";
 import { rewriteRefs } from "../../src/content/refs";
 import { copyEntryToProject } from "./copyToProject";
 import { Project } from "./project";
-import { readProject } from "../vite-plugin-files";
+import { NodeTree } from "../node-tree";
+import { ProjectStore } from "./storage/ops";
 
 let root = "";
 beforeEach(() => {
@@ -25,7 +26,7 @@ describe("copy to project (projects.md §2)", () => {
   });
 
   it("a hero copied into the project: its own file, the project's references follow, still valid", async () => {
-    const files = readProject(root, "demo");
+    const files = await new ProjectStore(new NodeTree(root)).loadProject("demo");
     const p = new Project({ load: async () => files, save: async () => {} }, null);
     await p.load();
     const id = copyEntryToProject(p, "heroes", "lib:aldric");

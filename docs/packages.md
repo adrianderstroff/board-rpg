@@ -371,6 +371,26 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ Save as prefab: every value the entities use with its mode (per copy · fixed · on placement) – outside entities and content found too; tooltips per mode
 - ☑ Placing: a window asks for the inputs (defaults filled in); entity inputs from the map's entities
 
+# Distribution (see [distribution.md](distribution.md))
+
+## DS1 · Editor storage ☑
+- ☑ One implementation of the project operations on a file tree (`editor/src/storage/ops.ts`: list, create, load, save, assets, export / import, library versions); the dev server only reads, writes and lists files
+- ☑ Storages: dev server, a folder (File System Access API), the browser (IndexedDB) – the library bundled with the editor; the demo copied into a new browser storage; an empty folder starts with a project from the template
+- ☑ Project assets as blob: URLs (the editor's canvases, the play-test tab); the storage shown and switched in the project menu
+
+## DS2 · The editor as a static site ☑
+- ☑ `npm run build:editor` → `dist-editor/` (the editor at editor/, the runtime's assets beside it, the library bundled); ▶ Play opens the game at `VITE_GAME_URL` (the website: ../play/)
+
+## DS3 · The player ☐
+- ☐ The game starts from a `.brpg` (content from the zip, assets as blob: URLs)
+- ☐ `apps/player/`: Tauri app – file association, drag and drop, file dialog, a `game.brpg` beside it
+
+## DS4 · The website ☐
+- ☐ Landing page (features, generated screenshots), `/editor/`, `/play/`, `/download/` (GitHub Releases API)
+
+## DS5 · Releases ☐
+- ☐ GitHub Actions: player builds on version tags (tauri-action → Release); site build + Pages deploy on main
+
 # Editor (see [editor-design.md](editor-design.md))
 
 ## E1 · Editor foundation ☑

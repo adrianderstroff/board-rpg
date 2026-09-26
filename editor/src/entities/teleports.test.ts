@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { readProject } from "../../vite-plugin-files";
+import { NodeTree } from "../../node-tree";
+import { ProjectStore } from "../storage/ops";
 import type { MapDef } from "../../../src/core/data/types";
 import { Project, type FileApi } from "../project";
 import { arrivalUses, createTeleport, deleteArrival, deleteExit, frontOf, mapFile, placeStart, renameArrival, retargetExit } from "./teleports";
 
 /** The real data files in memory. */
 function memoryApi(): FileApi {
-  const { project, files, roots } = readProject(".");
-  return { load: async () => ({ project, files, music: [], roots }), save: async () => {} };
+  const loaded = new ProjectStore(new NodeTree(".")).loadProject("demo");
+  return { load: async () => ({ ...(await loaded), music: [] }), save: async () => {} };
 }
 
 async function project() {

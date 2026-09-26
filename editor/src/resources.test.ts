@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseDocument } from "yaml";
 import { resourceId, sheetFor } from "./resources";
-import { ASSET_PATH } from "../vite-plugin-files";
+import { ASSET_PATH } from "./storage/ops";
 
 describe("importing resources (projects.md §6)", () => {
   it("works out a sheet's layout from its size (ASSETS.md)", () => {

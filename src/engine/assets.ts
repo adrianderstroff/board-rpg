@@ -3,8 +3,14 @@ import Phaser from "phaser";
 /** The runtime's own asset paths are relative to public/assets/; content comes with root-relative paths (library/…, projects/…). */
 export const ASSET_ROOT = "assets/";
 
+/** Where content assets really are, when the host knows better (the editor's stored files as blob: URLs, a .brpg's). */
+let resolver: ((path: string) => string | undefined) | null = null;
+export function setAssetResolver(fn: ((path: string) => string | undefined) | null) {
+  resolver = fn;
+}
+
 /** The URL of an asset path. */
-export const assetPath = (p: string) => (/^(library|projects)\//.test(p) ? p : ASSET_ROOT + p);
+export const assetPath = (p: string) => resolver?.(p) ?? (/^(library|projects)\//.test(p) ? p : ASSET_ROOT + p);
 
 export interface SheetSpec {
   key: string;

@@ -1,15 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { readProject } from "../vite-plugin-files";
+import { NodeTree } from "../node-tree";
+import { ProjectStore } from "./storage/ops";
 import { Project, type FileApi } from "./project";
 
 /** The real data files, saved into memory instead of onto disk. */
 function memoryApi(): FileApi & { written: Record<string, string> } {
-  const { project, files, roots } = readProject(".");
+  const loaded = new ProjectStore(new NodeTree(".")).loadProject("demo");
   const written: Record<string, string> = {};
   return {
     written,
-    load: async () => ({ project, files, music: ["lib:village", "lib:boss"], roots }),
+    load: async () => ({ ...(await loaded), music: ["lib:village", "lib:boss"] }),
     save: async (path, text) => void (written[path] = text),
   };
 }

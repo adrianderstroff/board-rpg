@@ -9,6 +9,7 @@ import { Database, type RawContent } from "../../src/core/data/database";
 import { validateContent } from "../../src/core/data/validate";
 import { browserStorage, SESSION_KEY } from "./persist";
 import { formatYaml } from "./yamlFormat";
+import { refreshAssets, storage } from "./storage";
 
 /**
  * The content being edited (editor-design §2): one YAML document per data file – edited in place so
@@ -55,47 +56,44 @@ export interface FileApi {
   save(path: string, text: string): Promise<void>;
 }
 
-/** The dev server's file API (editor/vite-plugin-files.ts) for one project. */
-export function httpFileApi(project: string): FileApi {
+/** One project in the editor's storage (distribution.md §1): its files, and saving one of them. */
+export function storageFileApi(project: string): FileApi {
   return {
     async load() {
-      const r = await fetch(`/__editor/files?project=${encodeURIComponent(project)}`);
-      if (!r.ok) throw new Error(`Loading project "${project}" failed (${r.status}: ${await r.text()}). Is the dev server running?`);
-      return r.json();
+      const files = await storage().store.loadProject(project);
+      await refreshAssets(project);
+      return files;
     },
-    async save(path, text) {
-      const r = await fetch("/__editor/file", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ project, path, text }) });
-      if (!r.ok) throw new Error(`Saving ${path} failed: ${await r.text()}`);
-    },
+    save: (path, text) => storage().store.saveFile(project, path, text),
   };
 }
 
-/** The projects on disk (projects.md §6). */
-export async function fetchProjects(): Promise<ProjectInfo[]> {
-  const r = await fetch("/__editor/projects");
-  if (!r.ok) throw new Error(`Listing the projects failed (${r.status})`);
-  return r.json();
-}
+/** The projects in the storage (projects.md §6). */
+export const fetchProjects = (): Promise<ProjectInfo[]> => storage().store.listProjects();
 
 /** Stores (a Blob) or deletes (null) one of a project's asset files (charsets/x.png, audio/music/y.wav). */
 export async function putAsset(project: string, path: string, file: Blob | null): Promise<void> {
-  const url = `/__editor/asset?project=${encodeURIComponent(project)}&path=${encodeURIComponent(path)}`;
-  const r = await fetch(url, file ? { method: "PUT", body: file } : { method: "DELETE" });
-  if (!r.ok) throw new Error(await r.text());
+  await storage().store.putAsset(project, path, file ? new Uint8Array(await file.arrayBuffer()) : null);
+  await refreshAssets(project);
 }
 
 /** Unpacks an exported project (.brpg) as a new project. */
 export async function importProjectFile(file: Blob): Promise<ProjectInfo> {
-  const r = await fetch("/__editor/import", { method: "POST", body: file });
-  if (!r.ok) throw new Error(`Import failed: ${await r.text()}`);
-  return r.json();
+  return storage().store.importProject(new Uint8Array(await file.arrayBuffer()));
 }
 
 /** Creates a project: a copy of `from`, or the library's empty template. */
-export async function createProject(opts: { id: string; name: string; from?: string }): Promise<ProjectInfo> {
-  const r = await fetch("/__editor/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(opts) });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
+export const createProject = (opts: { id: string; name: string; from?: string }): Promise<ProjectInfo> => storage().store.createProject(opts);
+
+/** Downloads a project as a .brpg file (its saved files – projects.md §5). */
+export async function downloadProject(id: string) {
+  const bytes = await storage().store.exportProject(id);
+  const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: "application/zip" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${id}.brpg`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
 export class Project {
@@ -119,7 +117,7 @@ export class Project {
   private tx?: Change;
 
   constructor(
-    private readonly api: FileApi = httpFileApi("demo"),
+    private readonly api: FileApi = storageFileApi("demo"),
     private readonly store: SessionStore | null = browserStorage(),
   ) {}
 

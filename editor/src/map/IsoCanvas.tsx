@@ -13,6 +13,7 @@ import { cutSquare } from "../../../src/engine/iso/shapes";
 import type { Corner } from "../../../src/core/data/types";
 import { K } from "../../../src/game/keys";
 import type { EntitySprite } from "../entities/visuals";
+import { SITE_ROOT } from "../siteRoot";
 
 /**
  * The map exactly as the game draws it (editor-design §5.1): the engine's IsoMapView fed by the
@@ -128,7 +129,7 @@ class MapScene extends Phaser.Scene {
 
   preload() {
     this.props = this.initial();
-    this.load.setBaseURL(`${location.origin}/`);
+    this.load.setBaseURL(SITE_ROOT);
     for (const c of this.props.db.chipsets.values()) {
       loadSheet(this, { key: K.chipset(c.id), path: c.image, frameWidth: c.frameWidth, frameHeight: c.frameHeight });
       loadSheet(this, { key: K.decor(c.id), path: c.decorImage, frameWidth: c.decorFrameWidth, frameHeight: c.decorFrameHeight });

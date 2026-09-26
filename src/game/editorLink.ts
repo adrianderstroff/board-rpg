@@ -11,6 +11,8 @@ export interface EditorPlayMessage {
   /** `play`: title and New Game as usual; `quick`: straight onto `map` (its Quick Play entity). */
   mode: "play" | "quick";
   map?: string;
+  /** Content asset paths the editor serves itself (a project in the browser or a folder) → their blob: URLs. */
+  assets?: Record<string, string>;
 }
 
 export const READY_MESSAGE = "board-rpg:ready";

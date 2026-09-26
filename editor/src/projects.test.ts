@@ -7,7 +7,13 @@ import { layeredRaw } from "../../src/content/raw";
 import { Database } from "../../src/core/data/database";
 import { validateContent } from "../../src/core/data/validate";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createProject, exportProject, importProject, listLibraries, listProjects, moveToLibrary, readProject } from "../vite-plugin-files";
+import { NodeTree } from "../node-tree";
+import { ProjectStore, ASSET_PATH } from "./storage/ops";
+import { LayeredTree, MemoryTree } from "./storage/tree";
+import { BundledLibraryTree, bundledDemo } from "./storage/trees";
+
+/** The projects of a folder with the repository's layout. */
+const at = (dir: string) => new ProjectStore(new NodeTree(dir));
 import { projectIdFor } from "./ProjectMenu";
 
 /**
@@ -22,27 +28,27 @@ beforeEach(() => {
 afterEach(() => rmSync(root, { recursive: true, force: true }));
 
 describe("projects (projects.md §6)", () => {
-  it("lists the projects", () => {
-    expect(listProjects(root).map((p) => p.id)).toContain("demo");
+  it("lists the projects", async () => {
+    expect((await at(root).listProjects()).map((p) => p.id)).toContain("demo");
   });
 
-  it("a new project starts from the library's template: its own name, one map, the library", () => {
+  it("a new project starts from the library's template: its own name, one map, the library", async () => {
     const id = "test_empty";
-    const info = createProject(root, { id, name: "Test Game" });
+    const info = await at(root).createProject({ id, name: "Test Game" });
     expect(info).toEqual({ id, name: "Test Game", library: "v1" });
-    const p = readProject(root, id);
+    const p = await at(root).loadProject(id);
     expect(p.project.name).toBe("Test Game");
     expect(Object.keys(p.files).filter((f) => f.startsWith("data/")).sort()).toEqual(["data/config.yaml", "data/maps/start.yaml"]);
     expect(Object.keys(p.files).some((f) => f.startsWith("library/v1/data/heroes"))).toBe(true);
     expect(readFileSync(join(root, `projects/${id}/project.yaml`), "utf8")).toContain("# A new project"); // comments kept
   });
 
-  it("or as a copy of another project; ids are checked", () => {
+  it("or as a copy of another project; ids are checked", async () => {
     const id = "test_copy";
-    createProject(root, { id, name: "Demo Copy", from: "demo" });
-    expect(readProject(root, id).files["data/maps/sandhollow.yaml"]).toBe(readFileSync("projects/demo/data/maps/sandhollow.yaml", "utf8"));
-    expect(() => createProject(root, { id, name: "Again", from: "demo" })).toThrow(/exists/);
-    expect(() => createProject(root, { id: "../evil", name: "x" })).toThrow(/project id/);
+    await at(root).createProject({ id, name: "Demo Copy", from: "demo" });
+    expect((await at(root).loadProject(id)).files["data/maps/sandhollow.yaml"]).toBe(readFileSync("projects/demo/data/maps/sandhollow.yaml", "utf8"));
+    await expect(at(root).createProject({ id, name: "Again", from: "demo" })).rejects.toThrow(/exists/);
+    await expect(at(root).createProject({ id: "../evil", name: "x" })).rejects.toThrow(/project id/);
     expect(existsSync(join(root, "projects/evil"))).toBe(false);
   });
 
@@ -53,8 +59,8 @@ describe("projects (projects.md §6)", () => {
     expect(projectIdFor("My Desert Game!", "-")).toBe("my-desert-game"); // project folders
   });
 
-  it("exports a .brpg with the library content it uses; importing it elsewhere installs that library", () => {
-    const brpg = exportProject(".", "demo");
+  it("exports a .brpg with the library content it uses; importing it elsewhere installs that library", async () => {
+    const brpg = await at(".").exportProject("demo");
     const zip = unzipSync(brpg);
     const paths = Object.keys(zip);
     expect(paths).toContain("project.yaml");
@@ -67,23 +73,23 @@ describe("projects (projects.md §6)", () => {
     // a machine without the library: the import brings it
     const other = mkdtempSync(join(tmpdir(), "brpg-"));
     try {
-      const info = importProject(other, brpg);
+      const info = await at(other).importProject(brpg);
       expect(info).toEqual({ id: "board-rpg-demo", name: "Board RPG Demo", library: "v1" });
       expect(readFileSync(join(other, "library/v1/library.yaml"), "utf8")).toContain("bundled: true");
-      const p = readProject(other, info.id);
+      const p = await at(other).loadProject(info.id);
       const layer = (lib: boolean) => Object.entries(p.files).filter(([f]) => f.startsWith("library/") === lib).map(([f, t]) => [f, parse(t)] as [string, unknown]);
       expect(validateContent(new Database(layeredRaw(layer(true), layer(false), p.roots)))).toEqual([]);
-      expect(importProject(other, brpg).id).toBe("board-rpg-demo-2"); // folders stay unique
+      expect((await at(other).importProject(brpg)).id).toBe("board-rpg-demo-2"); // folders stay unique
     } finally {
       rmSync(other, { recursive: true, force: true });
     }
   });
 
-  it("rejects what isn't a project", () => {
-    expect(() => importProject(root, new Uint8Array([1, 2, 3]))).toThrow();
+  it("rejects what isn't a project", async () => {
+    await expect(at(root).importProject(new Uint8Array([1, 2, 3]))).rejects.toThrow(/not a \.brpg/);
   });
 
-  it("moves a project to another library version only when that version has everything it uses", () => {
+  it("moves a project to another library version only when that version has everything it uses", async () => {
     // v2 lost the potion; v3 is v1 again
     cpSync(join(root, "library/v1"), join(root, "library/v2"), { recursive: true });
     cpSync(join(root, "library/v1"), join(root, "library/v3"), { recursive: true });
@@ -96,11 +102,29 @@ describe("projects (projects.md §6)", () => {
     const doc = parse(readFileSync(items, "utf8")) as Record<string, unknown>;
     delete doc.potion;
     writeFileSync(items, JSON.stringify(doc)); // JSON is YAML
-    expect(listLibraries(root).map((l) => l.id)).toEqual(["v1", "v2", "v3"]);
-    expect(moveToLibrary(root, "demo", "v2", true)).toEqual({ missing: ["lib:potion"], moved: false });
-    expect(readProject(root, "demo").project.library).toBe("v1");
-    expect(moveToLibrary(root, "demo", "v3", true)).toEqual({ missing: [], moved: true });
-    expect(readProject(root, "demo").project.library).toBe("v3");
+    expect((await at(root).listLibraries()).map((l) => l.id)).toEqual(["v1", "v2", "v3"]);
+    expect(await at(root).moveToLibrary("demo", "v2", true)).toEqual({ missing: ["lib:potion"], moved: false });
+    expect((await at(root).loadProject("demo")).project.library).toBe("v1");
+    expect(await at(root).moveToLibrary("demo", "v3", true)).toEqual({ missing: [], moved: true });
+    expect((await at(root).loadProject("demo")).project.library).toBe("v3");
     expect(readFileSync(join(root, "projects/demo/project.yaml"), "utf8")).toContain("# The demo"); // comments kept
+  });
+
+  it("the browser's storage: the bundled library under the stored projects – a new one from the template, the demo copied in", async () => {
+    const stored = new MemoryTree(bundledDemo());
+    const store = new ProjectStore(new LayeredTree(new BundledLibraryTree(), stored));
+    expect((await store.listProjects()).map((p) => p.id)).toEqual(["demo"]);
+    expect((await store.listLibraries()).map((l) => l.id)).toContain("v1");
+    await store.createProject({ id: "mine", name: "Mine" });
+    const p = await store.loadProject("mine");
+    expect(Object.keys(p.files)).toContain("data/maps/start.yaml");
+    expect(p.music).toContain("lib:village");
+    // written to the stored tree only; the library stays bundled
+    expect([...stored.files.keys()].some((k) => k.startsWith("projects/mine/"))).toBe(true);
+    expect([...stored.files.keys()].some((k) => k.startsWith("library/"))).toBe(false);
+    await store.putAsset("mine", "faces/me.png", new Uint8Array([1, 2]));
+    await expect(store.putAsset("mine", "../evil.png", new Uint8Array([1]))).rejects.toThrow();
+    await expect(store.saveFile("mine", "data/../../x.yaml", "")).rejects.toThrow();
+    expect(ASSET_PATH.test("faces/me.png")).toBe(true);
   });
 });
