@@ -11,6 +11,7 @@ import type { Project } from "../project";
 import { entityPath, KIND_INFO, type EntityRef } from "./model";
 import { QuickPlayForm } from "../screens/QuickPlayForm";
 import { LookPicker, type LookPick } from "./LookPicker";
+import { EntityEventForm } from "./EntityEventForm";
 import { TeleportTarget } from "./TeleportTarget";
 import { arrivalRole, arrivalUses, cleanupArrival, ensureArrival, mapFile, renameArrival, retargetExit } from "./teleports";
 import { pageLayers, SpriteView } from "./LookPreview";
@@ -186,7 +187,12 @@ export function EntityForm({ project, mapId, entity, onSelect }: { project: Proj
           </>
         );
       case "event":
-        return <EventForm project={project} mapId={mapId} index={entity.key as number} db={db} />;
+        // an entity (states and handlers) or a paged event (until R6 converts them)
+        return map.events?.[entity.key as number]?.states ? (
+          <EntityEventForm project={project} mapId={mapId} index={entity.key as number} db={db} interactionForm={(it, s) => <InteractionForm it={it} set={s} db={db} mapId={mapId} />} />
+        ) : (
+          <EventForm project={project} mapId={mapId} index={entity.key as number} db={db} />
+        );
     }
   };
 

@@ -207,7 +207,15 @@ Gates, floor switches and hidden traps become presets of the event (entity) with
 A **marker tile** is a flat tile on the cell with the kind's icon (the same icons in the top view).
 **Entity panel** (Edit tab in Entity mode): the kinds as buttons (three rows; the tooltip explains
 each), and below them the map's entities as a table – ID, type, position; a row click selects one
-and opens its form. An event's form has two parts:
+and opens its form. An event made of **states and handlers** (all new events, game-design §10.3) has the same two parts:
+- **Appearance** – its states as folder tabs (★ marks the one it starts in; rename, duplicate,
+  delete), each with its look (click the preview), facing and movement, and **passability**
+  (Solid / Stop / Walk); hidden.
+- **Events** – its handlers as tabs named after their trigger (Interact, Enter, Pass over, Leave, Map
+  loaded, Becomes true): a condition, for Interact the close-up options and the script's label, else
+  "once", and the script.
+
+A paged event (older content, until R6 converts it) has two parts:
 - **Appearance** – a preview of the look (its character facing its way and / or its object; empty
   when it shows nothing) next to id, cell and – for a character – its facing. Clicking the preview opens a picker of
   sprites – nothing, the characters (NPCs), the objects (decor) – and the pick sets the kind of look.

@@ -99,7 +99,8 @@ export function addEntity(doc: Document, map: MapDef, kind: EntityKind, at: Pos,
   };
   switch (kind) {
     case "event":
-      return push("events", { id: freeId("event", (map.events ?? []).map((e) => e.id)), x, y, pages: [{ trigger: "interact" }] }, false);
+      // a new event is an entity: one state (nothing drawn yet) and no handlers (§10.3)
+      return push("events", { id: freeId("event", (map.events ?? []).map((e) => e.id)), x, y, states: { idle: {} } }, false);
     case "exit":
       return push("exits", { x, y, dir: "N" as Dir, to: defaults.map ?? "", spawn: defaults.spawn ?? "start" });
     case "enemy":
@@ -129,7 +130,12 @@ export function duplicateEntity(doc: Document, map: MapDef, ref: EntityRef, at: 
   const src = items[ref.key as number];
   if (!src) return null;
   const copy: Record<string, unknown> = { ...structuredClone(src), x: at.x, y: at.y };
-  if (typeof copy.id === "string") copy.id = freeId(copy.id, items.map((e) => String(e.id)));
+  if (typeof copy.id === "string") {
+    const was = copy.id;
+    copy.id = freeId(copy.id, items.map((e) => String(e.id)));
+    // an entity's handlers that talk about itself now talk about the copy
+    if (copy.on) copy.on = JSON.parse(JSON.stringify(copy.on).split(`"event":"${was}"`).join(`"event":"${copy.id}"`));
+  }
   doc.addIn([list], doc.createNode(copy, { flow: ref.kind !== "event" }));
   return { kind: ref.kind, key: items.length };
 }

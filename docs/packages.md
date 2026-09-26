@@ -313,8 +313,10 @@ Layering (see also [architecture](../CLAUDE.md)):
 ## R6 · Presets & migration ☐
 - ☐ Gate, floor switch, trap as entity presets; content migrated; `gates.ts` / map traps / switches removed; rule tests rewritten against entities
 
-## R7 · State and handler editor ☐
-- ☐ States list (look + passability + hidden) and handlers with a block editor (if / elif / else, choices) in the entity form
+## R7 · State and handler editor ☑
+- ☑ Appearance: states as folder tabs (★ starting state, rename – handlers follow, duplicate, delete), each with its look (sprite picker), facing, movement, passability; hidden
+- ☑ Events: handlers as tabs – trigger, condition, close-up options and label (interact) or once, and the script (block editor from R3)
+- ☑ New events are entities; duplicating one points its handlers at the copy; renaming updates the handlers that name it
 
 # Editor (see [editor-design.md](editor-design.md))
 
