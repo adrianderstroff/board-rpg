@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { getGrid } from "../../../src/core/board/grid";
 import type { MapDef } from "../../../src/core/data/types";
 import { resize } from "../map/layers";
-import { MapEditor, type Brush, type Mode } from "../map/MapEditor";
+import { MapEditor, type Brush, type EntitySelection, type Mode } from "../map/MapEditor";
 import { BoardPalette, DecorPalette } from "../map/Palettes";
 import { EntityForm } from "../entities/EntityForm";
 import { deleteEntity, KIND_INFO, listEntities, sameRef, type EntityKind, type EntityRef } from "../entities/model";
@@ -26,10 +26,11 @@ export function MapsScreen({ project, selected: mapSel, onSelect }: { project: P
   const [mode, setMode] = usePersistentState<Mode>("maps.mode", "board");
   const [selected, select] = usePersistentState<EntityRef | null>("maps.selected", null);
   const [placing, setPlacing] = useState<EntityKind | null>(null);
+  const [copying, setCopying] = useState<EntityRef | null>(null);
   const [brush, setBrush] = usePersistentState<Brush>("maps.brush", DEFAULT_BRUSH, (b) => ({ ...DEFAULT_BRUSH, ...b }));
   // a resize being prepared on the Info tab (columns / rows added or removed), previewed on the canvas
   const [resizeBy, setResizeBy] = usePersistentState("maps.resizeBy", { x: 0, y: 0 });
-  const entities = { selected, select, placing, setPlacing };
+  const entities = { selected, select, placing, setPlacing, copying, setCopying };
   // another map: nothing selected, no resize pending (not on the first render: that's a reload)
   const shownMap = useRef(mapSel);
   useEffect(() => {
@@ -37,12 +38,15 @@ export function MapsScreen({ project, selected: mapSel, onSelect }: { project: P
     shownMap.current = mapSel;
     select(null);
     setPlacing(null);
+    setCopying(null);
     setResizeBy({ x: 0, y: 0 });
   }, [mapSel]);
   // selecting or placing an entity shows its form
   useEffect(() => {
     if (selected || placing) setTab("edit");
   }, [selected, placing]);
+  // an entity's form fills the inspector: its content scrolls, its action bar stays at the bottom
+  const formShown = tab === "edit" && mode === "entity" && !!mapSel && !!selected && listEntities(project.data<MapDef>(mapPath(mapSel))).some((e) => sameRef(e, selected));
   const ids = project.paths("data/maps/").map((p) => p.replace(/^data\/maps\//, "").replace(/\.yaml$/, ""));
   const shown = ids.filter((id) => {
     const name = project.data<MapDef>(mapPath(id))?.name ?? "";
@@ -71,7 +75,7 @@ export function MapsScreen({ project, selected: mapSel, onSelect }: { project: P
           {mapSel ? <MapEditor project={project} mapId={mapSel} mode={mode} setMode={setMode} brush={brush} setBrush={setBrush} entities={entities} resizeBy={resizeBy} /> : <p class="placeholder">Select a map.</p>}
         </div>
       </main>
-      <aside class="inspector">
+      <aside class={`inspector ${formShown ? "fill" : ""}`}>
         {mapSel && (
           <>
             <div class="tabs">
@@ -84,7 +88,7 @@ export function MapsScreen({ project, selected: mapSel, onSelect }: { project: P
             </div>
             {tab === "edit" && chip && mode === "board" && <BoardPalette chip={chip} brush={brush} setBrush={setBrush} />}
             {tab === "edit" && chip && mode === "decor" && <DecorPalette chip={chip} brush={brush} setBrush={setBrush} />}
-            {tab === "edit" && mode === "entity" && <EntitiesPanel project={project} mapId={mapSel} selected={selected} select={select} placing={placing} setPlacing={setPlacing} />}
+            {tab === "edit" && mode === "entity" && <EntitiesPanel project={project} mapId={mapSel} entities={entities} />}
             {tab === "info" && <MapProperties project={project} id={mapSel} resizeBy={resizeBy} setResizeBy={setResizeBy} />}
           </>
         )}
@@ -275,8 +279,8 @@ function OnEnter({ project, id }: { project: Project; id: string }) {
 }
 
 /** Entities layer: add new ones, the list of all on this map, and the selected one's form. */
-function EntitiesPanel(props: { project: Project; mapId: string; selected: EntityRef | null; select: (r: EntityRef | null) => void; placing: EntityKind | null; setPlacing: (k: EntityKind | null) => void }) {
-  const { project, mapId, selected, select, placing, setPlacing } = props;
+function EntitiesPanel({ project, mapId, entities }: { project: Project; mapId: string; entities: EntitySelection }) {
+  const { selected, select, placing, setPlacing, copying, setCopying } = entities;
   const map = project.data<MapDef>(mapPath(mapId));
   const list = listEntities(map);
   const kinds = Object.keys(KIND_INFO) as EntityKind[];
@@ -284,7 +288,7 @@ function EntitiesPanel(props: { project: Project; mapId: string; selected: Entit
     <div class="entities-panel">
       <div class="add-grid">
         {kinds.map((k) => (
-          <button key={k} class={placing === k ? "on" : ""} title={`${KIND_INFO[k].hint} Click a cell to place it.`} onClick={() => setPlacing(placing === k ? null : k)}>
+          <button key={k} class={placing === k ? "on" : ""} title={`${KIND_INFO[k].hint} Click a cell to place it.`} onClick={() => (setCopying(null), setPlacing(placing === k ? null : k))}>
             {KIND_INFO[k].label}
           </button>
         ))}
@@ -292,17 +296,30 @@ function EntitiesPanel(props: { project: Project; mapId: string; selected: Entit
       {selected && list.some((e) => sameRef(e, selected)) ? (
         <>
           <EntityForm project={project} mapId={mapId} entity={selected} onSelect={select} />
-          <button
-            style={{ marginTop: 8 }}
-            title="Delete (Del)"
-            onClick={() => {
-              const ref = selected;
-              project.edit(mapPath(mapId), `Delete ${ref.kind}`, (doc) => deleteEntity(doc, ref));
-              select(null);
-            }}
-          >
-            Delete {KIND_INFO[selected.kind].label.toLowerCase()}
-          </button>
+          <div class="entity-actions">
+            <button onClick={() => select(null)} title="Back to the list of all entities">
+              ← All
+            </button>
+            <span class="spacer" />
+            <button
+              class={copying ? "on" : ""}
+              disabled={selected.kind === "quickplay"}
+              title="Duplicate: click a free cell on the map for the copy (Esc: cancel)"
+              onClick={() => (setPlacing(null), setCopying(copying ? null : selected))}
+            >
+              Duplicate {KIND_INFO[selected.kind].label.toLowerCase()}
+            </button>
+            <button
+              title="Delete (Del)"
+              onClick={() => {
+                const ref = selected;
+                project.edit(mapPath(mapId), `Delete ${ref.kind}`, (doc) => deleteEntity(doc, ref));
+                select(null);
+              }}
+            >
+              Delete {KIND_INFO[selected.kind].label.toLowerCase()}
+            </button>
+          </div>
         </>
       ) : (
         <table class="entity-table">
@@ -325,11 +342,6 @@ function EntitiesPanel(props: { project: Project; mapId: string; selected: Entit
             ))}
           </tbody>
         </table>
-      )}
-      {selected && (
-        <button style={{ marginTop: 8 }} onClick={() => select(null)}>
-          ← All entities
-        </button>
       )}
     </div>
   );

@@ -23,6 +23,8 @@ export interface EntitySprite {
   selected?: boolean;
   /** What placing one would add, see-through under the cursor. */
   preview?: boolean;
+  /** The preview is on a cell that is already taken (can't be placed there). */
+  blocked?: boolean;
 }
 
 /** Charset frame of a character standing idle, facing `dir` in the view (rows by facing, column 1 = idle). */

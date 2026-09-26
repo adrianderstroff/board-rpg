@@ -207,13 +207,21 @@ A **marker tile** is a flat tile on the cell with the kind's icon (the same icon
 each), and below them the map's entities as a table – ID, type, position; a row click selects one
 and opens its form. An event's form has two parts:
 - **Appearance** – a preview of the look (its character facing its way and / or its object; empty
-  when it shows nothing) next to id, cell and hidden. Clicking the preview opens a picker of
+  when it shows nothing) next to id, cell and – for a character – its facing. Clicking the preview opens a picker of
   sprites – nothing, the characters (NPCs), the objects (decor) – and the pick sets the kind of look.
-  Below come that kind's settings: a character's facing (N / E / S / W; the map shows it too),
-  movement and shop sign; an object's "behind it" character (a shop keeper at a counter). The look
+  Below come that kind's settings – a character's movement and shop sign, an object's "behind it"
+  character (a shop keeper at a counter) – and "hidden" (found with Discover). The facing
+  (N / E / S / W) shows in the preview and on the map. The look
   is stored per page; while every page looks the same the appearance is edited on all of them
   ("every page"), otherwise on the selected page (a chest closed on one page, open on the next).
-- **Events** – the pages: when each is active, how it starts, its dialog, options and actions. Choosing a kind to place shows its marker tile see-through under the cursor
+- **Events** – the pages as folder tabs (scrolling sideways, + at the end) over the page's box: icon
+  buttons to move the page earlier / later, duplicate or delete it, then its condition, trigger,
+  dialog, options and actions. Only this box scrolls; the rest of the form stays in place.
+
+Below every entity's form a bar stays at the bottom: back to the list, **duplicate** (the copy
+follows the cursor and goes onto the next free cell clicked – ids get a free suffix) and delete.
+One entity per cell: placing a new one or a copy only works on a free cell (the preview turns red
+on a taken one). Choosing a kind to place shows its marker tile see-through under the cursor
 until a cell is clicked.
 
 Editor-only markers (spawns, invisible events, traps, the Quick Play entity, gate–switch links) are

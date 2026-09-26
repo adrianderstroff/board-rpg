@@ -5,7 +5,7 @@ import { getGrid } from "../../../src/core/board/grid";
 import type { Corner, MapDef } from "../../../src/core/data/types";
 import type { Dir, Pos } from "../../../src/core/util/grid";
 import { K } from "../../../src/game/keys";
-import { addEntity, deleteEntity, entitiesAt, entityPath, listEntities, moveEntity, sameRef, type EntityKind, type EntityRef } from "../entities/model";
+import { addEntity, deleteEntity, entitiesAt, entityPath, listEntities, moveEntity, sameRef, type EntityKind, type EntityRef, duplicateEntity } from "../entities/model";
 import { entitySprites, placingSprite } from "../entities/visuals";
 import type { Project } from "../project";
 import { GridCanvas } from "./GridCanvas";
@@ -64,6 +64,9 @@ export interface EntitySelection {
   /** An entity kind waiting to be placed with the next click. */
   placing: EntityKind | null;
   setPlacing: (kind: EntityKind | null) => void;
+  /** An entity being duplicated: the copy goes where the next click is. */
+  copying: EntityRef | null;
+  setCopying: (ref: EntityRef | null) => void;
 }
 
 const typing = (e: KeyboardEvent) => e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement;
@@ -169,13 +172,22 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
         }
         return;
       }
-      if (entities.placing) {
+      if (entities.placing || entities.copying) {
+        // one entity per cell: only free cells take a new one
+        if (entitiesAt(project.data<MapDef>(path), c).length) return;
         let ref: EntityRef | null = null;
+        const src = entities.copying;
         const kind = entities.placing;
-        project.edit(path, `Add ${kind}`, (doc) => {
-          ref = addEntity(doc, doc.toJS() as MapDef, kind, c, { map: mapId, enemy: [...(db?.enemies.keys() ?? [])][0], sign: Object.keys(db?.graphics.wallSigns?.frames ?? { inn: 0 })[0] });
-        });
+        if (src)
+          project.edit(path, `Duplicate ${src.kind}`, (doc) => {
+            ref = duplicateEntity(doc, doc.toJS() as MapDef, src, c);
+          });
+        else if (kind)
+          project.edit(path, `Add ${kind}`, (doc) => {
+            ref = addEntity(doc, doc.toJS() as MapDef, kind, c, { map: mapId, enemy: [...(db?.enemies.keys() ?? [])][0], sign: Object.keys(db?.graphics.wallSigns?.frames ?? { inn: 0 })[0] });
+          });
         entities.setPlacing(null);
+        entities.setCopying(null);
         entities.select(ref);
         return;
       }
@@ -389,6 +401,7 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
       if (e.key === "Escape") {
         if (pasting) setPasting(false);
         else if (entities.placing) entities.setPlacing(null);
+        else if (entities.copying) entities.setCopying(null);
         else setArea(null);
       }
     };
@@ -418,9 +431,15 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
     if (!db) return [];
     const all = entitySprites(db, mapData, rotation, entities.selected, mode === "entity");
     if (mode !== "entity") return all.filter((e) => e.texture && !e.editorOnly).map((e) => ({ ...e, label: undefined }));
-    // placing: what the click adds follows the cursor
-    return entities.placing && hover ? [...all, placingSprite(entities.placing, hover)] : all;
-  }, [db, mapData, rotation, entities.selected, mode, entities.placing, hover?.x, hover?.y]);
+    // placing or duplicating: what the click adds follows the cursor (red on a taken cell)
+    if (!hover || (!entities.placing && !entities.copying)) return all;
+    const blocked = entitiesAt(mapData, hover).length > 0;
+    const src = entities.copying;
+    const ghost = src
+      ? all.filter((e) => sameRef(e.ref, src)).map((e) => ({ ...e, x: hover.x, y: hover.y, label: undefined, selected: false, preview: true, blocked }))
+      : [{ ...placingSprite(entities.placing!, hover), blocked }];
+    return [...all, ...ghost];
+  }, [db, mapData, rotation, entities.selected, mode, entities.placing, entities.copying, hover?.x, hover?.y]);
   // what the next click places, see-through under the cursor: a terrain block or a decor object
   // the rectangle being dragged (not while erasing) or the area the fill would reach; else the hovered cell
   const ghostCells: Pos[] | undefined = useMemo(() => {
@@ -454,8 +473,8 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
 
   const hint =
     mode === "entity"
-      ? entities.placing
-        ? "Click a cell to place it · Esc: cancel"
+      ? entities.placing || entities.copying
+        ? "Click a free cell to place it · Esc: cancel"
         : "Click: select (again: next on the cell) · drag: move · right click / Del: delete · A/D: turn"
       : tool === "select"
         ? pasting

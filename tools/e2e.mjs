@@ -336,7 +336,7 @@ const scenarios = {
     d.expect((await page.evaluate(() => window.__editor.project.content.problems)).length === 0, "still no problems");
     await d.shot("page");
     // select the new exit again and delete it with the Delete key
-    await page.getByRole("button", { name: "← All entities" }).click();
+    await page.getByRole("button", { name: "← All", exact: true }).click();
     p = await at(2, 7);
     await page.mouse.click(p.x, p.y);
     await page.locator(".status").click();

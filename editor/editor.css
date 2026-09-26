@@ -185,7 +185,7 @@ table.entity-table td:not(:first-child) { color: var(--dim); font-size: 12px; }
 .entity-form h3 { margin-top: 10px; }
 /* event: the page's look left, id / cell / hidden right */
 .event-head { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; align-items: start; }
-.event-head .field { grid-template-columns: 44px minmax(0, 1fr); }
+.event-head .field { grid-template-columns: 50px minmax(0, 1fr); }
 .event-head { position: relative; }
 .look-preview { display: grid; place-items: center; overflow: hidden; width: 96px; height: 96px; padding: 0; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); margin-top: 6px; }
 .look-preview.on, .look-preview.on:hover:not(:disabled) { background: var(--bg); border-color: var(--accent); }
@@ -204,7 +204,34 @@ table.entity-table td:not(:first-child) { color: var(--dim); font-size: 12px; }
 input.box-check { appearance: none; -webkit-appearance: none; width: var(--input-h); height: var(--input-h); margin: 0; padding: 0; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer; }
 input.box-check:hover { border-color: var(--accent-2); }
 input.box-check:checked { background: var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23feae34' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5 9-10'/%3E%3C/svg%3E") center / 70% no-repeat; }
-.pages { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.pages { display: flex; flex-direction: column; }
+/* event pages: folder tabs over the page's box; the tabs scroll sideways (no scrollbar), + stays at the end */
+.page-tabs { flex: none; display: flex; align-items: flex-end; margin-bottom: -1px; position: relative; z-index: 1; }
+.page-tabs-scroll { position: relative; display: flex; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.page-tabs-scroll::-webkit-scrollbar { display: none; }
+.page-tabs-scroll button { flex: none; padding: 5px 12px; background: none; border: 1px solid transparent; border-radius: var(--radius) var(--radius) 0 0; color: var(--dim); }
+.page-tabs-scroll button:hover:not(:disabled) { border-color: transparent; color: #fff; }
+.page-tabs-scroll button.on, .page-tabs-scroll button.on:hover:not(:disabled) { background: var(--panel); border-color: var(--line) var(--line) var(--panel); color: var(--text); }
+.page-tabs .add-page { flex: none; width: 30px; height: 30px; font-size: 18px; }
+.page-box { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 0 var(--radius) var(--radius) var(--radius); }
+.page-tools { flex: none; display: flex; gap: 2px; padding: 2px 4px; border-bottom: 1px solid var(--line); }
+.page-tools .icon-button { width: 28px; height: 26px; }
+.page-fields { padding: 2px 8px 8px; }
+.page-box .page-form { border: 0; background: none; padding: 0; }
+/* an entity's form filling the inspector: only its content scrolls (for events: the page), the action bar stays */
+.inspector.fill { display: flex; flex-direction: column; overflow: hidden; }
+.inspector.fill > .tabs { flex: none; }
+.inspector.fill > .entities-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.inspector.fill .add-grid { flex: none; }
+.inspector.fill .entity-form { flex: 1; min-height: 0; overflow: auto; }
+/* too short a window for the page box: the whole form scrolls instead */
+.inspector.fill .entity-form.event { display: flex; flex-direction: column; }
+.inspector.fill .entity-form.event > * { flex-shrink: 0; }
+.inspector.fill .entity-form.event > .pages { flex: 1 1 auto; min-height: 180px; }
+.inspector.fill .page-box { flex: 1; min-height: 0; }
+.inspector.fill .page-fields { flex: 1; min-height: 0; overflow: auto; }
+.entity-actions { flex: none; display: flex; gap: 6px; align-items: center; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.entity-actions .spacer { flex: 1; }
 .page-form { background: #ffffff06; border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; }
 .inspector { width: auto; }
 

@@ -183,9 +183,9 @@ export function GridCanvas({ db, mapId, hideDecor, focus, markers, entities, gho
       if (e.preview) {
         // placing: the cell it goes on, with the kind's icon
         const [px, py] = at(e.x, e.y);
-        g.fillStyle = "rgba(44,232,245,0.25)";
+        g.fillStyle = e.blocked ? "rgba(228,59,68,0.3)" : "rgba(44,232,245,0.25)";
         g.fillRect(px, py, S, S);
-        g.strokeStyle = "#2ce8f5";
+        g.strokeStyle = e.blocked ? "#e43b44" : "#2ce8f5";
         g.strokeRect(px + 0.5, py + 0.5, S - 1, S - 1);
         drawEntityIcon(g, e.kind, px + S / 2, py + S / 2, S * 0.6, "#ffffff");
         continue;

@@ -375,6 +375,7 @@ class MapScene extends Phaser.Scene {
         // outside Entity mode they are greyed out like the other layers not being edited
         if (this.props.focus !== "entity") img.setTint(0x8a8aa0).setAlpha(0.7);
         if (e.preview) img.setAlpha(0.6);
+        if (e.blocked) img.setTint(0xff5050);
         this.entityObjects.push(img);
       }
       if (e.label) {

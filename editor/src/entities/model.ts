@@ -120,3 +120,26 @@ export function addEntity(doc: Document, map: MapDef, kind: EntityKind, at: Pos,
       return { kind, key: 0 };
   }
 }
+
+/**
+ * Copies an entity onto another cell (ids made unique: `elder` → `elder_1`). The Quick Play start
+ * is one per map and can't be copied.
+ */
+export function duplicateEntity(doc: Document, map: MapDef, ref: EntityRef, at: Pos): EntityRef | null {
+  if (ref.kind === "quickplay") return null;
+  if (ref.kind === "spawn") {
+    const src = map.spawns?.[ref.key as string];
+    if (!src) return null;
+    const id = freeId(String(ref.key), Object.keys(map.spawns ?? {}));
+    doc.setIn(["spawns", id], doc.createNode({ ...structuredClone(src), x: at.x, y: at.y }, { flow: true }));
+    return { kind: "spawn", key: id };
+  }
+  const list = KIND_INFO[ref.kind].list;
+  const items = (map as unknown as Record<string, Record<string, unknown>[] | undefined>)[list] ?? [];
+  const src = items[ref.key as number];
+  if (!src) return null;
+  const copy: Record<string, unknown> = { ...structuredClone(src), x: at.x, y: at.y };
+  if (typeof copy.id === "string") copy.id = freeId(copy.id, items.map((e) => String(e.id)));
+  doc.addIn([list], doc.createNode(copy, { flow: ref.kind !== "event" }));
+  return { kind: ref.kind, key: items.length };
+}

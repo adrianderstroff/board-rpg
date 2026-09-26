@@ -10,6 +10,11 @@ const paths: Record<string, string> = {
   quests: "M6 3h10l3 3v15H6z M16 3v3h3 M9 10h7 M9 14h7 M9 18h4",
   dialogs: "M4 5h16v11H9l-5 4z M8 9h8 M8 12h5",
   shops: "M4 9l2-5h12l2 5 M4 9h16v11H4z M4 9c0 2 2 3 4 3s4-1 4-3c0 2 2 3 4 3s4-1 4-3 M10 20v-5h4v5",
+  // event pages
+  moveLeft: "M15 5l-7 7 7 7",
+  moveRight: "M9 5l7 7-7 7",
+  copy: "M9 9h11v11H9z M5 15H4V4h11v1",
+  trash: "M4 7h16 M10 11v6 M14 11v6 M6 7l1 13h10l1-13 M9 7V4h6v3",
   // map editor tools and view toggles
   pencil: "M4 20l1-5L16 4l4 4L9 19z M14 6l4 4 M4 20l5-1",
   rect: "M4 6h16v12H4z",

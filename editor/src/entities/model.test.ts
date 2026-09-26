@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseDocument } from "yaml";
 import { readFileSync } from "node:fs";
 import type { MapDef } from "../../../src/core/data/types";
-import { addEntity, deleteEntity, entitiesAt, listEntities, moveEntity } from "./model";
+import { addEntity, deleteEntity, duplicateEntity, entitiesAt, listEntities, moveEntity } from "./model";
 
 const load = (file: string) => {
   const doc = parseDocument(readFileSync(file, "utf8"));
@@ -10,6 +10,20 @@ const load = (file: string) => {
 };
 
 describe("map entities (editor-design §6)", () => {
+  it("duplicates an entity onto another cell with a free id (not the Quick Play start)", () => {
+    const { doc, map } = load("data/maps/elder_house.yaml");
+    const before = map().events!.length;
+    const ref = duplicateEntity(doc, map(), { kind: "event", key: 0 }, { x: 1, y: 4 });
+    const copy = map().events![ref!.key as number];
+    expect(map().events!.length).toBe(before + 1);
+    expect(copy).toMatchObject({ id: "elder_1", x: 1, y: 4 });
+    expect(copy.pages).toEqual(map().events![0].pages);
+    const sp = duplicateEntity(doc, map(), { kind: "spawn", key: "from_town" }, { x: 2, y: 4 });
+    expect(sp).toEqual({ kind: "spawn", key: "from_town_1" });
+    expect(map().spawns.from_town_1).toMatchObject({ x: 2, y: 4 });
+    expect(duplicateEntity(doc, map(), { kind: "quickplay", key: 0 }, { x: 1, y: 1 })).toBeNull();
+  });
+
   it("lists everything placed on a map as entities", () => {
     const { map } = load("data/maps/mirage_tower_1.yaml");
     const kinds = listEntities(map()).map((e) => e.kind);
