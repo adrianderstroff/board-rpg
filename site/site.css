@@ -13,7 +13,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
 a { color: var(--link); }
-img { max-width: 100%; display: block; }
+img { max-width: 100%; height: auto; display: block; }
 .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
 
 header.top { border-bottom: 1px solid var(--line); }
