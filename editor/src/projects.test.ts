@@ -50,6 +50,7 @@ describe("projects (projects.md §6)", () => {
     expect(projectIdFor("My Game!")).toBe("my_game");
     expect(projectIdFor("  Ünïcode  Quest 2 ")).toBe("unicode_quest_2");
     expect(projectIdFor("!!!")).toBe("project");
+    expect(projectIdFor("My Desert Game!", "-")).toBe("my-desert-game"); // project folders
   });
 
   it("exports a .brpg with the library content it uses; importing it elsewhere installs that library", () => {
@@ -67,12 +68,12 @@ describe("projects (projects.md §6)", () => {
     const other = mkdtempSync(join(tmpdir(), "brpg-"));
     try {
       const info = importProject(other, brpg);
-      expect(info).toEqual({ id: "board_rpg_demo", name: "Board RPG Demo", library: "v1" });
+      expect(info).toEqual({ id: "board-rpg-demo", name: "Board RPG Demo", library: "v1" });
       expect(readFileSync(join(other, "library/v1/library.yaml"), "utf8")).toContain("bundled: true");
       const p = readProject(other, info.id);
       const layer = (lib: boolean) => Object.entries(p.files).filter(([f]) => f.startsWith("library/") === lib).map(([f, t]) => [f, parse(t)] as [string, unknown]);
       expect(validateContent(new Database(layeredRaw(layer(true), layer(false), p.roots)))).toEqual([]);
-      expect(importProject(other, brpg).id).toBe("board_rpg_demo_2"); // ids stay unique
+      expect(importProject(other, brpg).id).toBe("board-rpg-demo-2"); // folders stay unique
     } finally {
       rmSync(other, { recursive: true, force: true });
     }

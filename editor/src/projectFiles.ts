@@ -17,11 +17,13 @@ export interface ProjectFiles {
   roots: { library: string; project: string };
 }
 
-/** A folder-safe id from a name ("My Game!" → "my_game"). */
-export const projectIdFor = (name: string) =>
+/** A folder-safe id from a name ("My Game!" → "my_game"; project folders use "-": "my-game"). */
+export const projectIdFor = (name: string, sep: "_" | "-" = "_") =>
   name
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "") // accents off the letters
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "") || "project";
+    .replace(/[^a-z0-9]+/g, sep)
+    .split(sep)
+    .filter(Boolean)
+    .join(sep) || "project";

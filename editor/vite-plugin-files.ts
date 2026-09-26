@@ -171,9 +171,9 @@ export function importProject(root: string, bytes: Uint8Array): ProjectInfo {
   if (!zip["project.yaml"]) throw new Error("Not a Board RPG project (no project.yaml)");
   const def = parse(strFromU8(zip["project.yaml"])) as { name?: string; library?: string };
   if (!def.library || !PROJECT_ID.test(def.library)) throw new Error("project.yaml names no library version");
-  const base = projectIdFor(def.name ?? "project");
+  const base = projectIdFor(def.name ?? "project", "-");
   let id = base;
-  for (let n = 2; existsSync(resolve(root, "projects", id)); n++) id = `${base}_${n}`;
+  for (let n = 2; existsSync(resolve(root, "projects", id)); n++) id = `${base}-${n}`;
   const L = `library/${def.library}/`;
   const installLibrary = !existsSync(resolve(root, L, "library.yaml"));
   const put = (abs: string, data: Uint8Array) => {

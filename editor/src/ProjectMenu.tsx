@@ -181,7 +181,7 @@ function NewProjectWindow({ project, projects, onClose }: { project: Project; pr
   const [from, setFrom] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const id = projectIdFor(name);
+  const id = projectIdFor(name, "-");
   const taken = projects.some((p) => p.id === id);
   const create = async () => {
     setBusy(true);
