@@ -71,6 +71,8 @@ export function layeredRaw(library: Iterable<[path: string, data: unknown]>, pro
   out.graphics = {
     ...Object.fromEntries(GRAPHICS.map((k) => [k, { ...(lg[k] ?? {}), ...(og[k] ?? {}) }])),
     wallSigns: og.wallSigns ?? lg.wallSigns,
+    // the runtime's images a project replaces are the project's alone (graphics.md §2)
+    ...(og.system ? { system: og.system } : {}),
   };
   out.config = own.config ?? lib.config;
   out.roots = roots;

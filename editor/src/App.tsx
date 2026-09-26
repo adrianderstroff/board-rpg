@@ -19,6 +19,9 @@ import type { EntityRef } from "./entities/model";
 import { Icon } from "./icons";
 import { usePersistentState, writeStored } from "./persist";
 import { IssuesButton, ProjectMenu } from "./ProjectMenu";
+import { PixelEditorHost } from "./pixel/PixelEditor";
+import { setSystemOverrides } from "../../src/engine/assets";
+import { systemOverrides } from "../../src/content/system";
 
 /** Navigation entries; the ones without a screen yet are shown greyed out (editor-design §12). */
 const SCREENS = [
@@ -118,6 +121,9 @@ export function App({ project }: { project: Project }) {
     setScreen(t.screen);
   };
 
+  // the project's own versions of the game's images show wherever the editor draws them (graphics.md §2)
+  setSystemOverrides(systemOverrides(project.content.raw.graphics, project.roots));
+
   const flags = knownFlags(project.content.raw);
   return (
     <div class="shell">
@@ -174,6 +180,7 @@ export function App({ project }: { project: Project }) {
         {error && <span class="badge bad">{error}</span>}
         <IssuesButton project={project} />
       </div>
+      <PixelEditorHost project={project} />
       {screen === "maps" ? (
         <MapsScreen project={project} selected={map} onSelect={setMap} goTo={goTo} />
       ) : screen === "resources" ? (

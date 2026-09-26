@@ -1,6 +1,6 @@
 import { BoardGrid } from "../board/grid";
 import type { Database } from "./database";
-import { EMOTES, PREFAB_INPUT_TYPES, type Action, type BattleUse, type BoardUse, type Condition, type DialogNode, type EffectDef, type GraphicsRef, type PatternRef, type Script } from "./types";
+import { EMOTES, PREFAB_INPUT_TYPES, SYSTEM_IMAGES, type Action, type BattleUse, type BoardUse, type Condition, type DialogNode, type EffectDef, type GraphicsRef, type PatternRef, type Script } from "./types";
 import { BUILTIN } from "./builtins";
 import { rewire } from "./prefab";
 
@@ -157,6 +157,11 @@ export function validateContent(db: Database): string[] {
   for (const a of [BUILTIN.joinParty, BUILTIN.leaveParty, BUILTIN.steal]) has(db.abilities, a, "rules", "ability");
   has(db.patterns, BUILTIN.npcMove, "rules", "pattern");
   for (const f of [BUILTIN.burning, BUILTIN.frozen]) has(db.fieldEffects, f, "rules", "field effect");
+  // the project's own runtime images (graphics.md §2)
+  const sys = db.graphics.system;
+  for (const name of sys?.images ?? []) if (!(SYSTEM_IMAGES as readonly string[]).includes(name)) err("graphics", `system.images: "${name}" isn't one of the game's images (${SYSTEM_IMAGES.join(", ")})`);
+  if (sys?.icons && !sys.images?.includes("icons")) err("graphics", "system.icons names icons of the project's own icon sheet – system.images must list icons");
+  for (const [name, i] of Object.entries(sys?.icons ?? {})) if (!Number.isInteger(i) || i < 0) err("graphics", `system.icons: "${name}" has no frame`);
   // enemies & npcs
   for (const e of db.enemies.values()) {
     const w = `enemy ${e.id}`;

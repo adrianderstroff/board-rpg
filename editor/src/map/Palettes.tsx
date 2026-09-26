@@ -4,6 +4,9 @@ import type { Dir } from "../../../src/core/util/grid";
 import { MAX_HEIGHT } from "./layers";
 import type { Brush } from "./MapEditor";
 import { frameStyle } from "./sprites";
+import { useProjectContext } from "../projectContext";
+import { openImage } from "../pixel/target";
+import { tileTarget } from "../pixel/targets";
 
 /** The Edit tab's brushes for Board and Decor mode (editor-design §5.2). */
 
@@ -28,6 +31,17 @@ function ShapeIcon({ cut, size = 18 }: { cut: Corner[]; size?: number }) {
       <rect x="0" y="0" width="16" height="16" fill="none" stroke="#3a4466" stroke-dasharray="2 2" />
       <polygon points={pts.map((p) => p.join(",")).join(" ")} fill="#feae34" />
     </svg>
+  );
+}
+
+/** ✎ – draws the selected block or object in the pixel editor (graphics.md §3). */
+function DrawButton({ chip, kind, frame, name }: { chip: ChipsetDef; kind: "terrain" | "decor"; frame: number | undefined; name?: string }) {
+  const project = useProjectContext();
+  if (frame === undefined) return null;
+  return (
+    <button class="edit-image" title={`Draw ${name ?? "it"} in the pixel editor${chip.id.startsWith("lib:") ? " – saving copies the chipset into the project" : ""}`} onClick={() => openImage(tileTarget(project, chip.id, kind, frame))}>
+      ✎
+    </button>
   );
 }
 
@@ -70,7 +84,10 @@ export function BoardPalette({ chip, brush, setBrush }: { chip: ChipsetDef; brus
           </button>
         </div>
       )}
-      <input class="search" placeholder="Search terrain…" value={filter} onInput={(e) => setFilter(e.currentTarget.value)} />
+      <div class="row">
+        <input class="search" placeholder="Search terrain…" value={filter} onInput={(e) => setFilter(e.currentTarget.value)} />
+        <DrawButton chip={chip} kind="terrain" frame={chip.terrains[brush.terrain]?.frame} name={chip.terrains[brush.terrain]?.name} />
+      </div>
       <div class="palette">
         {terrains.map(([id, t]) => (
           <button key={id} class={!lintel && brush.terrain === id ? "on" : ""} onClick={() => setBrush({ ...brush, board: "terrain", terrain: id })} title={`${t.name} (${id})${t.walkable ? "" : " – blocks"}`}>
@@ -174,7 +191,10 @@ export function DecorPalette({ chip, signs, brush, setBrush }: { chip: ChipsetDe
   return (
     <>
       {kinds}
-      <input class="search" placeholder="Search decor…" value={filter} onInput={(e) => setFilter(e.currentTarget.value)} />
+      <div class="row">
+        <input class="search" placeholder="Search decor…" value={filter} onInput={(e) => setFilter(e.currentTarget.value)} />
+        <DrawButton chip={chip} kind="decor" frame={chip.decor[brush.decor]?.frame} name={chip.decor[brush.decor]?.name} />
+      </div>
       <div class="palette">
         {list.map(([id, d]) => (
           <button key={id} class={brush.decor === id ? "on" : ""} onClick={() => setBrush({ ...brush, decor: id })} title={`${d.name} (${id})${d.blocks ? " – blocks" : ""}${d.views ? " – can face 4 ways" : ""}`}>

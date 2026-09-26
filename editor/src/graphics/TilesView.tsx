@@ -8,8 +8,10 @@ import { Icon } from "../icons";
 import { IsoCanvas } from "../map/IsoCanvas";
 import { frameStyle, loadImage } from "../map/sprites";
 import { usePersistentState } from "../persist";
+import { openImage } from "../pixel/target";
+import { signsTarget, tileTarget } from "../pixel/targets";
 import type { Project } from "../project";
-import { addPiece, chipsetData, copyChipsetToProject, deletePiece, importChipset, isOwnChipset, pieceUsers, PREVIEW_MAP, previewRaw, setPiece, type PieceKind } from "./chipsets";
+import { addPiece, chipsetData, copyChipsetToProject, deletePiece, importChipset, newChipset, isOwnChipset, pieceUsers, PREVIEW_MAP, previewRaw, setPiece, type PieceKind } from "./chipsets";
 
 /**
  * Tiles (graphics.md §4): a chipset's terrains and decor with their rules, and a little board that
@@ -83,6 +85,21 @@ export function TilesMain({ project, state }: { project: Project; state: TilesSt
             {busy === "copy" ? "Copying…" : "Copy to project"}
           </button>
         )}
+        {signsTarget(project) && (
+          <button title="The lettering painted onto wall faces (INN …)" onClick={() => openImage(signsTarget(project)!)}>
+            ✎ Wall signs
+          </button>
+        )}
+        <button
+          disabled={!!busy}
+          title="A new chipset of the project with blank sheets – add blocks and objects, then draw them"
+          onClick={() => {
+            const name = prompt("A name for the new chipset:", "my_tiles");
+            if (name) void run("new", async () => (state.setChip(await newChipset(project, name)), state.setPiece({ kind: "terrain", id: "ground" })));
+          }}
+        >
+          New chipset
+        </button>
         <label class="button" title="A PNG of 32×24 blocks becomes a new chipset of the project (a terrain per drawn block)">
           Import tile sheet…
           <input type="file" accept=".png" onChange={(e) => {
@@ -149,6 +166,11 @@ export function TilesInspector({ project, state }: { project: Project; state: Ti
   return (
     <div class="tile-inspector">
       <TilePreview project={project} chipId={chipId} piece={sel} />
+      <div class="row">
+        <button class="primary" title={isOwnChipset(chipId) ? "Draw it in the pixel editor" : "Draw it – saving copies the chipset into the project"} onClick={() => openImage(tileTarget(project, chipId, sel.kind, piece.frame, (id) => state.setChip(id)))}>
+          ✎ Draw {sel.kind === "terrain" ? "this block" : "this object"}
+        </button>
+      </div>
       {sel.kind === "terrain" ? <TerrainForm project={project} chipId={chipId} id={sel.id} /> : <DecorForm project={project} chipId={chipId} id={sel.id} />}
       <PieceActions project={project} chipId={chipId} piece={sel} onDeleted={() => state.setPiece(null)} />
     </div>

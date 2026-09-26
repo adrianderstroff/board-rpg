@@ -541,3 +541,43 @@ button.link { border: 0; background: none; padding: 0; color: var(--accent-2); t
 .frames-input { width: 90px; }
 details.ship { margin: 6px 0; }
 details.ship summary { cursor: pointer; color: var(--dim); }
+
+/* ---------- pixel editor (graphics.md §5) ---------- */
+.px-editor { position: fixed; inset: 12px; z-index: 60; display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7); }
+.px-title { flex: none; display: flex; align-items: center; gap: 6px; padding: 6px 8px 6px 12px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
+.px-title > b { color: var(--accent); margin-right: 8px; white-space: nowrap; }
+.px-title .sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 4px; }
+.px-title .spacer { flex: 1; }
+.px-title .close { font-size: 16px; margin-left: 6px; }
+.px-title .segmented button { min-width: 30px; }
+.px-body { flex: 1; min-height: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) 300px; }
+.px-frames { overflow: auto; padding: 8px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; width: 104px; }
+.px-frame { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px; background: var(--panel); font-size: 10px; color: var(--dim); }
+.px-frame canvas { image-rendering: pixelated; background: #262b44; }
+.px-frame.on { border-color: var(--accent); color: var(--accent); }
+.px-frame.add { font-size: 22px; border-style: dashed; }
+.px-canvas-area { overflow: auto; display: flex; flex-direction: column; align-items: center; justify-content: safe center; padding: 16px; gap: 8px; min-width: 0; }
+.px-canvas { image-rendering: pixelated; box-shadow: 0 0 0 1px var(--line); cursor: crosshair; flex: none; }
+.px-canvas.tool-picker { cursor: copy; }
+.px-canvas.tool-select { cursor: cell; }
+.px-status { color: var(--dim); font-size: 12px; font-variant-numeric: tabular-nums; }
+.px-name input { width: 110px; padding: 1px 4px; }
+.px-name button { padding: 1px 6px; font-size: 12px; }
+.px-side { border-left: 1px solid var(--line); padding: 10px; overflow: auto; background: var(--panel); }
+.px-color { display: flex; gap: 6px; align-items: center; }
+.px-current { width: 36px; height: 36px; border-radius: 6px; border: 1px solid var(--line); background-image: linear-gradient(45deg, #333 25%, transparent 25%, transparent 75%, #333 75%); }
+.px-color input[type=color] { width: 40px; height: 32px; padding: 2px; }
+.px-palette { display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; }
+.px-swatch { width: 100%; aspect-ratio: 1; padding: 0; border-radius: 3px; border: 1px solid #0006; }
+.px-swatch.on { outline: 2px solid var(--accent); outline-offset: 1px; }
+.px-swatch.clear { width: 28px; height: 28px; background: repeating-conic-gradient(#555 0 25%, #222 0 50%) 0 0 / 8px 8px; }
+.px-preview { image-rendering: pixelated; display: block; background: #14161c; border-radius: 4px; }
+.px-poses, .px-turn { gap: 4px; margin-top: 6px; justify-content: center; }
+.px-poses button { font-size: 11px; padding: 2px 6px; }
+.px-faces { gap: 10px; align-items: flex-end; margin-bottom: 8px; }
+.graphic-row { display: flex; gap: 4px; align-items: stretch; }
+.graphic-row .graphic-field { flex: 1; }
+.edit-image { flex: none; width: 34px; font-size: 16px; padding: 0; }
+.system-cards { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.system-thumb { max-width: 120px; max-height: 64px; image-rendering: pixelated; object-fit: contain; }
+.px-body.single { grid-template-columns: minmax(0, 1fr) 300px; }

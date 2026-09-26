@@ -9,8 +9,17 @@ export function setAssetResolver(fn: ((path: string) => string | undefined) | nu
   resolver = fn;
 }
 
+/** Runtime images a project replaces with its own (graphics.md §2): "system/x.png" → the project's file. */
+let overrides: Record<string, string> = {};
+export function setSystemOverrides(map: Record<string, string>) {
+  overrides = map;
+}
+
 /** The URL of an asset path. */
-export const assetPath = (p: string) => resolver?.(p) ?? (/^(library|projects)\//.test(p) ? p : ASSET_ROOT + p);
+export const assetPath = (path: string) => {
+  const p = overrides[path] ?? path;
+  return resolver?.(p) ?? (/^(library|projects)\//.test(p) ? p : ASSET_ROOT + p);
+};
 
 export interface SheetSpec {
   key: string;

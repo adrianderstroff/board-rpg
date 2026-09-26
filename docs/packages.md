@@ -452,22 +452,23 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ Preview on a small board with the game's renderer (a flat patch and a raised step; decor standing), turned through the four view rotations; New terrain / decor (a copy of the selected, its picture in a new frame of the sheet); Copy chipset to project (both sheets, the maps follow); import a tile sheet as a new chipset; maps pick their chipset (Info tab)
 - ☑ Changed images reach every view: asset versions bust the caches (editor URLs, the dev server, the map canvases)
 
-## G2 · Pixel editor ☐
-- ☐ One workspace over the editor: frame grid and strip, zoom / pan, pencil, eraser, fill, line, rectangle, picker, selection (move / copy / paste), mirror, shift; palette (game palette, sheet colours, custom, transparent); own undo; Save writes the PNG; add frames
-- ☐ Edit from Graphics and ✎ where images are used (hero / enemy / NPC graphics, item / ability icons, battle backgrounds, map palette tiles)
+## G2 · Pixel editor ☑
+- ☑ One workspace over the editor (pixel/PixelEditor): frame strip with names, the frame zoomed (fits the window, +/−, Ctrl+wheel), checkerboard, grid; pencil (right button erases), eraser, fill, line, rectangle and filled rectangle, picker (Alt+click), selection (drag to move, Ctrl+C / Ctrl+V, Del), mirror drawing, flip, nudge (arrows), copy / paste frame, onion skin; colours in the image, the game's palette, any colour, transparent; its own undo / redo; Save image (Ctrl+S) writes the PNG – a library or game image becomes the project's copy on its first save, its uses follow; add frames (tiles, icons); pan big images (middle button / Space)
+- ☑ Edit from Graphics (✎ Edit image) and ✎ where images are used: hero / enemy / NPC graphics, the icon picker (items, abilities), the Tiles inspector, the map editor's Board and Decor palettes
 
-## G3 · Characters ☐
-- ☐ Board sprites (walk preview in four directions, onion skin, feet line), battle sprites (poses, idle and attack played, on a battle background), faces (48 / 24 / 14 px, the text box)
+## G3 · Characters ☑
+- ☑ Previews: board sprites walking in four directions, battle sprites on a battle background (idle breathing, each pose played on a click), faces at 48 / 24 / 14 px and in the text box; guides: the feet line and the middle
 
-## G4 · Tiles and decor drawing ☐
-- ☐ Tile guides (diamond, side faces), live board preview in four rotations, animated terrain; decor anchor and rotation frames; wall signs on a wall; field effects animated on a cell
+## G4 · Tiles and decor drawing ☑
+- ☑ Guides: the block's diamond and side faces, decor's footprint and anchor, field effects' diamond; previews: a little board of the block (flat and stacked, its fill below, animation frames cycling) in four rotations, decor standing on ground (its rotation frames as the view turns), wall signs on a wall face, field effects animated on a cell, highlights / board cursor / exit arrows on the board
 
-## G5 · Game images per project ☐
-- ☐ Game: a project's own copies of runtime images (`graphics.yaml` system.images, `assets/system/`), its own icon sheet and names (system.icons) – loaded in play-tests, the player and builds
-- ☐ Editor: icons (grow the sheet, name new icons; items / abilities / statuses pick from them), status markers, title background (title screen preview), window skin (9-slice preview), cursors, highlights, exit arrows, shadow, font (sample text)
+## G5 · Game images per project ☑
+- ☑ Game: `graphics.yaml` system.images – the project's copies in assets/system/ replace the runtime's (engine setSystemOverrides; the game, play-tests, the player and builds); system.icons – the project's own icon names (BootScene uses them instead of icons.json); validated
+- ☑ Editor: Graphics › Game images – icons (the sheet grows, new icons get names; names in use stay), status markers, title background (title screen preview), window skin (text box and menu), menu cursor, board cursor, highlights, exit arrows, field effects, shadow, font (sample text); Use the game's own again; the editor shows the project's copies everywhere (icons, text boxes, previews)
 
-## G6 · Backgrounds ☐
-- ☐ Battle backgrounds (the battle scene with the floor line and fighters) and the title image: big-canvas drawing, pan and zoom
+## G6 · Backgrounds ☑
+- ☑ Battle backgrounds (the battle scene with the floor line and a hero and an enemy on it) and the title image (the title screen with its menu): one big frame, zoom and pan
 
-## G7 · New sheets ☐
-- ☐ New blank sheet of any kind in its layout, or a copy of a library / game sheet to start from; sheets grow by frames
+## G7 · New sheets ☑
+- ☑ New ▾ on Graphics: a blank board sprite (24 × 32 or 32 × 32 frames), battle sprite (6 hero poses or 4 creature poses), face, battle background – registered and opened in the pixel editor; New chipset (a plain ground block, empty decor sheet); starting from a library sheet = Copy to project; sheets grow by frames (tiles, decor, icons)
+- ☐ Later: removing image files nothing uses any more (Revert undoes the data, not images already written)

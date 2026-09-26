@@ -141,6 +141,36 @@ export async function importChipset(project: Project, file: File): Promise<strin
   return id;
 }
 
+/** A new chipset of the project: blank sheets (one plain ground block, no decor yet) to draw in. */
+export async function newChipset(project: Project, name: string): Promise<string> {
+  const raw = project.content.raw;
+  const id = entryIdFor(name, (x) => x in raw.chipsets, "tiles");
+  const blocks = blankSheet(256, 24);
+  const g = blocks.getContext("2d")!;
+  // a plain block to start from: a diamond top and two side faces
+  const poly = (pts: [number, number][], color: string) => {
+    g.fillStyle = color;
+    g.beginPath();
+    pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+    g.closePath();
+    g.fill();
+  };
+  poly([[16, 0], [32, 8], [16, 16], [0, 8]], "#e4a672");
+  poly([[0, 8], [16, 16], [16, 24], [0, 16]], "#b86f50");
+  poly([[32, 8], [16, 16], [16, 24], [32, 16]], "#733e39");
+  await saveSheet(project, `chipsets/${id}.png`, blocks);
+  await saveSheet(project, `chipsets/${id}_decor.png`, blankSheet(256, 48));
+  const def: Chip = { image: `chipsets/${id}.png`, frameWidth: 32, frameHeight: 24, tileWidth: 32, tileHeight: 16, blockHeight: 8, terrains: { ground: { name: "Ground", frame: 0, walkable: true } }, decorImage: `chipsets/${id}_decor.png`, decorFrameWidth: 32, decorFrameHeight: 48, decorAnchorY: 40, decor: {} };
+  project.transaction(`New chipset ${id}`, () => {
+    project.create(`${DIR}${id}.yaml`, HEADER);
+    project.edit(`${DIR}${id}.yaml`, `New chipset ${id}`, (doc: Document) => {
+      doc.contents = doc.createNode(def) as never;
+      (doc.getIn(["terrains", "ground"], true) as { flow?: boolean }).flow = true;
+    });
+  });
+  return id;
+}
+
 // ---------- the preview board ----------
 
 export const PREVIEW_MAP = "__tile_preview";

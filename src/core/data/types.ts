@@ -473,6 +473,10 @@ export interface SheetDef {
   frameHeight: number;
 }
 
+/** The runtime's own images (public/assets/system/, ASSETS.md §6) a project may replace (graphics.md §2). */
+export const SYSTEM_IMAGES = ["icons", "status_icons", "title_bg", "window", "cursor", "board_cursor", "highlight", "exit_arrows", "field_effects", "shadow", "font"] as const;
+export type SystemImage = (typeof SYSTEM_IMAGES)[number];
+
 export interface GraphicsDb {
   charsets: Record<string, SheetDef>;
   battlers: Record<string, SheetDef & { frames: Record<string, number> }>;
@@ -481,6 +485,12 @@ export interface GraphicsDb {
   battlebacks: Record<string, { image: string; floor?: number }>;
   /** Flat lettering/symbols painted onto wall faces (MapDef.wallDecor): sheet + sign id → frame. */
   wallSigns?: SheetDef & { frames: Record<string, number> };
+  /**
+   * The project's own versions of the runtime's images (graphics.md §2): `images` names the files in
+   * its assets/system/ that replace the game's (title_bg, window, icons …); `icons` the icon names
+   * of its own icon sheet (instead of the game's icons.json).
+   */
+  system?: { images?: string[]; icons?: Record<string, number> };
 }
 
 /**

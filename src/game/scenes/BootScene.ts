@@ -43,7 +43,8 @@ export class BootScene extends Phaser.Scene {
     loadImage(this, K.titleBg, "system/title_bg.png");
     loadImage(this, "fontImage", "system/font.png");
     this.load.json("fontSpec", "assets/system/font.json");
-    this.load.json("iconIndex", "assets/system/icons.json");
+    // a project with its own icon sheet names its icons itself (graphics.md §2)
+    if (!g.system?.icons) this.load.json("iconIndex", "assets/system/icons.json");
     preloadAudio(this, db);
     // Missing optional audio files must not break loading.
     this.load.on("loaderror", (file: Phaser.Loader.File) => console.warn(`Asset missing: ${file.key}`));
@@ -51,7 +52,7 @@ export class BootScene extends Phaser.Scene {
 
   create() {
     registerFont(this, "fontImage", this.cache.json.get("fontSpec") as FontSpec);
-    const idx = this.cache.json.get("iconIndex") as Record<string, number> | string[];
+    const idx = (getSession().db.graphics.system?.icons ?? this.cache.json.get("iconIndex")) as Record<string, number> | string[];
     setIconIndex(Array.isArray(idx) ? Object.fromEntries(idx.map((n, i) => [n, i])) : idx);
     setMiniStatusIndex((this.cache.json.get("statusMiniIndex") as Record<string, number>) ?? {});
     const s = getSession().settings;

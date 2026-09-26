@@ -4,6 +4,9 @@ import { DIR_ROW } from "../../../src/game/keys";
 import { FloatingWindow } from "../forms/FloatingWindow";
 import { assetUrl, frameStyle } from "../map/sprites";
 import { Thumb } from "../screens/ResourcesScreen";
+import { useProjectContext } from "../projectContext";
+import { openImage } from "../pixel/target";
+import { graphicTarget } from "../pixel/targets";
 
 /**
  * A character's graphics (editor-design §7): picked from thumbnails of the Resources, and shown as
@@ -17,13 +20,25 @@ const plain = (id: string) => id.replace(/^lib:/, "");
 /** A graphic field: its thumbnail and name; a click opens the picker. */
 export function GraphicField({ graphics, kind, value, onChange, optional }: { graphics: GraphicsDb; kind: GraphicKind; value: string | undefined; onChange: (id: string | undefined) => void; optional?: boolean }) {
   const [open, setOpen] = useState(false);
+  const project = useProjectContext();
   const known = !value || !!graphics[kind][value];
   return (
     <>
-      <button class={`graphic-field ${known ? "" : "bad"}`} title={`Pick the ${KIND_NAME[kind].toLowerCase()}`} onClick={() => setOpen(true)}>
-        {value && known ? <Thumb graphics={graphics} kind={kind} id={value} /> : <span class="thumb none">{value ? "?" : "–"}</span>}
-        <span class="name">{value ? plain(value) + (known ? "" : " (missing!)") : "none"}</span>
-      </button>
+      <div class="graphic-row">
+        <button class={`graphic-field ${known ? "" : "bad"}`} title={`Pick the ${KIND_NAME[kind].toLowerCase()}`} onClick={() => setOpen(true)}>
+          {value && known ? <Thumb graphics={graphics} kind={kind} id={value} /> : <span class="thumb none">{value ? "?" : "–"}</span>}
+          <span class="name">{value ? plain(value) + (known ? "" : " (missing!)") : "none"}</span>
+        </button>
+        {value && known && (
+          <button
+            class="edit-image"
+            title={value.startsWith("lib:") ? "Draw it – a library image is copied into the project when you save, and this uses the copy" : "Draw it in the pixel editor"}
+            onClick={() => openImage(graphicTarget(project, kind, value, (copy) => onChange(copy)))}
+          >
+            ✎
+          </button>
+        )}
+      </div>
       {open && (
         <GraphicPicker
           graphics={graphics}

@@ -54,16 +54,17 @@ function drawWindow(g: CanvasRenderingContext2D, img: HTMLImageElement, w: numbe
   for (const [sx, sy, sw, sh, dx, dy, dw, dh] of parts) g.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
 }
 
-export function SayPreview({ text, speakerId, raw }: { text: string; speakerId: string | undefined; raw: RawContent }) {
+/** `face`: a face image to show instead of the speaker's (the pixel editor's live drawing), `version` redraws it. */
+export function SayPreview({ text, speakerId, raw, face: faceImage, name, version }: { text: string; speakerId: string | undefined; raw: RawContent; face?: CanvasImageSource; name?: string; version?: number }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [fits, setFits] = useState(true);
-  const who = speaker(raw, speakerId);
-  const key = `${text}|${who.name}|${who.face}`;
+  const who = { ...speaker(raw, speakerId), ...(name ? { name } : {}) };
+  const key = `${text}|${who.name}|${who.face}|${version ?? 0}`;
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const [win, font, face] = await Promise.all([loadImage("system/window.png"), loadImage("system/font.png"), who.face ? loadImage(who.face).catch(() => null) : Promise.resolve(null)]);
+      const [win, font, face] = await Promise.all([loadImage("system/window.png"), loadImage("system/font.png"), faceImage ? Promise.resolve(faceImage) : who.face ? loadImage(who.face).catch(() => null) : Promise.resolve(null)]);
       const cv = canvas.current;
       if (cancelled || !cv) return;
       const g = cv.getContext("2d")!;

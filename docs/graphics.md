@@ -49,7 +49,7 @@ system:
 
 ## 3. Where images are edited: one home, and where they are used
 
-- **Graphics** (the Resources screen, renamed) is the home of every image: all kinds, import, new
+- **Graphics & music** (the Resources screen, renamed) is the home of every image: all kinds, import, new
   sheets, the tiles' rules, images nothing uses yet.
 - **Where an image is used** – a hero's board sprite, an item's icon, a map's battle background, a
   tile in the map palette – a small **✎** beside it opens the same pixel editor on that sheet (and
@@ -101,7 +101,9 @@ Opens in the middle of the screen with the sheet; the inspector shows the kind's
   line, a battler's ground, the window's 9-slice borders, the font's baseline), onion skin (the
   previous frame faint underneath) for animations, mirrored drawing for symmetric pieces.
 - **History**: its own undo / redo while open. **Save** writes the PNG into the project's assets
-  (like an import); **Close** without saving asks first.
+  (like an import); **Close** without saving asks first. Revert (the project's) undoes data, not
+  images already written.
+- **Big images** (backgrounds, the title) pan with the middle mouse button or Space + drag.
 - **Sheet size**: frames can be added (a new pose, a new tile, a new icon row) and the sheet grows
   in the kind's layout.
 

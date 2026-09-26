@@ -9,6 +9,10 @@ import { RESOURCE_KINDS, resourceId, resourcesOf, sheetFor, type ResourceKind } 
 import { MusicPreview } from "./MapsScreen";
 import { copyResourceToProject } from "../copyToProject";
 import { TilesInspector, TilesMain, useTilesState } from "../graphics/TilesView";
+import { SystemInspector, SystemMain, useSystemState } from "../graphics/SystemView";
+import { NEW_SHEETS, newSheet } from "../graphics/newSheets";
+import { openImage } from "../pixel/target";
+import { graphicTarget } from "../pixel/targets";
 
 /** The project's own graphics (projects.md §6). */
 const GRAPHICS_FILE = "data/graphics.yaml";
@@ -22,19 +26,21 @@ type Sheet = { image: string; frameWidth?: number; frameHeight?: number; frames?
  * project: copied into its assets/ and registered in its graphics.yaml.
  */
 export function ResourcesScreen({ project }: { project: Project }) {
-  const [storedKind, setKind] = usePersistentState<ResourceKind | "tiles">("resources.kind", "charsets");
+  const [storedKind, setKind] = usePersistentState<ResourceKind | "tiles" | "system">("resources.kind", "charsets");
   const tiles = useTilesState();
+  const system = useSystemState();
   const [selected, setSelected] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; bad?: boolean } | null>(null);
   const [dragging, setDragging] = useState(false);
   const db = project.content.db;
-  const kind: ResourceKind = storedKind === "tiles" ? "charsets" : storedKind;
+  const kind: ResourceKind = storedKind === "tiles" || storedKind === "system" ? "charsets" : storedKind;
   const list = db ? resourcesOf(db, project.music, kind) : [];
   const info = RESOURCE_KINDS.find((k) => k.id === kind)!;
   // the kinds in the list: Tiles sits before Music
-  const kinds: { id: ResourceKind | "tiles"; label: string; count: number | string }[] = [
+  const kinds: { id: ResourceKind | "tiles" | "system"; label: string; count: number | string }[] = [
     ...RESOURCE_KINDS.filter((k) => k.id !== "music").map((k) => ({ id: k.id, label: k.label, count: db ? resourcesOf(db, project.music, k.id).length : "" })),
     { id: "tiles", label: "Tiles", count: Object.keys(project.content.raw.chipsets).length },
+    { id: "system", label: "Game images", count: "" },
     { id: "music", label: "Music", count: db ? resourcesOf(db, project.music, "music").length : "" },
   ];
 
@@ -95,7 +101,7 @@ export function ResourcesScreen({ project }: { project: Project }) {
               </div>
             ))}
           </div>
-          {storedKind === "tiles" ? <TilesMain project={project} state={tiles} /> : <div
+          {storedKind === "tiles" ? <TilesMain project={project} state={tiles} /> : storedKind === "system" ? <SystemMain project={project} state={system} /> : <div
             class={`resources ${dragging ? "drop" : ""}`}
             onDragOver={(e) => {
               e.preventDefault();
@@ -110,6 +116,7 @@ export function ResourcesScreen({ project }: { project: Project }) {
           >
             <div class="resources-head">
               <p class="hint">{info.hint} Drop files here to add them to the project.</p>
+              {kind !== "music" && <NewSheetMenu project={project} kind={kind} onMade={setSelected} />}
               <label class="button primary" title={`Add ${info.label.toLowerCase()} to the project`}>
                 Import…
                 <input type="file" multiple accept={kind === "music" ? ".wav" : ".png"} onChange={(e) => void importFiles([...(e.currentTarget.files ?? [])])} />
@@ -130,13 +137,48 @@ export function ResourcesScreen({ project }: { project: Project }) {
         </div>
       </main>
       <aside class="inspector">
-        {storedKind === "tiles" ? <TilesInspector project={project} state={tiles} /> : db && selected && list.some((r) => r.id === selected) ? (
+        {storedKind === "tiles" ? <TilesInspector project={project} state={tiles} /> : storedKind === "system" ? <SystemInspector project={project} state={system} /> : db && selected && list.some((r) => r.id === selected) ? (
           <ResourceForm project={project} kind={kind} id={selected} onDeleted={() => setSelected(null)} onCopied={(id) => setSelected(id)} />
         ) : (
           <p class="hint">Select a resource, or import files: {info.hint}</p>
         )}
       </aside>
     </>
+  );
+}
+
+/** New ▾ – a blank sheet of the kind, drawn right away in the pixel editor (graphics.md G7). */
+function NewSheetMenu({ project, kind, onMade }: { project: Project; kind: ResourceKind; onMade: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const options = NEW_SHEETS.filter((s) => s.kind === kind);
+  const make = async (s: (typeof NEW_SHEETS)[number]) => {
+    setOpen(false);
+    const name = prompt(`A name for the new ${s.label.split(" (")[0].toLowerCase()}:`, "new");
+    if (!name) return;
+    try {
+      const g = project.content.raw.graphics[s.kind];
+      const id = await newSheet(project, s, name, (x) => x in g);
+      onMade(id);
+      openImage(graphicTarget(project, s.kind, id));
+    } catch (e) {
+      alert((e as Error).message);
+    }
+  };
+  return (
+    <div class="menu-anchor">
+      <button title="A blank sheet in the kind's layout, to draw in the pixel editor" onClick={() => (options.length === 1 ? void make(options[0]) : setOpen(!open))}>
+        New{options.length > 1 ? " ▾" : ""}
+      </button>
+      {open && (
+        <div class="menu" role="menu">
+          {options.map((s) => (
+            <button key={s.label} role="menuitem" onClick={() => void make(s)}>
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -204,6 +246,11 @@ function ResourceForm({ project, kind, id, onDeleted, onCopied }: { project: Pro
         <>
           <div class="resource-preview">
             <img src={assetUrl(sheet!.image)} alt="" />
+          </div>
+          <div class="row">
+            <button class="primary" title={lib ? "Draw it – saving makes an editable copy in the project" : "Draw it in the pixel editor"} onClick={() => openImage(graphicTarget(project, kind, id, onCopied))}>
+              ✎ Edit image
+            </button>
           </div>
           <Field label="Image">
             <span class="dim">{sheet!.image.replace(lib ? project.roots.library : project.roots.project, "")}</span>

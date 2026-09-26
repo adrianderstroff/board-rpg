@@ -1,7 +1,8 @@
 import { loadDatabase } from "./content/loader";
 import { Database } from "./core/data/database";
 import { isEditorPlaytest, receiveFromEditor } from "./game/editorLink";
-import { setAssetResolver } from "./engine/assets";
+import { setAssetResolver, setSystemOverrides } from "./engine/assets";
+import { systemOverrides } from "./content/system";
 import { playerGame } from "./game/playerStart";
 import { validateContent } from "./core/data/validate";
 import { createGame } from "./engine/boot";
@@ -23,6 +24,8 @@ if (player) {
   setAssetResolver((path) => player.assets[path]);
   document.title = player.name;
 }
+// the project's own versions of the runtime's images (graphics.md §2)
+setSystemOverrides(systemOverrides(db.graphics, db.roots));
 const problems = validateContent(db);
 if (problems.length) console.warn(`Content problems:\n${problems.join("\n")}`);
 const session = initSession(db, { playtest: !!playtest, saveKey: player?.id });
