@@ -117,3 +117,32 @@ export function setAt(doc: Document, path: (string | number)[], value: unknown) 
 export function fileSetter(project: Project, file: string) {
   return (path: (string | number)[], value: unknown, label: string, group?: string) => project.edit(file, label, (doc) => setAt(doc, path, value), group);
 }
+
+/** Several ids from a list: chips with ✕, and a dropdown to add one more. */
+export function MultiPick({ value, options, onChange, addLabel = "+ add" }: { value: string[] | undefined; options: [string, string][]; onChange: (v: string[]) => void; addLabel?: string }) {
+  const list = value ?? [];
+  const name = (id: string) => options.find(([o]) => o === id)?.[1] ?? `${id} (missing!)`;
+  const left = options.filter(([id]) => !list.includes(id));
+  return (
+    <div class="chips">
+      {list.map((id) => (
+        <span key={id} class={`chip ${options.some(([o]) => o === id) ? "" : "bad"}`}>
+          {name(id)}
+          <button title="Remove" onClick={() => onChange(list.filter((x) => x !== id))}>
+            ✕
+          </button>
+        </span>
+      ))}
+      {left.length > 0 && (
+        <select value="" onChange={(e) => e.currentTarget.value && onChange([...list, e.currentTarget.value])}>
+          <option value="">{addLabel}</option>
+          {left.map(([id, n]) => (
+            <option key={id} value={id}>
+              {n}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
+}

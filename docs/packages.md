@@ -420,10 +420,10 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ Condition and action builders (all condition and action kinds, nested all/any/not, flag suggestions); map `onEnter`
 - ☑ Inn wake-up spot: map, spawn point and facing (`wakeAt.dir`, new in the game)
 
-## E5 · Items ☐
-- ☐ One form: basics (quest item), equipment, battle use, board use, teaches; derived category
-- ☐ Effect list editor and presets
-
+## E5 · Items ☑
+- ☑ Items screen: list by category (search, library marked), New ▾ (Empty or a preset), one form – basics (icon picker, quest item), equipment, battle use, board use (pattern pickers with a cell preview), teaches; the category follows the sections until overridden; the inspector shows the item as the game does and what it does in words; Duplicate / Delete; library items read-only with Copy to project
+- ☑ Effect list editor (forms/EffectList, shared with abilities later) and presets (healing / MP potion, cure, revive, attack, status, field item, weapon, armor, accessory, scroll, quest item)
+- ☑ Checkboxes across the editor in its own style (the box-check look)
 ## E6 · Characters ☐
 - ☐ Heroes (+ class: stats and growth chart, abilities by level, equipment), enemies (AI, board AI, drops/steal), NPCs; graphics previews
 

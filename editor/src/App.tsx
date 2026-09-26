@@ -4,6 +4,7 @@ import { playtest } from "./playtest";
 import type { Project } from "./project";
 import { MapsScreen } from "./screens/MapsScreen";
 import { ResourcesScreen } from "./screens/ResourcesScreen";
+import { ItemsScreen } from "./screens/ItemsScreen";
 import { knownFlags } from "./forms/ConditionEditor";
 import { Icon } from "./icons";
 import { usePersistentState } from "./persist";
@@ -16,7 +17,7 @@ const SCREENS = [
   { id: "heroes", label: "Heroes", pkg: "E6" },
   { id: "enemies", label: "Enemies", pkg: "E6" },
   { id: "npcs", label: "NPCs", pkg: "E6" },
-  { id: "items", label: "Items", pkg: "E5" },
+  { id: "items", label: "Items" },
   { id: "abilities", label: "Abilities", pkg: "E8" },
   { id: "quests", label: "Quests", pkg: "E7" },
   { id: "dialogs", label: "Dialogs", pkg: "E7" },
@@ -144,6 +145,8 @@ export function App({ project }: { project: Project }) {
         <MapsScreen project={project} selected={map} onSelect={setMap} />
       ) : screen === "resources" ? (
         <ResourcesScreen project={project} />
+      ) : screen === "items" ? (
+        <ItemsScreen project={project} />
       ) : (
         <>
           <main class="main">

@@ -439,8 +439,19 @@ battle: a fallen ally, revive 25 %; board: fallen heroes next to you, revive 25 
 Weapon, Armor, Accessory, Scroll, Quest item.
 
 **Category** (which inventory tab and shop sign it gets) is derived from the sections – equipment →
-weapon/armor/accessory by slot, teaches → scroll, quest item → key, battle-only use → battle,
-otherwise consumable – and can be overridden.
+weapon/armor/accessory by slot, teaches → scroll, quest item → key, a battle use aimed at enemies →
+battle, otherwise consumable – and can be overridden. The category follows the sections as long as
+it is the derived one; once overridden it stays (the field says "automatic" or offers to go back).
+
+**The screen.** The list on the left (search, grouped by category, the library's items marked)
+with **New ▾** (Empty or a preset) at the top; the selected item's form fills the middle – the
+basics, then one box per section with a switch to add or remove it; the inspector shows the item
+as the game does (icon, name, category, price, text) and what it does in words ("Battle: one ally –
+heal 50 HP"), with **Duplicate** and **Delete**. Library items are read-only: the form is shown
+greyed out with **Copy to project** (projects.md §2). The id is set when the item is made (from its
+name); renaming comes with E9. Board ranges and areas are picked from the patterns, with a small
+grid preview of the cells they reach from the user (an inline pattern shows as "custom", edited in
+YAML).
 
 ---
 
