@@ -2,10 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { Icon } from "../icons";
 import { usePersistentState } from "../persist";
 import { getGrid } from "../../../src/core/board/grid";
-import type { Corner, MapDef } from "../../../src/core/data/types";
+import type { Corner, MapDef, PrefabDef } from "../../../src/core/data/types";
 import type { Dir, Pos } from "../../../src/core/util/grid";
 import { K } from "../../../src/game/keys";
 import { entitiesIn, placePrefabOnMap, prefabFootprint } from "../entities/prefabs";
+import { canMoveGroup, deleteGroup, groupMembers, moveGroup } from "../entities/group";
 import { PrefabIcon } from "../entities/PrefabPicker";
 import { SavePrefabWindow } from "../entities/SavePrefabWindow";
 import { placePrefab } from "../../../src/core/data/prefab";
@@ -82,9 +83,12 @@ export interface EntitySelection {
   /** An entity being duplicated: the copy goes where the next click is. */
   copying: EntityRef | null;
   setCopying: (ref: EntityRef | null) => void;
-  /** A prefab (its id) waiting to be placed with the next click (editor-design §6.5). */
-  placingPrefab: string | null;
-  setPlacingPrefab: (id: string | null) => void;
+  /** A prefab (its id – or a group being duplicated) waiting to be placed with the next click (editor-design §6.5). */
+  placingPrefab: string | PrefabDef | null;
+  setPlacingPrefab: (p: string | PrefabDef | null) => void;
+  /** Several entities selected at once (Shift+click, a rectangle – editor-design §6.6); `selected` is null then. */
+  group: EntityRef[];
+  setGroup: (refs: EntityRef[]) => void;
 }
 
 const typing = (e: KeyboardEvent) => e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement;
@@ -106,8 +110,27 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
   const [preview, setPreview] = useState<Pos[]>([]);
   const stroke = useRef<{ id: string; start: Pos; done: Set<string>; erase: boolean } | null>(null);
   const strokeNo = useRef(0);
-  /** The entity being dragged (entity mode). */
-  const drag = useRef<{ ref: EntityRef; id: string; at: Pos } | null>(null);
+  /** The entity – or the whole group – being dragged (entity mode). */
+  const drag = useRef<{ ref: EntityRef | null; id: string; at: Pos } | null>(null);
+  /** A selection rectangle being dragged over the map (entity mode); `add`: Shift held – added to the group. */
+  const [box, setBoxState] = useState<{ from: Pos; to: Pos; add: boolean } | null>(null);
+  const boxRef = useRef<{ from: Pos; to: Pos; add: boolean } | null>(null);
+  const setBox = (r: { from: Pos; to: Pos; add: boolean } | null) => {
+    boxRef.current = r;
+    setBoxState(r);
+  };
+  /** The prefab waiting to be placed: one of the content's, or a group being duplicated. */
+  const prefabOf = (p: string | PrefabDef) => (typeof p === "string" ? db?.prefabs.get(p) : p);
+  /** Selects `refs`: one entity is the usual selection, more are a group. */
+  const choose = (refs: EntityRef[]) => {
+    if (refs.length > 1) {
+      entities.select(null);
+      entities.setGroup(refs);
+    } else {
+      entities.setGroup([]);
+      entities.select(refs[0] ?? null);
+    }
+  };
   // area selection (select tool) – refs hold the live values (mouse events can come faster than
   // re-renders), state redraws the previews
   const [area, setAreaState] = useState<Rect | null>(null);
@@ -220,7 +243,7 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
 
   // ---------- entity mode ----------
   const entityHandlers: CanvasHandlers = {
-    down(c, button) {
+    down(c, button, shift) {
       if (button === 2) {
         // right click deletes the (selected or topmost) entity on the cell
         const here = entitiesAt(project.data<MapDef>(path), c);
@@ -230,14 +253,16 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
       }
       if (entities.placingPrefab) {
         // the whole footprint must be free and on the map
-        const prefab = db?.prefabs.get(entities.placingPrefab);
+        const placing = entities.placingPrefab;
+        const prefab = prefabOf(placing);
         if (!prefab || !prefabFootprint(project.data<MapDef>(path), prefab, c).fits.every(Boolean)) return;
-        let ref: EntityRef | null = null;
-        project.edit(path, `Place ${prefab.name}`, (doc) => {
-          ref = placePrefabOnMap(doc, doc.toJS() as MapDef, prefab, c);
+        let refs: EntityRef[] = [];
+        project.edit(path, typeof placing === "string" ? `Place ${prefab.name}` : "Duplicate group", (doc) => {
+          refs = placePrefabOnMap(doc, doc.toJS() as MapDef, prefab, c);
         });
         entities.setPlacingPrefab(null);
-        entities.select(ref);
+        // a prefab's first entity is selected; a duplicated group is the new group
+        choose(typeof placing === "string" ? refs.slice(0, 1) : refs);
         return;
       }
       if (entities.placing || entities.copying) {
@@ -267,22 +292,62 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
         return;
       }
       const here = entitiesAt(project.data<MapDef>(path), c);
-      if (!here.length) return entities.select(null);
+      const current = entities.group.length ? entities.group : entities.selected ? [entities.selected] : [];
+      const inGroup = (r: EntityRef) => current.some((g) => sameRef(g, r));
+      // an empty cell: a selection rectangle (with Shift: added to what is selected)
+      if (!here.length) {
+        setBox({ from: c, to: c, add: !!shift });
+        if (!shift) choose([]);
+        return;
+      }
+      // Shift+click: an entity in or out of the selection
+      if (shift) {
+        const target = here[0];
+        choose(inGroup(target) ? current.filter((g) => !sameRef(g, target)) : [...current, target]);
+        return;
+      }
+      // a member of the group: the whole group is dragged
+      if (entities.group.length && here.some(inGroup)) {
+        drag.current = { ref: null, id: `drag${++strokeNo.current}`, at: c };
+        return;
+      }
       // clicking again cycles through the entities on one cell
       const i = here.findIndex((e) => sameRef(e, entities.selected));
       const target = here[(i + 1) % here.length];
-      entities.select(target);
+      choose([target]);
       drag.current = { ref: target, id: `drag${++strokeNo.current}`, at: c };
     },
     move(c, pressed) {
       setHover(c);
+      const r = boxRef.current;
+      if (r && c && pressed) return setBox({ ...r, to: c });
       const d = drag.current;
       if (!d || !pressed || !c || (c.x === d.at.x && c.y === d.at.y)) return;
+      if (d.ref) {
+        const ref = d.ref;
+        d.at = c;
+        project.edit(path, "Move entity", (doc) => moveEntity(doc, ref, c), d.id);
+        return;
+      }
+      // the group moves as one – only where all of it fits
+      const dx = c.x - d.at.x;
+      const dy = c.y - d.at.y;
+      const map = project.data<MapDef>(path);
+      if (!canMoveGroup(map, entities.group, dx, dy)) return;
       d.at = c;
-      project.edit(path, "Move entity", (doc) => moveEntity(doc, d.ref, c), d.id);
+      project.edit(path, "Move group", (doc) => moveGroup(doc, map, entities.group, dx, dy), d.id);
     },
     up() {
       drag.current = null;
+      const r = boxRef.current;
+      if (!r) return;
+      setBox(null);
+      const box = rectOf(r.from, r.to);
+      const inside = listEntities(project.data<MapDef>(path))
+        .filter((e) => e.x >= box.x && e.y >= box.y && e.x < box.x + box.w && e.y < box.y + box.h)
+        .map((e) => ({ kind: e.kind, key: e.key }));
+      const base = r.add ? (entities.group.length ? entities.group : entities.selected ? [entities.selected] : []) : [];
+      choose([...base, ...inside.filter((e) => !base.some((b) => sameRef(b, e)))]);
     },
   };
 
@@ -475,7 +540,9 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
         return;
       }
       if (e.key === "Delete" || e.key === "Backspace") {
-        if (mode === "entity" && entities.selected) {
+        if (mode === "entity" && entities.group.length) {
+          if (deleteGroup(project, mapId, project.data<MapDef>(path), entities.group)) entities.setGroup([]);
+        } else if (mode === "entity" && entities.selected) {
           if (removeEntity(project, mapId, entities.selected)) entities.select(null);
         } else if (mode !== "entity" && areaRef.current && tool === "select") {
           const r = areaRef.current;
@@ -490,6 +557,7 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
         else if (entities.placingPrefab) entities.setPlacingPrefab(null);
         else if (entities.placing) entities.setPlacing(null);
         else if (entities.copying) entities.setCopying(null);
+        else if (entities.group.length) entities.setGroup([]);
         else setArea(null);
       }
     };
@@ -508,11 +576,13 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
       // a dragged rectangle shows the ghost blocks; only erasing (right drag) or lintels mark it
       ...(stroke.current?.erase || (mode === "board" && brush.board !== "terrain") ? preview.map((p) => ({ ...p, frame: 3 })) : []),
       ...(sel && mode === "entity" ? [{ x: sel.x, y: sel.y, frame: 2 }] : []),
+      ...(mode === "entity" ? groupMembers(mapData, entities.group).map((e) => ({ x: e.x, y: e.y, frame: 2 })) : []),
+      ...(box && mode === "entity" ? areaCells(rectOf(box.from, box.to), 3) : []),
       ...(area && mode !== "entity" && !moving ? areaCells(area, 3) : []),
       ...(moving ? areaCells(moving, 3) : []),
       ...(pastePreview ? areaCells(pastePreview, 3) : []),
     ],
-    [preview, brush.board, sel?.x, sel?.y, area, mode, moving?.x, moving?.y, pastePreview?.x, pastePreview?.y, pastePreview?.w],
+    [preview, brush.board, sel?.x, sel?.y, area, mode, moving?.x, moving?.y, pastePreview?.x, pastePreview?.y, pastePreview?.w, mapData, entities.group, box],
   );
   // entity mode shows everything with labels; the other modes only what the game itself shows
   const sprites = useMemo(() => {
@@ -520,7 +590,7 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
     const all = entitySprites(db, mapData, rotation, entities.selected, mode === "entity");
     if (mode !== "entity") return all.filter((e) => e.texture && !e.editorOnly).map((e) => ({ ...e, label: undefined }));
     // a prefab: its whole footprint follows the cursor – its looks, and a tile per cell (red where it doesn't fit)
-    const prefab = entities.placingPrefab ? db.prefabs.get(entities.placingPrefab) : undefined;
+    const prefab = entities.placingPrefab ? prefabOf(entities.placingPrefab) : undefined;
     if (hover && prefab) {
       const { cells, fits } = prefabFootprint(mapData, prefab, hover);
       const placed = placePrefab(prefab, hover, () => false);

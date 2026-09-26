@@ -321,10 +321,26 @@ Ready-made groups of entities (game-design §10.5), the library's and the projec
   with icon, name and description; the library's marked. Picking one starts placing: its whole
   **footprint** follows the cursor (red where a cell is taken or off the map); a click places it –
   fresh ids for its `$` placeholders, references rewired, one undo step. Esc cancels.
-- **Save as prefab**: the selected entity (its form's bottom bar), or every entity in the area the
-  Select tool marked (Board / Decor mode) – a name and a category; positions become relative to the
-  area's top-left cell, ids become placeholders and the references among them follow. It goes into
-  the project's `data/prefabs.yaml`.
+- **Save as prefab**: the selected entity or group (their bottom bar), or every entity in the area
+  the Select tool marked (Board / Decor mode). The window asks for a name and a category; below a
+  divider it holds everything else a prefab has: a **description** (for the picker), an **icon**,
+  the **anchor** (the cell a click places: their top-left corner, or one of the entities' cells) and
+  the **names** the entities use – their ids, and the flags and variables their scripts and
+  conditions name – each **per copy** (every placed copy gets its own: `gate`, `gate_2` …, so copies
+  don't affect each other) or **shared** (every copy uses the same – a flag the whole game knows).
+  Ids, and flags / variables named after one of them, start as per copy, the rest as shared. It
+  goes into the project's `data/prefabs.yaml`.
+
+### 6.6 Groups
+Several entities can be selected at once in Entity mode: **Shift+click** adds an entity to the
+selection or takes it out, **dragging on an empty cell** draws a rectangle that selects what is
+inside (with Shift: adds it). Dragging one of them moves them all – only where every one fits (on
+the map, on cells that are free or their own). The inspector then shows the group: its entities as a
+list (a row selects that one alone), its **anchor** (the top-left corner of their cells – changing x
+or y moves them all) and the bottom bar: **Save as prefab**, **Duplicate group** (the copy follows the
+cursor like a prefab – fresh ids, their references to each other follow – and becomes the new group)
+and **Delete group** (Del; one undo step). Esc clears the selection. A single entity's bar says
+**Duplicate entity** and **Delete entity**.
 
 ## 7. Characters
 

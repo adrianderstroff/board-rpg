@@ -362,6 +362,8 @@ Layering (see also [architecture](../CLAUDE.md)):
 ## PF3 · Prefabs in the editor ☑
 - ☑ Entity panel: Add entity (Event, Enemy, Teleport ▾ with the starts, Prefab icon button + picker) and Entities headings; footprint preview (the prefab's looks) while placing
 - ☑ Save as prefab (entity form's bar; the Select tool's area) into the project's prefabs.yaml; handlers' *By* field
+- ☑ Save as prefab window: description, icon, anchor, and per copy / shared for every id, flag and variable the entities use (no more implicit "starts with an id" rule)
+- ☑ Groups: Shift+click, a rectangle on empty cells; drag to move them all; group panel with anchor, Save as prefab, Duplicate group, Delete group (editor-design §6.6)
 
 # Editor (see [editor-design.md](editor-design.md))
 

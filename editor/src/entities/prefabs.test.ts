@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import { parseDocument } from "yaml";
 import { loadDatabase } from "../../../src/content/loader";
 import type { MapDef } from "../../../src/core/data/types";
-import { entitiesIn, placePrefabOnMap, prefabFootprint, prefabFrom } from "./prefabs";
+import { entitiesIn, placePrefabOnMap, prefabFootprint, prefabFrom, prefabNames } from "./prefabs";
+import { canMoveGroup, groupAnchor, groupPrefab, moveGroup } from "./group";
 
 const load = () => {
   const doc = parseDocument(readFileSync("projects/demo/data/maps/sandhollow.yaml", "utf8"));
@@ -19,7 +20,10 @@ describe("prefabs in the editor (editor-design §6.5)", () => {
     const before = map().events!.length;
     const ref = placePrefabOnMap(doc, map(), plateGate, { x: 5, y: 8 });
     const events = map().events!;
-    expect(ref).toEqual({ kind: "event", key: before });
+    expect(ref).toEqual([
+      { kind: "event", key: before },
+      { kind: "event", key: before + 1 },
+    ]);
     const [plate, gate] = events.slice(before);
     expect([plate.x, plate.y, gate.x, gate.y]).toEqual([5, 8, 5, 6]);
     expect(gate.on![0].when).toEqual({ state: { event: plate.id, is: "down" } });
@@ -53,5 +57,44 @@ describe("prefabs in the editor (editor-design §6.5)", () => {
     ]);
     expect(prefab.events![0].on![0].when).toEqual({ flag: "$gate_open" });
     expect(prefab.events![2].on![0].when).toEqual({ state: { event: "$plate", is: "down" } });
+  });
+
+  it("names: ids and flags named after them are per copy by default, other flags shared; the choice decides", () => {
+    const rows = Array.from({ length: 8 }, () => "    ssssssss").join("\n");
+    const doc = parseDocument(["name: Empty", "chipset: lib:desert", "legend: { terrain: { s: sand } }", "layers:", "  terrain: |", rows, "spawns: {}", ""].join("\n"));
+    const map = () => doc.toJS() as MapDef;
+    placePrefabOnMap(doc, map(), db.prefabs.get("lib:gate")!, { x: 1, y: 1 });
+    doc.setIn(["events", 0, "on", 0, "do", 1], doc.createNode({ setFlag: "lever_pulled" }));
+    const refs = [{ kind: "event" as const, key: 0 }];
+    expect(prefabNames(map(), refs)).toEqual([
+      { name: "gate", kind: "entity", perCopy: true },
+      { name: "gate_open", kind: "flag", perCopy: true },
+      { name: "lever_pulled", kind: "flag", perCopy: false },
+    ]);
+    const shared = prefabFrom(map(), refs, { x: 1, y: 1 }, ["gate"]);
+    expect(shared.events![0].on![0].when).toEqual({ flag: "gate_open" }); // shared now
+    const own = prefabFrom(map(), refs, { x: 1, y: 1 }, ["gate", "gate_open", "lever_pulled"]);
+    expect(JSON.stringify(own.events)).toContain('"$lever_pulled"');
+  });
+
+  it("a group moves together only where all of it fits; duplicating it is a prefab of it", () => {
+    const rows = Array.from({ length: 8 }, () => "    ssssssss").join("\n");
+    const doc = parseDocument(["name: Empty", "chipset: lib:desert", "legend: { terrain: { s: sand } }", "layers:", "  terrain: |", rows, "spawns: {}", ""].join("\n"));
+    const map = () => doc.toJS() as MapDef;
+    const refs = placePrefabOnMap(doc, map(), plateGate, { x: 2, y: 4 }); // plate 2,4 · gate 2,2
+    expect(groupAnchor(map(), refs)).toEqual({ x: 2, y: 2 });
+    expect(canMoveGroup(map(), refs, 1, 0)).toBe(true);
+    expect(canMoveGroup(map(), refs, 0, -3)).toBe(false); // the gate would leave the map
+    expect(canMoveGroup(map(), refs, 0, 2)).toBe(true); // onto its own cells is fine
+    moveGroup(doc, map(), refs, 3, 1);
+    expect(map().events!.map((e) => [e.x, e.y])).toEqual([
+      [5, 5],
+      [5, 3],
+    ]);
+    const copy = groupPrefab(map(), refs);
+    const placed = placePrefabOnMap(doc, map(), copy, { x: 0, y: 0 });
+    const events = map().events!;
+    expect(placed).toHaveLength(2);
+    expect(events[3].on![0].when).toEqual({ state: { event: events[2].id, is: "down" } }); // the copy's gate follows the copy's plate
   });
 });

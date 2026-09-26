@@ -377,3 +377,12 @@ img.thumb.battlebacks { width: 100%; max-width: 160px; }
 /* two form entries sharing a row (Hidden | Trap mark) */
 .field-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .field-pair > .field { margin: 6px 0; }
+/* Save as prefab: the settings below the divider */
+.save-prefab hr { border: none; border-top: 1px solid var(--line); margin: 8px 0; width: 100%; }
+.save-prefab textarea { width: 100%; resize: vertical; }
+.icon-choice { display: flex; flex-wrap: wrap; gap: 2px; }
+.icon-choice .icon-button { width: 28px; height: 28px; }
+table.prefab-names { width: 100%; border-collapse: collapse; }
+table.prefab-names td { padding: 3px 4px; border-bottom: 1px solid var(--line); font-size: 12px; }
+table.prefab-names td:last-child { text-align: right; }
+table.prefab-names .segmented button { font-size: 11px; padding: 2px 8px; }

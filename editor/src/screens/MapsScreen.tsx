@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { getGrid } from "../../../src/core/board/grid";
-import type { MapDef } from "../../../src/core/data/types";
+import type { MapDef, PrefabDef } from "../../../src/core/data/types";
 import { assetUrl } from "../map/sprites";
 import { resize } from "../map/layers";
 import { MapEditor, type Brush, type EntitySelection, type Mode } from "../map/MapEditor";
@@ -13,6 +13,8 @@ import { arrivalRole, createTeleport, nearestEdge } from "../entities/teleports"
 import { DestinationWindow } from "../entities/DestinationWindow";
 import { PrefabIcon, PrefabPicker } from "../entities/PrefabPicker";
 import { SavePrefabWindow } from "../entities/SavePrefabWindow";
+import { canMoveGroup, deleteGroup, groupAnchor, groupMembers, groupPrefab, moveGroup } from "../entities/group";
+import { Field, Num } from "../forms/fields";
 import type { Pos } from "../../../src/core/util/grid";
 import { usePersistentState } from "../persist";
 import { MapContext } from "../mapContext";
@@ -39,14 +41,17 @@ export function MapsScreen({ project, selected: mapSel, onSelect }: { project: P
   const [brush, setBrush] = usePersistentState<Brush>("maps.brush", DEFAULT_BRUSH, (b) => ({ ...DEFAULT_BRUSH, ...b }));
   // a resize being prepared on the Info tab (columns / rows added or removed), previewed on the canvas
   const [resizeBy, setResizeBy] = usePersistentState("maps.resizeBy", { x: 0, y: 0 });
-  const [placingPrefab, setPlacingPrefab] = useState<string | null>(null);
-  const entities = { selected, select, placing, setPlacing, copying, setCopying, startTeleport: setPendingTeleport, placingPrefab, setPlacingPrefab };
+  const [placingPrefab, setPlacingPrefab] = useState<string | PrefabDef | null>(null);
+  // several entities selected at once (editor-design §6.6)
+  const [group, setGroup] = useState<EntityRef[]>([]);
+  const entities = { selected, select, placing, setPlacing, copying, setCopying, startTeleport: setPendingTeleport, placingPrefab, setPlacingPrefab, group, setGroup };
   // another map: nothing selected, no resize pending (not on the first render: that's a reload)
   const shownMap = useRef(mapSel);
   useEffect(() => {
     if (shownMap.current === mapSel) return;
     shownMap.current = mapSel;
     select(null);
+    setGroup([]);
     setPlacing(null);
     setCopying(null);
     setResizeBy({ x: 0, y: 0 });
@@ -56,7 +61,11 @@ export function MapsScreen({ project, selected: mapSel, onSelect }: { project: P
     if (selected || placing) setTab("edit");
   }, [selected, placing]);
   // an entity's form fills the inspector: its content scrolls, its action bar stays at the bottom
-  const formShown = tab === "edit" && mode === "entity" && !!mapSel && !!selected && listEntities(project.data<MapDef>(mapPath(mapSel))).some((e) => sameRef(e, selected));
+  const formShown =
+    tab === "edit" &&
+    mode === "entity" &&
+    !!mapSel &&
+    ((!!selected && listEntities(project.data<MapDef>(mapPath(mapSel))).some((e) => sameRef(e, selected))) || groupMembers(project.data<MapDef>(mapPath(mapSel)), group).length > 1);
   const ids = project.paths("data/maps/").map((p) => p.replace(/^data\/maps\//, "").replace(/\.yaml$/, ""));
   const shown = ids.filter((id) => {
     const name = project.data<MapDef>(mapPath(id))?.name ?? "";
@@ -297,7 +306,7 @@ export function MusicPreview({ src: track }: { src?: string }) {
 
 /** Entities layer: add new ones, the list of all on this map, and the selected one's form. */
 function EntitiesPanel({ project, mapId, entities }: { project: Project; mapId: string; entities: EntitySelection }) {
-  const { selected, select, placing, setPlacing, copying, setCopying, placingPrefab, setPlacingPrefab } = entities;
+  const { selected, select, placing, setPlacing, copying, setCopying, placingPrefab, setPlacingPrefab, group, setGroup } = entities;
   const map = project.data<MapDef>(mapPath(mapId));
   const list = listEntities(map);
   const db = project.content.db;
@@ -313,7 +322,8 @@ function EntitiesPanel({ project, mapId, entities }: { project: Project; mapId: 
   };
   const teleportKinds: AddKind[] = ["teleport", "start", "quickplay"];
   const teleportOn = !!placing && teleportKinds.includes(placing);
-  const prefabName = placingPrefab ? db?.prefabs.get(placingPrefab)?.name : null;
+  const prefabName = placingPrefab ? (typeof placingPrefab === "string" ? db?.prefabs.get(placingPrefab)?.name : placingPrefab.name) : null;
+  const members = groupMembers(map, group);
   const typeOf = (e: { kind: EntityKind; key: number | string }) => {
     if (e.kind !== "spawn") return KIND_INFO[e.kind].label;
     const role = arrivalRole(project, mapId, e.key as string);
@@ -334,7 +344,67 @@ function EntitiesPanel({ project, mapId, entities }: { project: Project; mapId: 
         />
       )}
       {saving && <SavePrefabWindow project={project} mapId={mapId} refs={saving} onClose={() => setSaving(null)} />}
-      {selected && list.some((e) => sameRef(e, selected)) ? (
+      {members.length > 1 ? (
+        <>
+          <div class="entity-form">
+            <div class="section-head">
+              <h3>{members.length} entities</h3>
+            </div>
+            <p class="hint">Shift+click adds or removes one; drag one of them to move them all.</p>
+            <Field label="Anchor" hint="The top-left corner of their cells – change it to move them all.">
+              <AnchorInput project={project} mapId={mapId} group={group} />
+            </Field>
+            <table class="entity-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Type</th>
+                  <th>Position</th>
+                </tr>
+              </thead>
+              <tbody>
+                {members.map((e) => (
+                  <tr key={`${e.kind}:${e.key}`} title="Select only this one" onClick={() => (setGroup([]), select({ kind: e.kind, key: e.key }))}>
+                    <td>{e.label}</td>
+                    <td>{typeOf(e)}</td>
+                    <td>
+                      {e.x}, {e.y}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div class="entity-actions">
+            <button onClick={() => setGroup([])} title="Back to the list of all entities">
+              ← All
+            </button>
+            <span class="spacer" />
+            <button class="icon-button" title="Save as prefab: these entities, ready-made to place again (arrivals are left out)" aria-label="Save as prefab" onClick={() => setSaving(group)}>
+              <PrefabIcon icon="prefab" size={18} />
+            </button>
+            <button
+              class={placingPrefab && typeof placingPrefab !== "string" ? "on" : ""}
+              title="Duplicate: click where the copy's anchor goes (Esc: cancel) – fresh ids, their references to each other follow"
+              onClick={() => {
+                setPlacing(null);
+                setCopying(null);
+                setPlacingPrefab(placingPrefab && typeof placingPrefab !== "string" ? null : groupPrefab(map, group));
+              }}
+            >
+              Duplicate group
+            </button>
+            <button
+              title="Delete them all (Del) – one undo step"
+              onClick={() => {
+                if (deleteGroup(project, mapId, map, group)) setGroup([]);
+              }}
+            >
+              Delete group
+            </button>
+          </div>
+        </>
+      ) : selected && list.some((e) => sameRef(e, selected)) ? (
         <>
           <EntityForm project={project} mapId={mapId} entity={selected} onSelect={select} />
           <div class="entity-actions">
@@ -357,7 +427,7 @@ function EntitiesPanel({ project, mapId, entities }: { project: Project; mapId: 
               title={selected.kind === "spawn" ? "Arrivals come with the teleport or start that leads here" : "Duplicate: click a free cell on the map for the copy (Esc: cancel)"}
               onClick={() => (setPlacing(null), setCopying(copying ? null : selected))}
             >
-              Duplicate {typeOf(selected).toLowerCase()}
+              Duplicate entity
             </button>
             <button
               title="Delete (Del)"
@@ -365,7 +435,7 @@ function EntitiesPanel({ project, mapId, entities }: { project: Project; mapId: 
                 if (removeEntity(project, mapId, selected)) select(null);
               }}
             >
-              Delete {typeOf(selected).toLowerCase()}
+              Delete entity
             </button>
           </div>
         </>
@@ -424,6 +494,21 @@ function EntitiesPanel({ project, mapId, entities }: { project: Project; mapId: 
         </table>
         </>
       )}
+    </div>
+  );
+}
+
+/** The group's anchor (its top-left corner): editing x or y moves every member – where they all fit. */
+function AnchorInput({ project, mapId, group }: { project: Project; mapId: string; group: EntityRef[] }) {
+  const file = mapPath(mapId);
+  const map = project.data<MapDef>(file);
+  const at = groupAnchor(map, group);
+  const moveBy = (dx: number, dy: number) => {
+    if ((dx || dy) && canMoveGroup(map, group, dx, dy)) project.edit(file, "Move group", (doc) => moveGroup(doc, map, group, dx, dy), "group-anchor");
+  };
+  return (
+    <div class="row">
+      x <Num value={at.x} width={56} onChange={(v) => moveBy((v ?? at.x) - at.x, 0)} /> y <Num value={at.y} width={56} onChange={(v) => moveBy(0, (v ?? at.y) - at.y)} />
     </div>
   );
 }

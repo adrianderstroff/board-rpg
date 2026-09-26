@@ -332,7 +332,7 @@ export function GridCanvas({ db, mapId, hideDecor, focus, markers, entities, gho
           const c = cellOf(e);
           if (!c) return;
           painting.current = true;
-          handlers.down(c, e.button);
+          handlers.down(c, e.button, e.shiftKey);
         }}
         onMouseMove={(e) => {
           const p = pan.current;

@@ -26,8 +26,8 @@ export function prefabFootprint(map: MapDef, prefab: PrefabDef, at: Pos): { cell
   return { cells, fits };
 }
 
-/** Places a prefab on the map (fresh ids for its placeholders, references rewired); the first event it added. */
-export function placePrefabOnMap(doc: Document, map: MapDef, prefab: PrefabDef, at: Pos): EntityRef | null {
+/** Places a prefab on the map (fresh ids for its placeholders, references rewired); every entity it added. */
+export function placePrefabOnMap(doc: Document, map: MapDef, prefab: PrefabDef, at: Pos): EntityRef[] {
   const taken = new Set([...(map.events ?? []), ...(map.enemies ?? [])].map((e) => e.id));
   const placed = placePrefab(prefab, at, (id) => taken.has(id));
   const firstEvent = map.events?.length ?? 0;
@@ -37,31 +37,62 @@ export function placePrefabOnMap(doc: Document, map: MapDef, prefab: PrefabDef, 
   for (const e of placed.enemies) doc.addIn(["enemies"], doc.createNode(e, { flow: true }));
   if (placed.exits.length && doc.getIn(["exits"]) === undefined) doc.set("exits", doc.createNode([], { flow: false }));
   for (const e of placed.exits) doc.addIn(["exits"], doc.createNode(e, { flow: true }));
-  if (placed.events.length) return { kind: "event", key: firstEvent };
-  if (placed.enemies.length) return { kind: "enemy", key: map.enemies?.length ?? 0 };
-  return null;
+  const from = (kind: EntityRef["kind"], start: number, n: number): EntityRef[] => Array.from({ length: n }, (_, i) => ({ kind, key: start + i }));
+  return [...from("event", firstEvent, placed.events.length), ...from("enemy", map.enemies?.length ?? 0, placed.enemies.length), ...from("exit", map.exits?.length ?? 0, placed.exits.length)];
+}
+
+/** A name the chosen entities use: an entity's id, a flag or a variable – per copy or shared in a prefab. */
+export interface PrefabName {
+  name: string;
+  kind: "entity" | "flag" | "variable";
+  /** What Save as prefab suggests: ids and flags / variables named after one of them per copy, the rest shared. */
+  perCopy: boolean;
+}
+
+const pickEntities = (map: MapDef, refs: EntityRef[]) => {
+  const pick = <T,>(kind: EntityRef["kind"], list: T[] | undefined) => refs.filter((r) => r.kind === kind).map((r) => structuredClone(list![r.key as number]));
+  return { events: pick("event", map.events), enemies: pick("enemy", map.enemies), exits: pick("exit", map.exits) };
+};
+
+/** The names the chosen entities use (their ids, the flags and variables their scripts and conditions name). */
+export function prefabNames(map: MapDef, refs: EntityRef[]): PrefabName[] {
+  const { events, enemies, exits } = pickEntities(map, refs);
+  const ids = [...events, ...enemies].map((e) => e.id);
+  const flags = new Set<string>();
+  const vars = new Set<string>();
+  const walk = (v: unknown): void => {
+    if (Array.isArray(v)) return v.forEach(walk);
+    if (!v || typeof v !== "object") return;
+    for (const [k, x] of Object.entries(v)) {
+      if ((k === "setFlag" || k === "clearFlag" || k === "flag") && typeof x === "string") flags.add(x);
+      else if ((k === "setVar" || k === "addVar" || k === "var") && x && typeof x === "object" && typeof (x as { name?: unknown }).name === "string") vars.add((x as { name: string }).name);
+      walk(x);
+    }
+  };
+  walk([...events, ...enemies, ...exits]);
+  const named = (n: string) => ids.some((id) => n === id || n.startsWith(`${id}_`));
+  return [
+    ...ids.map((name) => ({ name, kind: "entity" as const, perCopy: true })),
+    ...[...flags].sort().map((name) => ({ name, kind: "flag" as const, perCopy: named(name) })),
+    ...[...vars].sort().map((name) => ({ name, kind: "variable" as const, perCopy: named(name) })),
+  ];
 }
 
 /**
  * A prefab from a map's entities (events, enemies, exits – not arrivals): cells relative to `origin`,
- * ids become placeholders and every string naming one follows – exactly, or as the start of a
- * longer name (`gate_open` for the gate `gate`).
+ * and the `perCopy` names (ids, flags, variables) become placeholders wherever a value is exactly
+ * one of them – each placement gets its own. The rest stays as it is, shared by every copy.
  */
-export function prefabFrom(map: MapDef, refs: EntityRef[], origin: Pos): Omit<PrefabDef, "id" | "name"> {
-  const pick = <T,>(kind: EntityRef["kind"], list: T[] | undefined) => refs.filter((r) => r.kind === kind).map((r) => structuredClone(list![r.key as number]));
-  const events = pick("event", map.events);
-  const enemies = pick("enemy", map.enemies);
-  const exits = pick("exit", map.exits);
-  const ids = [...events, ...enemies].map((e) => e.id).sort((a, b) => b.length - a.length); // longest first
+export function prefabFrom(map: MapDef, refs: EntityRef[], origin: Pos, perCopy: Iterable<string> = prefabNames(map, refs).filter((n) => n.perCopy).map((n) => n.name)): Omit<PrefabDef, "id" | "name"> {
+  const { events, enemies, exits } = pickEntities(map, refs);
+  const names = new Set(perCopy);
   const toPlaceholder = (v: unknown): unknown => {
-    if (typeof v === "string") {
-      for (const id of ids) if (v === id || v.startsWith(`${id}_`)) return `$${v}`;
-      return v;
-    }
+    if (typeof v === "string") return names.has(v) ? `$${v}` : v;
     if (Array.isArray(v)) return v.map(toPlaceholder);
     if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, toPlaceholder(x)]));
     return v;
   };
+  // variables are named in objects ({ var: { name } }) – the same exact rule covers them
   const rel = <T extends { x: number; y: number }>(e: T): T => ({ ...(toPlaceholder(e) as T), x: e.x - origin.x, y: e.y - origin.y });
   return {
     ...(events.length ? { events: events.map(rel) } : {}),
@@ -80,16 +111,16 @@ export function entitiesIn(map: MapDef, r: { x: number; y: number; w: number; h:
 const PREFABS_FILE = "data/prefabs.yaml";
 
 /** Saves a prefab into the project's data/prefabs.yaml (a free id from its name); returns the id. */
-export function savePrefab(project: Project, name: string, category: string | undefined, body: Omit<PrefabDef, "id" | "name">): string {
+export function savePrefab(project: Project, name: string, category: string | undefined, body: Omit<PrefabDef, "id" | "name">, extra: { icon?: string; description?: string } = {}): string {
   const own = project.paths(PREFABS_FILE).length ? (project.data<Record<string, unknown>>(PREFABS_FILE) ?? {}) : {};
   const base = projectIdFor(name);
   let id = base;
   for (let n = 2; id in own; n++) id = `${base}_${n}`;
-  const entry = { name, ...(category ? { category } : {}), icon: body.events?.length ? "event" : body.enemies?.length ? "enemy" : "exit", ...body };
+  const entry = { name, ...(category ? { category } : {}), icon: extra.icon ?? (body.events?.length ? "event" : body.enemies?.length ? "enemy" : "exit"), ...body };
   project.transaction(`Save prefab ${name}`, () => {
     if (!project.paths(PREFABS_FILE).length) project.create(PREFABS_FILE, "# The project's own prefabs (game-design §10.5): cells relative to where they are placed; $ids get fresh ids.\n");
     project.edit(PREFABS_FILE, `Save prefab ${name}`, (doc: Document) => {
-      doc.setIn([id], doc.createNode({ name: entry.name, ...(entry.category ? { category: entry.category } : {}), icon: entry.icon }));
+      doc.setIn([id], doc.createNode({ name: entry.name, ...(entry.category ? { category: entry.category } : {}), icon: entry.icon, ...(extra.description ? { description: extra.description } : {}) }));
       for (const list of ["events", "enemies", "exits"] as const) {
         const items = body[list];
         if (!items?.length) continue;

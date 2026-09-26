@@ -21,8 +21,8 @@ import type { EntitySprite } from "../entities/visuals";
  */
 
 export interface CanvasHandlers {
-  /** button: 0 left, 2 right. */
-  down(cell: Pos, button: number): void;
+  /** button: 0 left, 2 right; shift: the Shift key was held (entity mode: add to the selection). */
+  down(cell: Pos, button: number, shift?: boolean): void;
   move(cell: Pos | null, pressed: boolean): void;
   up(cell: Pos | null): void;
 }
@@ -117,6 +117,8 @@ class MapScene extends Phaser.Scene {
   /** Tells the component the view's (continuous) angle – for the axis gizmo. */
   onAngle?: (quarters: number) => void;
   private space = false;
+  /** Shift held (entity mode: a click adds to the selection). */
+  private shift = false;
   /** A running view turn (the blocks spin as one solid, like in the game). */
   private spin?: Phaser.Tweens.Tween;
 
@@ -155,6 +157,7 @@ class MapScene extends Phaser.Scene {
     // Space + drag pans
     const keys = (e: KeyboardEvent) => {
       if (e.code === "Space") this.space = e.type === "keydown";
+      if (e.key === "Shift") this.shift = e.type === "keydown";
     };
     window.addEventListener("keydown", keys);
     window.addEventListener("keyup", keys);
@@ -171,7 +174,7 @@ class MapScene extends Phaser.Scene {
       const cell = this.cellAt(p);
       if (cell) {
         this.painting = true;
-        this.props.handlers.down(cell, p.rightButtonDown() ? 2 : 0);
+        this.props.handlers.down(cell, p.rightButtonDown() ? 2 : 0, this.shift || !!(p.event as MouseEvent | undefined)?.shiftKey);
       }
     });
     this.input.on("pointermove", (p: Phaser.Input.Pointer) => {
