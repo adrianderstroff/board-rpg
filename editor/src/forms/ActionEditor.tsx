@@ -40,6 +40,7 @@ const KINDS: [string, string][] = [
   ["teleport", "Teleport the party"],
   ["message", "Show a message"],
   ["reveal", "Reveal a hidden event"],
+  ["setState", "Set an entity's state"],
 ];
 
 /** A step's kind: its first key (blocks are recognised by their defining key). */
@@ -57,6 +58,10 @@ function defaultFor(kind: string, db: Database, mapId?: string): Step {
 }
 
 function defaultAction(kind: string, db: Database, mapId?: string): Action {
+  if (kind === "setState") {
+    const ev = (mapId ? db.maps.get(mapId)?.events : undefined)?.find((e) => e.states);
+    return { setState: { event: ev?.id ?? "", state: Object.keys(ev?.states ?? {})[0] ?? "" } };
+  }
   const first = <T,>(m: Map<string, T>) => [...m.keys()][0] ?? "";
   switch (kind) {
     case "setVar":
@@ -257,6 +262,17 @@ export function ActionEditor({ value, onChange, db, mapId }: { value: Script | u
             }
             case "message":
               return <Text value={v as string} placeholder="text" onChange={(x) => set({ message: x ?? "" })} />;
+            case "setState": {
+              const o = v as { event: string; state: string };
+              const withStates = (map?.events ?? []).filter((e) => e.states);
+              return (
+                <div class="row">
+                  <Select value={o.event} options={withStates.map((e) => e.id)} onChange={(x) => set({ setState: { event: x ?? "", state: Object.keys(withStates.find((e) => e.id === x)?.states ?? {})[0] ?? "" } })} />
+                  to
+                  <Select value={o.state} options={Object.keys(withStates.find((e) => e.id === o.event)?.states ?? {})} onChange={(x) => set({ setState: { ...o, state: x ?? "" } })} />
+                </div>
+              );
+            }
             default:
               return <span class="dim">{JSON.stringify(v)}</span>;
           }

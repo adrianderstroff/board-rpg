@@ -290,15 +290,6 @@ export function validateContent(db: Database): string[] {
         }
       }
     }
-    const gateIds = new Set((m.gates ?? []).map((g) => g.id));
-    for (const g of m.gates ?? []) {
-      onGrid(g.x, g.y, `gate ${g.id}`);
-      condition(g.openWhen, `${w} gate ${g.id}`);
-    }
-    for (const sw of m.switches ?? []) {
-      onGrid(sw.x, sw.y, `switch ${sw.id}`);
-      for (const gid of sw.opens) if (!gateIds.has(gid)) err(w, `switch ${sw.id} opens unknown gate "${gid}"`);
-    }
     for (const wd of m.wallDecor ?? []) {
       onGrid(wd.x, wd.y, `wall sign ${wd.sign}`);
       if (db.graphics.wallSigns?.frames[wd.sign] === undefined) err(w, `wall decor: unknown sign "${wd.sign}"`);

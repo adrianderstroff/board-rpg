@@ -131,48 +131,6 @@ export function EntityForm({ project, mapId, entity, onSelect }: { project: Proj
             {cond("when", "Appears when")}
           </>
         );
-      case "gate": {
-        const openedBy = (map.switches ?? []).filter((s) => s.opens.includes(data.id as string)).map((s) => s.id);
-        return (
-          <>
-            {idField()}
-            {position}
-            <Field label="Opened by">{openedBy.length ? openedBy.join(", ") : <span class="dim">no switch – select a switch to link it</span>}</Field>
-            {cond("openWhen", "Also open when")}
-            <Field label="Flag on first close" hint="E.g. to start a scene when the gate slams shut.">
-              <Text value={data.closeFlag as string} list="known-flags" onChange={(v) => set("closeFlag", v, "closeFlag")} />
-            </Field>
-          </>
-        );
-      }
-      case "switch":
-        return (
-          <>
-            {idField()}
-            {position}
-            <Field label="Opens gates">
-              <div class="stack">
-                {(map.gates ?? []).map((g) => (
-                  <label class="check" key={g.id}>
-                    <input
-                      type="checkbox"
-                      checked={(data.opens as string[]).includes(g.id)}
-                      onChange={(e) => set("opens", e.currentTarget.checked ? [...(data.opens as string[]), g.id] : (data.opens as string[]).filter((x) => x !== g.id))}
-                    />
-                    {g.id}
-                  </label>
-                ))}
-                {!(map.gates ?? []).length && <span class="dim">No gates on this map yet.</span>}
-              </div>
-            </Field>
-            <Field label="Weight" hint="Heroes needed on the plate.">
-              <Num value={data.weight as number} placeholder="1" min={1} onChange={(v) => set("weight", v && v > 1 ? v : undefined)} />
-            </Field>
-            <Field label="Latch">
-              <Check value={data.latch as boolean} label="stays down once pressed" onChange={(v) => set("latch", v)} />
-            </Field>
-          </>
-        );
       case "trap":
         return (
           <>

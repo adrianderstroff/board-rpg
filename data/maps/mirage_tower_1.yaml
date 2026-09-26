@@ -63,13 +63,6 @@ exits:
   - { x: 2, y: 1, dir: N, to: mirage_tower_2, spawn: west, label: Upstairs, door: true, together: true }
   - { x: 10, y: 1, dir: N, to: mirage_tower_2, spawn: east, label: Upstairs, door: true, together: true }
 
-gates:
-  - { id: east_gate, x: 9, y: 6, closeFlag: tower_split }
-  - { id: west_gate, x: 3, y: 6 }
-switches:
-  - { id: hall_plate, x: 3, y: 8, opens: [east_gate] }
-  - { id: inner_plate, x: 9, y: 2, opens: [west_gate] }
-
 events:
   - id: tower_intro
     x: 6
@@ -82,3 +75,39 @@ events:
     pages:
       - { trigger: none }
       - { when: { flag: tower_split }, trigger: auto, dialog: tower_split_up }
+  - id: east_gate
+    x: 9
+    y: 6
+    states:
+      closed: { decor: gate_bars, pass: solid }
+      open: { pass: walk }
+    on:
+      - { on: becomes, when: { state: { event: hall_plate, is: down } }, do: [{ setState: { event: east_gate, state: open } }] }
+      - { on: becomes, when: { all: [{ not: { state: { event: hall_plate, is: down } } }, { state: { event: east_gate, is: open } }] }, do: [{ setState: { event: east_gate, state: closed } }, { setFlag: tower_split }] }
+  - id: west_gate
+    x: 3
+    y: 6
+    states:
+      closed: { decor: gate_bars, pass: solid }
+      open: { pass: walk }
+    on:
+      - { on: becomes, when: { state: { event: inner_plate, is: down } }, do: [{ setState: { event: west_gate, state: open } }] }
+      - { on: becomes, when: { all: [{ not: { state: { event: inner_plate, is: down } } }, { state: { event: west_gate, is: open } }] }, do: [{ setState: { event: west_gate, state: closed } }] }
+  - id: hall_plate
+    x: 3
+    y: 8
+    states:
+      up: { decor: switch_up, pass: walk }
+      down: { decor: switch_down, pass: walk }
+    on:
+      - { on: becomes, when: { heroesOn: { event: hall_plate } }, do: [{ setState: { event: hall_plate, state: down } }] }
+      - { on: becomes, when: { not: { heroesOn: { event: hall_plate } } }, do: [{ setState: { event: hall_plate, state: up } }] }
+  - id: inner_plate
+    x: 9
+    y: 2
+    states:
+      up: { decor: switch_up, pass: walk }
+      down: { decor: switch_down, pass: walk }
+    on:
+      - { on: becomes, when: { heroesOn: { event: inner_plate } }, do: [{ setState: { event: inner_plate, state: down } }] }
+      - { on: becomes, when: { not: { heroesOn: { event: inner_plate } } }, do: [{ setState: { event: inner_plate, state: up } }] }

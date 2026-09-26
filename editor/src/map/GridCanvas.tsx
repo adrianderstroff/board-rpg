@@ -18,8 +18,6 @@ const KIND_MARK: Record<string, [string, string]> = {
   exit: ["→", "#feae34"],
   spawn: ["⚑", "#2ce8f5"],
   enemy: ["☠", "#e43b44"],
-  gate: ["G", "#c0cbdc"],
-  switch: ["P", "#c0cbdc"],
   trap: ["T", "#2ce8f5"],
 };
 

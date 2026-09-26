@@ -165,8 +165,14 @@ party would bounce back and forth.
 - Decor that appears/disappears is remembered per map (`decor` overrides in the map memory).
 
 ### 5.8 Switches and gates
-- **Gates** (`gates` in the map) are bars across a cell: closed = blocked. A gate is open while one of its **switches** (`switches`: floor plates, `opens` gate ids, `weight` = heroes needed, `latch` = stays open once pressed) is pressed by standing heroes, or while its `openWhen` condition holds (e.g. all enemies defeated). A gate never closes on someone standing in it.
-- A gate closing for the first time can set a flag (`closeFlag`) – e.g. to start the "we have to split up" scene.
+Both are **entities** (§10.3) – the editor's *Gate* and *Floor switch* place them ready-made:
+- A **gate** has the states `closed` (bars, solid) and `open` (nothing, walk through). It opens when
+  its condition turns true – a floor plate being down, a flag, all enemies defeated – and closes when
+  it turns false again; a gate never closes on someone standing in it (a solid state waits for its
+  cell to be free). Its close handler can also set a flag – the Mirage Tower's "we have to split up".
+- A **floor switch** (plate) has `up` and `down` (both walk-through, drawn on the ground): down while
+  enough living heroes stand on it (`heroesOn` with a weight), up when that stops; a latching plate
+  has no "up" handler and stays down.
 
 ### 5.9 Shaped blocks (ships)
 Blocks are cubes by default. For things that shouldn't look blocky – a ship – two shape tools exist; both are purely visual and turn with the board like every block:
@@ -714,3 +720,4 @@ Where the rough ideas were incomplete or conflicting, these rules were chosen:
 40. **One entity per cell** in the editor: placing a new one or a copy only works on a free cell.
 41. **One script language** (R3): actions and dialog nodes are steps of one kind of script, with if / else, questions (with icons), text and pauses; existing dialogs and action lists stay valid as they are. Scripts aren't saved half-way – a save waits until one has ended (§10.2).
 42. **Clicks pick what is drawn** (user request, made for the editor – the game shares the renderer): the cell under the pointer is the front-most column drawn there, so a wall in front hides the cells behind it instead of passing the click through.
+43. **Gates and floor switches are entities** (R6): the maps' `gates` / `switches` lists were migrated once (`tools/migrate-gates.mjs`) into events with states and handlers; a gate's cell is a wall while it is solid; plates don't stop ice slides; old saves keep latched plates down.

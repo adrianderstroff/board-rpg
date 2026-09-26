@@ -1,4 +1,4 @@
-import type { Document } from "yaml";
+import { isMap, isPair, isScalar, isSeq, type Document, type YAMLMap } from "yaml";
 import type { MapDef } from "../../../src/core/data/types";
 import type { Dir, Pos } from "../../../src/core/util/grid";
 
@@ -7,7 +7,7 @@ import type { Dir, Pos } from "../../../src/core/util/grid";
  * stays in its own list in the map file.
  */
 
-export type EntityKind = "event" | "exit" | "spawn" | "enemy" | "gate" | "switch" | "trap";
+export type EntityKind = "event" | "exit" | "spawn" | "enemy" | "trap";
 
 /** What the Add buttons place: entity kinds, a teleport (exit + arrival) and the starts (arrivals with a role). */
 export type AddKind = "event" | "teleport" | "enemy" | "gate" | "switch" | "trap" | "start" | "quickplay";
@@ -16,8 +16,8 @@ export const ADD_INFO: Record<AddKind, { label: string; icon: string; hint: stri
   event: { label: "Event", icon: "event", hint: "An NPC, an object or an invisible trigger – with pages of conditions and actions." },
   teleport: { label: "Teleport", icon: "exit", hint: "An exit to another map; its arrival there is placed right after (and a way back, if wanted)." },
   enemy: { label: "Enemy", icon: "enemy", hint: "An enemy piece (or party) on the map." },
-  gate: { label: "Gate", icon: "gate", hint: "Bars across a cell: open while a linked switch is pressed or its condition holds." },
-  switch: { label: "Floor switch", icon: "switch", hint: "A plate held down by standing heroes; opens gates." },
+  gate: { label: "Gate", icon: "gate", hint: "An entity with bars (closed: solid) and open – it opens when its condition turns true (a flag, a plate that is down)." },
+  switch: { label: "Floor switch", icon: "switch", hint: "An entity plate: down while a hero stands on it, up again when they step off – gates can open on it." },
   trap: { label: "Hidden trap", icon: "trap", hint: "Stops heroes walking over it until found with Discover." },
   start: { label: "Game start", icon: "start", hint: "Where a new game begins (one for the whole game – placing it again moves it)." },
   quickplay: { label: "Quick Play start", icon: "quickplay", hint: "Where ▶ Quick Play starts on this map, with its party and items (editor only)." },
@@ -41,8 +41,6 @@ export const KIND_INFO: Record<EntityKind, { label: string; list: string; editor
   exit: { label: "Teleport", list: "exits", hint: "Walking onto it travels to its arrival on another map." },
   spawn: { label: "Arrival", list: "spawns", editorOnly: true, hint: "Where the party lands – it comes with the teleport, start or wake-up that leads here." },
   enemy: { label: "Enemy", list: "enemies", hint: "An enemy piece (or party) on the map." },
-  gate: { label: "Gate", list: "gates", hint: "Bars across a cell: open while a linked switch is pressed or its condition holds." },
-  switch: { label: "Floor switch", list: "switches", hint: "A plate held down by standing heroes; opens gates." },
   trap: { label: "Hidden trap", list: "traps", editorOnly: true, hint: "Stops heroes walking over it until found with Discover." },
 };
 
@@ -53,8 +51,6 @@ export function listEntities(map: MapDef): Entity[] {
   (map.exits ?? []).forEach((e, i) => out.push({ kind: "exit", key: i, x: e.x, y: e.y, label: `→ ${e.label ?? e.to}` }));
   for (const [id, s] of Object.entries(map.spawns ?? {})) out.push({ kind: "spawn", key: id, x: s.x, y: s.y, label: id });
   (map.enemies ?? []).forEach((e, i) => out.push({ kind: "enemy", key: i, x: e.x, y: e.y, label: `${e.id} (${e.enemy}${e.party?.length ? ` +${e.party.length}` : ""})` }));
-  (map.gates ?? []).forEach((g, i) => out.push({ kind: "gate", key: i, x: g.x, y: g.y, label: g.id }));
-  (map.switches ?? []).forEach((s, i) => out.push({ kind: "switch", key: i, x: s.x, y: s.y, label: s.id }));
   (map.traps ?? []).forEach((t, i) => out.push({ kind: "trap", key: i, x: t.x, y: t.y, label: t.id }));
   return out;
 }
@@ -105,10 +101,6 @@ export function addEntity(doc: Document, map: MapDef, kind: EntityKind, at: Pos,
       return push("exits", { x, y, dir: "N" as Dir, to: defaults.map ?? "", spawn: defaults.spawn ?? "start" });
     case "enemy":
       return push("enemies", { id: freeId("enemy", (map.enemies ?? []).map((e) => e.id)), enemy: defaults.enemy ?? "sand_scorpion", x, y, dir: "S" as Dir });
-    case "gate":
-      return push("gates", { id: freeId("gate", (map.gates ?? []).map((g) => g.id)), x, y });
-    case "switch":
-      return push("switches", { id: freeId("plate", (map.switches ?? []).map((s) => s.id)), x, y, opens: [] });
     case "trap":
       return push("traps", { id: freeId("trap", (map.traps ?? []).map((t) => t.id)), x, y, damage: 10 });
     case "spawn": {
@@ -138,4 +130,43 @@ export function duplicateEntity(doc: Document, map: MapDef, ref: EntityRef, at: 
   }
   doc.addIn([list], doc.createNode(copy, { flow: ref.kind !== "event" }));
   return { kind: ref.kind, key: items.length };
+}
+
+/**
+ * The Gate and Floor switch presets (game-design §10.3): entities with their states and handlers –
+ * a gate opens when its condition turns true (a flag named after it, until it is pointed at a plate),
+ * a plate goes down while a hero stands on it.
+ */
+export function addPreset(doc: Document, map: MapDef, kind: "gate" | "switch", at: Pos): EntityRef {
+  const taken = (map.events ?? []).map((e) => e.id);
+  const index = map.events?.length ?? 0;
+  const id = freeId(kind === "gate" ? "gate" : "plate", taken);
+  const entity =
+    kind === "gate"
+      ? {
+          id,
+          x: at.x,
+          y: at.y,
+          states: { closed: { decor: "gate_bars", pass: "solid" }, open: { pass: "walk" } },
+          on: [
+            { on: "becomes", when: { flag: `${id}_open` }, do: [{ setState: { event: id, state: "open" } }] },
+            { on: "becomes", when: { all: [{ not: { flag: `${id}_open` } }, { state: { event: id, is: "open" } }] }, do: [{ setState: { event: id, state: "closed" } }] },
+          ],
+        }
+      : {
+          id,
+          x: at.x,
+          y: at.y,
+          states: { up: { decor: "switch_up", pass: "walk" }, down: { decor: "switch_down", pass: "walk" } },
+          on: [
+            { on: "becomes", when: { heroesOn: { event: id } }, do: [{ setState: { event: id, state: "down" } }] },
+            { on: "becomes", when: { not: { heroesOn: { event: id } } }, do: [{ setState: { event: id, state: "up" } }] },
+          ],
+        };
+  if (doc.getIn(["events"]) === undefined) doc.set("events", doc.createNode([], { flow: false }));
+  const node = doc.createNode(entity, { flow: false }) as YAMLMap;
+  // states and handlers one per line, like the map files
+  for (const pair of node.items) if (isScalar(pair.key) && (pair.key.value === "states" || pair.key.value === "on") && (isMap(pair.value) || isSeq(pair.value))) for (const item of pair.value.items) (isPair(item) ? (item.value as YAMLMap) : (item as YAMLMap)).flow = true;
+  doc.addIn(["events"], node);
+  return { kind: "event", key: index };
 }

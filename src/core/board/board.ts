@@ -16,8 +16,7 @@ import type { BoardState, Character, MapMemory, Piece } from "../state/types";
 import type { Dir, Pos } from "../util/grid";
 import { ALL_DIRS, add, samePos } from "../util/grid";
 import { getGrid, LiveGrid } from "./grid";
-import { updateGates } from "./gates";
-import { isEntity, pageFromState } from "./entities";
+import { isEntity, pageFromState, solidCells } from "./entities";
 import { resolvePatternRef } from "./patterns";
 
 // ---------- access ----------
@@ -33,8 +32,8 @@ export function grid(ctx: Ctx): LiveGrid {
   const mem = mapMemory(ctx, b.mapId);
   const bridged = (p: Pos) =>
     b.fieldEffects.some((f) => f.x === p.x && f.y === p.y && ctx.db.fieldEffect(f.effect).bridges);
-  const gates = ctx.db.map(b.mapId).gates ?? [];
-  const closed = new Set(gates.filter((g) => b.gates && !b.gates[g.id]).map((g) => `${g.x},${g.y}`));
+  // entities in a solid state (a closed gate) are walls (§10.3)
+  const closed = new Set(solidCells(ctx).map((p) => `${p.x},${p.y}`));
   return new LiveGrid(getGrid(ctx.db, b.mapId), mem.terrain ?? {}, bridged, mem.decor ?? {}, closed);
 }
 
@@ -230,7 +229,6 @@ export function enterMap(ctx: Ctx, mapId: string, spawnId: string, groups?: { me
   }
 
   syncEvents(ctx);
-  updateGates(ctx);
   return [{ type: "pieces" }];
 }
 
@@ -327,7 +325,6 @@ export function reconcile(ctx: Ctx, opts: { rewardKills?: boolean; fallenAt?: Re
 
   if (opts.rewardKills !== false && (expPool > 0 || goldPool > 0)) events.push(...shareRewards(ctx, expPool, goldPool));
   if (changed) events.push({ type: "pieces" });
-  events.push(...updateGates(ctx)); // plates, gates and "all defeated" conditions (§5.8)
   return events;
 }
 

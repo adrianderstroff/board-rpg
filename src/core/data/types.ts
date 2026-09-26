@@ -618,27 +618,6 @@ export interface MapEventDef {
   hidden?: boolean;
 }
 
-/** Bars across a cell (§5.8): open while a linked switch is pressed or `openWhen` holds. */
-export interface GateDef {
-  id: string;
-  x: number;
-  y: number;
-  openWhen?: Condition;
-  /** Set this flag the first time the gate closes (e.g. to start a scene). */
-  closeFlag?: string;
-}
-
-/** A floor plate (§5.8): held down by standing heroes (`weight` = how many), opens gates. */
-export interface SwitchDef {
-  id: string;
-  x: number;
-  y: number;
-  opens: string[];
-  weight?: number;
-  /** Stays down for good once pressed. */
-  latch?: boolean;
-}
-
 /** Ancient trap hidden on a map: stops heroes walking over it (§7.5). */
 export interface MapTrapDef {
   id: string;
@@ -701,8 +680,6 @@ export interface MapDef {
   enemies?: MapEnemyDef[];
   events?: MapEventDef[];
   traps?: MapTrapDef[];
-  gates?: GateDef[];
-  switches?: SwitchDef[];
   /**
    * Signs painted on one side of a block (shop lettering next to a door): `sign` from
    * graphics.wallSigns on the `face` side of cell x,y, `level` = which block (default: the top

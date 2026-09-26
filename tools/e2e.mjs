@@ -672,22 +672,22 @@ const scenarios = {
     };
     const at = (id) => d.dbg(`(p => [p.x, p.y])(Object.values(d.state().board.pieces).find(p => p.members.includes("${id}")))`);
     await walk(3, 8); // everyone onto the plate
-    await d.waitFor(`d.state().board.gates.east_gate === true`, 10000, "east gate open");
+    await d.waitFor(`d.entityState("east_gate") === "open"`, 10000, "east gate open");
     await d.shot("plate");
     await walk(5, 8); // and off again: the gate slams shut
     await d.pressUntil(`!!d.explorer()`, "Enter", 30, 400);
-    d.expect(await d.dbg(`d.state().flags.tower_split && d.state().board.gates.east_gate === false`), "gate closed, split flag set");
+    d.expect(await d.dbg(`d.state().flags.tower_split && d.entityState("east_gate") === "closed"`), "gate closed, split flag set");
     await d.shot("closed");
     // Aldric leaves the party and holds the plate
     await d.openCommands();
     await d.choose("Party");
     await d.choose("Leave Party");
     await walk(3, 8);
-    await d.waitFor(`d.state().board.gates.east_gate === true`, 10000, "east gate open for the others");
+    await d.waitFor(`d.entityState("east_gate") === "open"`, 10000, "east gate open for the others");
     // the others go through and step on the inner plate
     await walk(5, 8); // selects their piece
     await walk(9, 2);
-    await d.waitFor(`d.state().board.gates.west_gate === true`, 10000, "west gate open");
+    await d.waitFor(`d.entityState("west_gate") === "open"`, 10000, "west gate open");
     await d.shot("split");
     const others = await at("mira");
     d.expect(others[0] === 9 && others[1] === 2, `the team crossed to the inner plate (${others})`);

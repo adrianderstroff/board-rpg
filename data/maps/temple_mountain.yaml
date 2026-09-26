@@ -184,10 +184,6 @@ exits:
   - { x: 7, y: 3, dir: N, to: temple, spawn: from_mountain, label: Temple of the Still Sky, door: true }
   - { x: 6, y: 12, dir: N, to: grave_cave, spawn: from_mountain, label: Cave, door: true }
 
-# An iron grate seals the cave until the Holy Orb is claimed.
-gates:
-  - { id: cave_seal, x: 6, y: 13, openWhen: { flag: orb_claimed } }
-
 events:
   - id: mountain_intro
     x: 1
@@ -228,3 +224,13 @@ events:
     pages:
       - { trigger: none }
       - { when: { flag: orb_claimed }, trigger: auto, dialog: cave_opened }
+  # An iron grate seals the cave until the Holy Orb is claimed.
+  - id: cave_seal
+    x: 6
+    y: 13
+    states:
+      closed: { decor: gate_bars, pass: solid }
+      open: { pass: walk }
+    on:
+      - { on: becomes, when: { flag: orb_claimed }, do: [{ setState: { event: cave_seal, state: open } }] }
+      - { on: becomes, when: { all: [{ not: { flag: orb_claimed } }, { state: { event: cave_seal, is: open } }] }, do: [{ setState: { event: cave_seal, state: closed } }] }

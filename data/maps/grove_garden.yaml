@@ -94,9 +94,6 @@ exits:
   - { x: 6, y: 11, dir: S, to: verdant_isle, spawn: from_garden, label: Verdant Isle }
   - { x: 6, y: 3, dir: N, to: mora_house, spawn: from_garden, label: Mora's House, door: true }
 
-gates:
-  - { id: mora_door, x: 6, y: 3, openWhen: { defeatedAllOn: grove_garden } }
-
 enemies:
   - { id: king, enemy: pumpkin_king, x: 6, y: 5, dir: S }
   - { id: g_tomato, enemy: tomato, x: 4, y: 6, dir: S }
@@ -122,3 +119,12 @@ events:
     pages:
       - { trigger: none }
       - { when: { defeatedAllOn: grove_garden }, trigger: auto, dialog: garden_won }
+  - id: mora_door
+    x: 6
+    y: 3
+    states:
+      closed: { decor: gate_bars, pass: solid }
+      open: { pass: walk }
+    on:
+      - { on: becomes, when: { defeatedAllOn: grove_garden }, do: [{ setState: { event: mora_door, state: open } }] }
+      - { on: becomes, when: { all: [{ not: { defeatedAllOn: grove_garden } }, { state: { event: mora_door, is: open } }] }, do: [{ setState: { event: mora_door, state: closed } }] }

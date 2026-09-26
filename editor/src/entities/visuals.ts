@@ -72,12 +72,6 @@ export function entitySprites(db: Database, map: MapDef, rotation: number, selec
         else out.push({ ...base, texture: K.exitArrows, frame: EXIT_FRAME[rotateDir(ex.dir, rotation)], flat: true, label: labels ? e.label : undefined });
         break;
       }
-      case "gate":
-        out.push({ ...base, texture: K.decor(map.chipset), frame: decorFrame("gate_bars"), originY: decorOrigin, label: labels ? e.label : undefined });
-        break;
-      case "switch":
-        out.push({ ...base, texture: K.decor(map.chipset), frame: decorFrame("switch_up"), originY: decorOrigin, label: labels ? e.label : undefined });
-        break;
       case "trap":
         out.push({ ...base, texture: K.fieldEffects, frame: 32, flat: true, label: `trap ${e.label}`, editorOnly: true });
         break;
@@ -95,6 +89,6 @@ export function entitySprites(db: Database, map: MapDef, rotation: number, selec
 
 /** The placing preview: the marker tile of what an Add button places, on the hovered cell. */
 export function placingSprite(add: AddKind, at: { x: number; y: number }): EntitySprite {
-  const kind: EntityKind = add === "teleport" ? "exit" : add === "start" || add === "quickplay" ? "spawn" : add;
+  const kind: EntityKind = add === "teleport" ? "exit" : add === "start" || add === "quickplay" ? "spawn" : add === "gate" || add === "switch" ? "event" : add;
   return { ref: { kind, key: "preview" }, kind, x: at.x, y: at.y, texture: markerKey(ADD_INFO[add].icon), flat: true, editorOnly: true, preview: true };
 }

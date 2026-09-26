@@ -201,8 +201,9 @@ Like RPG Maker's events, but every kind maps onto a list the game already has.
 | **Hidden trap** | `traps[]` | trap icon | hidden until found |
 | **Game start** / **Quick Play start** | an arrival with that role (§6.3) | start / play icon | the game start; Quick Play is editor only |
 
-Gates, floor switches and hidden traps become presets of the event (entity) with R6 (game-design
-§10.3); wall signs are painted in Decor mode (§5.2).
+*Gate* and *Floor switch* place ready-made entities (game-design §5.8): a gate opens on a flag
+named after it until its condition is pointed at a plate ("entity is in state"); hidden traps
+become presets later (R6). Wall signs are painted in Decor mode (§5.2).
 
 A **marker tile** is a flat tile on the cell with the kind's icon (the same icons in the top view).
 **Entity panel** (Edit tab in Entity mode): the kinds as buttons (three rows; the tooltip explains

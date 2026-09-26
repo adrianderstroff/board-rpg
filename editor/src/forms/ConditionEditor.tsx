@@ -1,5 +1,7 @@
 import type { Database } from "../../../src/core/data/database";
 import type { Condition } from "../../../src/core/data/types";
+import { useContext } from "preact/hooks";
+import { MapContext } from "../mapContext";
 import { Num, Select, Text } from "./fields";
 
 /**
@@ -29,6 +31,8 @@ const KINDS: [Kind, string][] = [
   ["questStepsDone", "All steps of a quest done"],
   ["partyHas", "Hero is in the party"],
   ["level", "Party level (at least)"],
+  ["state", "Entity is in state"],
+  ["heroesOn", "Heroes stand on an entity"],
 ];
 
 export const conditionKind = (c: Condition | undefined): Kind => (c ? (Object.keys(c)[0] as Kind) : "none");
@@ -76,6 +80,10 @@ function defaultFor(kind: Kind, db: Database): Condition | undefined {
       return { level: 5 };
     case "always":
       return { always: true };
+    case "state":
+      return { state: { event: "", is: "" } };
+    case "heroesOn":
+      return { heroesOn: { event: "" } };
   }
 }
 
@@ -84,6 +92,9 @@ export function ConditionEditor({ value, onChange, db, flags }: { value: Conditi
   const c = value as Record<string, unknown> | undefined;
   const ids = <T,>(m: Map<string, T>, name?: (t: T) => string) => [...m.entries()].map(([id, t]) => [id, name ? `${name(t)} (${id})` : id] as [string, string]);
   const maps = ids(db.maps, (m) => m.name);
+  // entities of the map being edited (for conditions on their states)
+  const mapId = useContext(MapContext);
+  const entities = (mapId ? db.maps.get(mapId)?.events : undefined) ?? [];
   const quests = ids(db.quests, (q) => q.title);
 
   const body = () => {
@@ -122,6 +133,27 @@ export function ConditionEditor({ value, onChange, db, flags }: { value: Conditi
         return <Num value={c!.gold as number} onChange={(n) => onChange({ gold: n ?? 0 })} />;
       case "level":
         return <Num value={c!.level as number} min={1} onChange={(n) => onChange({ level: n ?? 1 })} />;
+      case "state": {
+        const s = c!.state as { event: string; is: string };
+        const states = Object.keys(entities.find((e) => e.id === s.event)?.states ?? {});
+        return (
+          <div class="row">
+            <Select value={s.event} options={entities.filter((e) => e.states).map((e) => e.id)} onChange={(v) => onChange({ state: { event: v ?? "", is: "" } })} />
+            is
+            <Select value={s.is} options={states} onChange={(v) => onChange({ state: { ...s, is: v ?? "" } })} />
+          </div>
+        );
+      }
+      case "heroesOn": {
+        const h = c!.heroesOn as { event: string; weight?: number };
+        return (
+          <div class="row">
+            <Select value={h.event} options={entities.map((e) => e.id)} onChange={(v) => onChange({ heroesOn: { ...h, event: v ?? "" } })} />
+            at least
+            <Num value={h.weight} placeholder="1" min={1} width={50} onChange={(n) => onChange({ heroesOn: { event: h.event, ...(n && n > 1 ? { weight: n } : {}) } })} />
+          </div>
+        );
+      }
       case "var": {
         const v = c!.var as { name: string; op?: string; value: number };
         return (

@@ -91,9 +91,6 @@ spawns:
 exits:
   - { x: 6, y: 0, dir: N, to: mirage_sands, spawn: from_tower, label: Leave the tower, door: true }
 
-gates:
-  - { id: way_out, x: 6, y: 0, openWhen: { defeated: { enemy: mirage_djinn } } }
-
 enemies:
   - { id: djinn, enemy: mirage_djinn, x: 6, y: 3, dir: S }
   - { id: phantom_a, enemy: mirage_phantom, x: 3, y: 5, dir: S }
@@ -118,3 +115,12 @@ events:
             dialog: tower_chest
             actions: [{ giveItem: token_foresight }, { setFlag: tower_token_found }]
       - { when: { flag: tower_token_found }, decor: chest_open, trigger: none }
+  - id: way_out
+    x: 6
+    y: 0
+    states:
+      closed: { decor: gate_bars, pass: solid }
+      open: { pass: walk }
+    on:
+      - { on: becomes, when: { defeated: { enemy: mirage_djinn } }, do: [{ setState: { event: way_out, state: open } }] }
+      - { on: becomes, when: { all: [{ not: { defeated: { enemy: mirage_djinn } } }, { state: { event: way_out, is: open } }] }, do: [{ setState: { event: way_out, state: closed } }] }

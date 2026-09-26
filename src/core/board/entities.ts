@@ -68,8 +68,17 @@ export function setEntityState(ctx: Ctx, id: string, state: string): GameEvent[]
     return [];
   }
   if (mem.pendingStates) delete mem.pendingStates[id];
+  const was = currentState(ctx, board(ctx).mapId, ev);
   (mem.states ??= {})[id] = state;
-  return [{ type: "pieces" }];
+  return was === state ? [] : [{ type: "state", event: id, state }, { type: "pieces" }];
+}
+
+/** Cells of entities that are solid right now (walls for moves, abilities and AI). */
+export function solidCells(ctx: Ctx): Pos[] {
+  const mapId = board(ctx).mapId;
+  return eventsOf(ctx)
+    .filter((ev) => !mapMemory(ctx, mapId).removedEvents.includes(ev.id) && ev.states?.[currentState(ctx, mapId, ev) ?? ""]?.pass === "solid")
+    .map((ev) => ({ x: ev.x, y: ev.y }));
 }
 
 /** Cells where a hero's move stops: entities with a `pass` handler that applies right now. */
@@ -95,6 +104,8 @@ function run(ctx: Ctx, ev: MapEventDef, i: number, h: EntityHandler, out: Script
 export function loadTriggers(ctx: Ctx): ScriptResult {
   const out = emptyResult();
   const mem = mapMemory(ctx, board(ctx).mapId);
+  // saves from before floor plates were entities: a latched plate stays down
+  for (const id of mem.latched ?? []) if (eventsOf(ctx).some((e) => e.id === id)) (mem.states ??= {})[id] ??= "down";
   // arriving doesn't count as stepping onto anything
   mem.occupied = eventsOf(ctx)
     .filter((ev) => heroWeightOn(ctx, ev) > 0)
@@ -120,7 +131,7 @@ export function entityTriggers(ctx: Ctx): ScriptResult {
       if (pending && !someoneOn(ctx, ev)) {
         delete mem.pendingStates![ev.id];
         (mem.states ??= {})[ev.id] = pending;
-        out.events.push({ type: "pieces" });
+        out.events.push({ type: "state", event: ev.id, state: pending }, { type: "pieces" });
       }
       const here = heroWeightOn(ctx, ev) > 0;
       const was = (mem.occupied ?? []).includes(ev.id);

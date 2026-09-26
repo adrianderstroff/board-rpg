@@ -290,8 +290,8 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
         case "decor":
           this.view.setDecor(e, e.decor);
           break;
-        case "gates":
-          this.view.refreshGates();
+        case "state":
+          this.view.sync();
           break;
         case "shock": {
           // the bolt: every cell it ran through flashes

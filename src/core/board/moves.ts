@@ -270,7 +270,8 @@ export function slidePath(ctx: Ctx, piece: Piece): Pos[] {
     const n = add(cur, d);
     const cell = g.cell(n);
     if (!cell || !cell.walkable || Math.abs(cell.height - g.heightAt(cur)) > 1) break;
-    if (piecesAt(ctx, n).some((p) => p.id !== piece.id) || exitAt(ctx, n)) break;
+    // a floor plate doesn't stop a slide; anyone and anything else does (§10.3)
+    if (piecesAt(ctx, n).some((p) => p.id !== piece.id && !(p.faction === "npc" && pageOfPiece(ctx, p)?.pass === "walk")) || exitAt(ctx, n)) break;
     out.push(n);
     cur = n;
   }

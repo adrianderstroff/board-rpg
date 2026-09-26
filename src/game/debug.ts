@@ -5,6 +5,7 @@ import { executeMove, moveOptions, movePiece } from "../core/board/moves";
 import { gainExp, expForLevel, computeStats } from "../core/chars/character";
 import type { Ctx } from "../core/context";
 import { addItem } from "../core/items/inventory";
+import { stateOf } from "../core/board/entities";
 import { runActions } from "../core/script/actions";
 import { getSession } from "./session";
 import { Menu } from "../engine/ui/widgets";
@@ -92,6 +93,10 @@ export function installDebug(game: Phaser.Game) {
       const s = game.scene.getScene("board") as unknown as { view: { cellTop(p: { x: number; y: number }): { x: number; y: number } }; cameras: { main: { scrollX: number; scrollY: number } } };
       const p = s.view.cellTop({ x, y });
       return { x: p.x - s.cameras.main.scrollX, y: p.y - s.cameras.main.scrollY };
+    },
+    /** The state an entity of the current map is in (a gate "open", a plate "down"). */
+    entityState(id: string) {
+      return stateOf(ctx(), id);
     },
     /** Is the centre of a cell's top face visible – does a click there pick that cell (not a wall in front)? */
     pickable(x: number, y: number) {

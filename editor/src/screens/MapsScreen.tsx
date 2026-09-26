@@ -13,6 +13,7 @@ import type { Pos } from "../../../src/core/util/grid";
 import { ActionEditor } from "../forms/ActionEditor";
 import { fileSetter } from "../forms/fields";
 import { usePersistentState } from "../persist";
+import { MapContext } from "../mapContext";
 import type { Project } from "../project";
 
 const mapPath = (id: string) => `data/maps/${id}.yaml`;
@@ -96,6 +97,7 @@ export function MapsScreen({ project, selected: mapSel, onSelect }: { project: P
         />
       )}
       <aside class={`inspector ${formShown ? "fill" : ""}`}>
+        <MapContext.Provider value={mapSel}>
         {mapSel && (
           <>
             <div class="tabs">
@@ -112,6 +114,7 @@ export function MapsScreen({ project, selected: mapSel, onSelect }: { project: P
             {tab === "info" && <MapProperties project={project} id={mapSel} resizeBy={resizeBy} setResizeBy={setResizeBy} />}
           </>
         )}
+        </MapContext.Provider>
       </aside>
     </>
   );

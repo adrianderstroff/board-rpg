@@ -310,8 +310,10 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☐ Enemies' "defeated" handler; state-level hidden (Discover)
 - ☐ New actions: move an entity / hero piece, face, show / hide, damage / heal / status, camera, sound / music, fade / flash / shake, emote, add / remove party member, enable / disable exit
 
-## R6 · Presets & migration ☐
-- ☐ Gate, floor switch, trap as entity presets; content migrated; `gates.ts` / map traps / switches removed; rule tests rewritten against entities
+## R6 · Presets & migration (◐)
+- ☑ Gate and floor switch: entity presets on the Add buttons; content migrated (13 gates, 6 plates); the gate / switch rules and lists removed; tests and e2e read entity states
+- ☑ Editor: conditions "entity is in state" / "heroes stand on", action "set an entity's state"
+- ☐ Hidden traps as entities (Discover, Defuse and Snare work with them); paged events converted to states and handlers
 
 ## R7 · State and handler editor ☑
 - ☑ Appearance: states as folder tabs (★ starting state, rename – handlers follow, duplicate, delete), each with its look (sprite picker), facing, movement, passability; hidden

@@ -23,7 +23,7 @@ export type GameEvent =
   | { type: "melt"; x: number; y: number }
   | { type: "decor"; x: number; y: number; decor: string | null; cause?: "burnt" | "cut" | "grown" } // §5.4, §5.7
   | { type: "shock"; cells: Pos[] } // lightning ran through these cells (§5.6)
-  | { type: "gates" } // gates/switches changed (§5.8)
+  | { type: "state"; event: string; state: string } // an entity changed state – a gate opened, a plate went down (§10.3)
   | { type: "wake"; piece: string } // a dormant enemy rises (§7.5)
   | { type: "sensed"; cells: Pos[]; center: Pos; radius: number } // Discover's reach and what it found
   | { type: "defused"; x: number; y: number; item: string }

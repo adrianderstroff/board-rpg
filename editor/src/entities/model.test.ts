@@ -25,8 +25,9 @@ describe("map entities (editor-design §6)", () => {
   it("lists everything placed on a map as entities", () => {
     const { map } = load("data/maps/mirage_tower_1.yaml");
     const kinds = listEntities(map()).map((e) => e.kind);
-    for (const k of ["event", "exit", "spawn", "gate", "switch"]) expect(kinds).toContain(k);
-    expect(entitiesAt(map(), { x: 9, y: 6 }).map((e) => e.label)).toEqual(["east_gate"]);
+    for (const k of ["event", "exit", "spawn"]) expect(kinds).toContain(k);
+    // gates and floor plates are entities (events with states) now
+    expect(entitiesAt(map(), { x: 9, y: 6 }).map((e) => [e.kind, e.label])).toEqual([["event", "east_gate"]]);
   });
 
   it("adds, moves and deletes entities in their own lists", () => {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { board, exitAt, exitEnabled, grid, mustPieceOf, reconcile } from "../core/board/board";
 import { leaveParty } from "../core/board/actions";
 import { executeMove } from "../core/board/moves";
+import { entityTriggers, stateOf } from "../core/board/entities";
 import type { Ctx } from "../core/context";
 import { DialogRunner } from "../core/script/dialog";
 import { autoTriggers, interactionsFor, performInteraction, stepTriggers } from "../core/script/interact";
@@ -28,6 +29,7 @@ function runDialog(ctx: Ctx, id: string, choices: number[] = []) {
 function place(ctx: Ctx, charId: string, x: number, y: number) {
   Object.assign(mustPieceOf(ctx, charId), { x, y });
   reconcile(ctx);
+  entityTriggers(ctx); // plates and gates (entities, §10.3)
 }
 
 const tokens = ["token_serenity", "token_foresight", "token_life"];
@@ -76,6 +78,7 @@ describe("the Mountain Temple chapter (§18.7-12)", () => {
     expect(tokens.every((t) => !ctx.state.inventory[t])).toBe(true);
     expect(ctx.state.flags.tokens_returned).toBe(true);
     reconcile(ctx);
+    entityTriggers(ctx); // the hidden door (an entity) opens on the flag
     expect(grid(ctx).cell({ x: 8, y: 0 })?.walkable).toBe(true);
   });
 
@@ -95,7 +98,7 @@ describe("the Mountain Temple chapter (§18.7-12)", () => {
     game.enter("mirage_tower_1", "start");
     const ctx = game.ctx;
     place(ctx, "aldric", 3, 8);
-    expect(board(ctx).gates?.east_gate).toBe(true);
+    expect(stateOf(ctx, "east_gate")).toBe("open");
     expect(autoTriggers(ctx).some((a) => a.dialog?.id === "tower_split_up")).toBe(false);
     place(ctx, "aldric", 6, 8);
     expect(ctx.state.flags.tower_split).toBe(true);
@@ -104,7 +107,7 @@ describe("the Mountain Temple chapter (§18.7-12)", () => {
     for (const id of ["kit", "tarek"]) leaveParty(ctx, id);
     place(ctx, "kit", 3, 8);
     place(ctx, "aldric", 9, 2);
-    expect(board(ctx).gates?.west_gate).toBe(true);
+    expect(stateOf(ctx, "west_gate")).toBe("open");
   });
 
   it("Mirage Tower 3F: the ice lane slides a team up to its latching plate, which opens the other stairs", () => {
@@ -114,11 +117,13 @@ describe("the Mountain Temple chapter (§18.7-12)", () => {
     executeMove(ctx, "aldric", { x: 3, y: 7 }); // onto the ice
     const p = mustPieceOf(ctx, "aldric");
     expect([p.x, p.y]).toEqual([3, 2]); // slid all the way up, onto the plate
-    expect(board(ctx).gates?.east_stairs).toBe(true);
+    entityTriggers(ctx);
+    expect(stateOf(ctx, "east_stairs")).toBe("open");
     board(ctx).turn.moved = [];
     executeMove(ctx, "aldric", { x: 2, y: 2 });
-    expect(board(ctx).gates?.east_stairs).toBe(true); // latched
-    expect(board(ctx).gates?.west_stairs).toBe(false);
+    entityTriggers(ctx);
+    expect(stateOf(ctx, "east_stairs")).toBe("open"); // latched
+    expect(stateOf(ctx, "west_stairs")).toBe("closed");
   });
 
   it("waking up at the inn: the party can face another way than the spawn point", () => {

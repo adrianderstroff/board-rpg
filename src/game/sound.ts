@@ -92,7 +92,7 @@ export function sfxForEvent(ctx: Ctx, e: GameEvent) {
     case "shock":
       sfx("zap");
       break;
-    case "gates":
+    case "state":
       sfx("gate", { volume: 0.7 });
       break;
     case "swallow":

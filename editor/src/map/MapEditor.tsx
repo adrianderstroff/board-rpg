@@ -5,7 +5,7 @@ import { getGrid } from "../../../src/core/board/grid";
 import type { Corner, MapDef } from "../../../src/core/data/types";
 import type { Dir, Pos } from "../../../src/core/util/grid";
 import { K } from "../../../src/game/keys";
-import { addEntity, entitiesAt, entityPath, listEntities, moveEntity, sameRef, type EntityKind, type EntityRef, duplicateEntity, type AddKind } from "../entities/model";
+import { addEntity, entitiesAt, entityPath, listEntities, moveEntity, sameRef, type EntityKind, type EntityRef, duplicateEntity, type AddKind, addPreset } from "../entities/model";
 import { entitySprites, placingSprite } from "../entities/visuals";
 import { removeEntity } from "../entities/remove";
 import { placeStart } from "../entities/teleports";
@@ -197,6 +197,10 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
           return;
         }
         if (kind === "start" || kind === "quickplay") ref = { kind: "spawn", key: placeStart(project, mapId, c, kind) };
+        else if (kind === "gate" || kind === "switch")
+          project.edit(path, `Add ${kind}`, (doc) => {
+            ref = addPreset(doc, doc.toJS() as MapDef, kind, c);
+          });
         else if (src)
           project.edit(path, `Duplicate ${src.kind}`, (doc) => {
             ref = duplicateEntity(doc, doc.toJS() as MapDef, src, c);

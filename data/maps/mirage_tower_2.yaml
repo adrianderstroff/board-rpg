@@ -62,16 +62,45 @@ exits:
   - { x: 3, y: 1, dir: N, to: mirage_tower_3, spawn: west, label: Upstairs, door: true, together: true }
   - { x: 9, y: 1, dir: N, to: mirage_tower_3, spawn: east, label: Upstairs, door: true, together: true }
 
-gates:
-  - { id: west_gate, x: 3, y: 4 }
-  - { id: east_gate, x: 9, y: 4 }
-switches:
-  - { id: west_plate, x: 2, y: 7, opens: [east_gate] }
-  - { id: east_plate, x: 10, y: 2, opens: [west_gate] }
-
 events:
   - id: f2_intro
     x: 3
     y: 9
     pages:
       - { trigger: auto, dialog: tower_f2 }
+  - id: west_gate
+    x: 3
+    y: 4
+    states:
+      closed: { decor: gate_bars, pass: solid }
+      open: { pass: walk }
+    on:
+      - { on: becomes, when: { state: { event: east_plate, is: down } }, do: [{ setState: { event: west_gate, state: open } }] }
+      - { on: becomes, when: { all: [{ not: { state: { event: east_plate, is: down } } }, { state: { event: west_gate, is: open } }] }, do: [{ setState: { event: west_gate, state: closed } }] }
+  - id: east_gate
+    x: 9
+    y: 4
+    states:
+      closed: { decor: gate_bars, pass: solid }
+      open: { pass: walk }
+    on:
+      - { on: becomes, when: { state: { event: west_plate, is: down } }, do: [{ setState: { event: east_gate, state: open } }] }
+      - { on: becomes, when: { all: [{ not: { state: { event: west_plate, is: down } } }, { state: { event: east_gate, is: open } }] }, do: [{ setState: { event: east_gate, state: closed } }] }
+  - id: west_plate
+    x: 2
+    y: 7
+    states:
+      up: { decor: switch_up, pass: walk }
+      down: { decor: switch_down, pass: walk }
+    on:
+      - { on: becomes, when: { heroesOn: { event: west_plate } }, do: [{ setState: { event: west_plate, state: down } }] }
+      - { on: becomes, when: { not: { heroesOn: { event: west_plate } } }, do: [{ setState: { event: west_plate, state: up } }] }
+  - id: east_plate
+    x: 10
+    y: 2
+    states:
+      up: { decor: switch_up, pass: walk }
+      down: { decor: switch_down, pass: walk }
+    on:
+      - { on: becomes, when: { heroesOn: { event: east_plate } }, do: [{ setState: { event: east_plate, state: down } }] }
+      - { on: becomes, when: { not: { heroesOn: { event: east_plate } } }, do: [{ setState: { event: east_plate, state: up } }] }

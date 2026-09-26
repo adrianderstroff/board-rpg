@@ -63,16 +63,43 @@ exits:
   - { x: 1, y: 1, dir: N, to: mirage_tower_4, spawn: west, label: Upstairs, door: true, together: true }
   - { x: 11, y: 1, dir: N, to: mirage_tower_4, spawn: east, label: Upstairs, door: true, together: true }
 
-gates:
-  - { id: west_stairs, x: 1, y: 2 }
-  - { id: east_stairs, x: 11, y: 2 }
-switches:
-  - { id: west_plate, x: 3, y: 2, opens: [east_stairs], latch: true }
-  - { id: east_plate, x: 9, y: 2, opens: [west_stairs], latch: true }
-
 events:
   - id: f3_intro
     x: 3
     y: 9
     pages:
       - { trigger: auto, dialog: tower_f3 }
+  - id: west_stairs
+    x: 1
+    y: 2
+    states:
+      closed: { decor: gate_bars, pass: solid }
+      open: { pass: walk }
+    on:
+      - { on: becomes, when: { state: { event: east_plate, is: down } }, do: [{ setState: { event: west_stairs, state: open } }] }
+      - { on: becomes, when: { all: [{ not: { state: { event: east_plate, is: down } } }, { state: { event: west_stairs, is: open } }] }, do: [{ setState: { event: west_stairs, state: closed } }] }
+  - id: east_stairs
+    x: 11
+    y: 2
+    states:
+      closed: { decor: gate_bars, pass: solid }
+      open: { pass: walk }
+    on:
+      - { on: becomes, when: { state: { event: west_plate, is: down } }, do: [{ setState: { event: east_stairs, state: open } }] }
+      - { on: becomes, when: { all: [{ not: { state: { event: west_plate, is: down } } }, { state: { event: east_stairs, is: open } }] }, do: [{ setState: { event: east_stairs, state: closed } }] }
+  - id: west_plate
+    x: 3
+    y: 2
+    states:
+      up: { decor: switch_up, pass: walk }
+      down: { decor: switch_down, pass: walk }
+    on:
+      - { on: becomes, when: { heroesOn: { event: west_plate } }, do: [{ setState: { event: west_plate, state: down } }] }
+  - id: east_plate
+    x: 9
+    y: 2
+    states:
+      up: { decor: switch_up, pass: walk }
+      down: { decor: switch_down, pass: walk }
+    on:
+      - { on: becomes, when: { heroesOn: { event: east_plate } }, do: [{ setState: { event: east_plate, state: down } }] }

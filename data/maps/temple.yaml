@@ -78,9 +78,6 @@ exits:
   - { x: 5, y: 8, dir: S, to: temple_mountain, spawn: from_temple, label: Temple Mountain, door: true }
   - { x: 8, y: 0, dir: N, to: hall_of_fears, spawn: from_temple, label: Hall of Fears, door: true }
 
-gates:
-  - { id: hidden_door, x: 8, y: 0, openWhen: { flag: tokens_returned } }
-
 events:
   - id: abbot
     x: 5
@@ -103,3 +100,12 @@ events:
     y: 5
     pages:
       - { trigger: step, once: false, dialog: monks_talk }
+  - id: hidden_door
+    x: 8
+    y: 0
+    states:
+      closed: { decor: gate_bars, pass: solid }
+      open: { pass: walk }
+    on:
+      - { on: becomes, when: { flag: tokens_returned }, do: [{ setState: { event: hidden_door, state: open } }] }
+      - { on: becomes, when: { all: [{ not: { flag: tokens_returned } }, { state: { event: hidden_door, is: open } }] }, do: [{ setState: { event: hidden_door, state: closed } }] }

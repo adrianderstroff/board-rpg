@@ -61,9 +61,6 @@ spawns:
 exits:
   - { x: 4, y: 11, dir: S, to: temple, spawn: from_hall, label: Temple, door: true }
 
-gates:
-  - { id: orb_gate, x: 4, y: 3, openWhen: { defeatedAllOn: hall_of_fears } }
-
 enemies:
   - { id: fear_knight, enemy: shadow_knight, x: 4, y: 5, dir: S }
   - { id: fear_mage, enemy: shadow_mage, x: 2, y: 6, dir: S }
@@ -93,3 +90,12 @@ events:
             dialog: orb_claim
             actions: [{ giveItem: holy_orb }, { setFlag: orb_claimed }]
       - { when: { flag: orb_claimed }, decor: pedestal, interactions: [{ type: examine, label: Look, dialog: orb_empty }] }
+  - id: orb_gate
+    x: 4
+    y: 3
+    states:
+      closed: { decor: gate_bars, pass: solid }
+      open: { pass: walk }
+    on:
+      - { on: becomes, when: { defeatedAllOn: hall_of_fears }, do: [{ setState: { event: orb_gate, state: open } }] }
+      - { on: becomes, when: { all: [{ not: { defeatedAllOn: hall_of_fears } }, { state: { event: orb_gate, is: open } }] }, do: [{ setState: { event: orb_gate, state: closed } }] }

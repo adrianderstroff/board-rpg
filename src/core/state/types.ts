@@ -92,9 +92,6 @@ export interface BoardState {
   fieldEffects: FieldEffectInst[];
   traps: TrapInst[];
   turn: TurnState;
-  /** Gate / switch states (§5.8), kept up to date by updateGates. */
-  gates?: Record<string, boolean>;
-  switches?: Record<string, boolean>;
   /** Enemy types whose stats were revealed on this board this round (ambush reduction). */
   perceivedRound?: number;
   nextId: number;
@@ -120,7 +117,7 @@ export interface MapMemory {
   discovered?: string[];
   /** Ancient traps triggered or disarmed. */
   sprung?: string[];
-  /** Latching switches pressed for good (§5.8). */
+  /** Latching floor plates of old saves (before plates were entities, §10.3). */
   latched?: string[];
   /** Entities' current states by event id (§10.3). */
   states?: Record<string, string>;

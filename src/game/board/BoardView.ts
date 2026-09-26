@@ -90,20 +90,7 @@ export class BoardView {
     scene.events.on("update", this.bob, this);
     scene.events.once("shutdown", () => scene.events.off("update", this.bob, this));
     this.refreshOverlays();
-    this.refreshGates();
     this.sync();
-  }
-
-  /** Gates as bars while closed, floor switches raised or pressed (§5.8). */
-  refreshGates() {
-    const c = this.ctx();
-    const b = board(c);
-    const map = c.db.map(b.mapId);
-    const chip = grid(c).chipset;
-    const frame = (d: string) => chip.decor[d]?.frame;
-    // gates stand in the doorway, on the floor – not on a lintel above it
-    for (const g of map.gates ?? []) this.map.setDecor(g.x, g.y, b.gates?.[g.id] ? undefined : frame("gate_bars"), { ground: true });
-    for (const s of map.switches ?? []) this.map.setDecor(s.x, s.y, frame(b.switches?.[s.id] ? "switch_down" : "switch_up"), { ground: true });
   }
 
   // ---------- rotation ----------
@@ -411,10 +398,12 @@ export class BoardView {
     const sunk = flying || piece.fallen ? 0 : this.immersion(cell);
     const sprites = [...v.sprites.entries()];
     const offsets = CLUSTER[Math.min(sprites.length, 4) - 1] ?? CLUSTER[0];
+    // things one walks onto (a floor plate) lie on the ground, under whoever stands there (§10.3)
+    const ground = piece.faction === "npc" && !piece.members.length && pageOfPiece(this.ctx(), piece)?.pass === "walk";
     sprites.forEach(([, s], i) => {
       const o = offsets[i] ?? { x: 0, y: 0 };
-      const y = base.y + 3 + o.y - lift + sunk;
-      s.setPosition(base.x + o.x, y).setDepth(this.depth(cell, LAYER.char, (o.y + shift.y + 3) * 0.1));
+      const y = base.y + (ground ? 0 : 3) + o.y - lift + sunk;
+      s.setPosition(base.x + o.x, y).setDepth(this.depth(cell, ground ? LAYER.decor : LAYER.char, (o.y + shift.y + 3) * 0.1));
       // in water the lower body is hidden below the surface
       if (sunk) s.setCrop(0, 0, s.width, s.height - sunk);
       else if (s.isCropped) s.setCrop();
