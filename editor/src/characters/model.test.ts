@@ -32,7 +32,7 @@ describe("characters (editor-design §7)", () => {
   it("knows who shares a class and where an NPC stands", async () => {
     const p = await demo();
     expect(classUsers(p.content.raw, "lib:knight")).toEqual(["lib:aldric"]);
-    expect(npcPlacements(p.content.raw, "smith")).toContainEqual({ map: "sandhollow", entity: expect.any(String) });
+    expect(npcPlacements(p.content.raw, "smith")).toContainEqual({ map: "sandhollow", entity: expect.any(String), index: expect.any(Number) });
   });
 
   it("says an AI rule in words", () => {

@@ -7,9 +7,10 @@ import { ResourcesScreen } from "./screens/ResourcesScreen";
 import { ItemsScreen } from "./screens/ItemsScreen";
 import { HeroesScreen } from "./screens/HeroesScreen";
 import { EnemiesScreen } from "./screens/EnemiesScreen";
+import { NpcsScreen } from "./screens/NpcsScreen";
 import { knownFlags } from "./forms/ConditionEditor";
 import { Icon } from "./icons";
-import { usePersistentState } from "./persist";
+import { usePersistentState, writeStored } from "./persist";
 import { IssuesButton, ProjectMenu } from "./ProjectMenu";
 
 /** Navigation entries; the ones without a screen yet are shown greyed out (editor-design §12). */
@@ -18,7 +19,7 @@ const SCREENS = [
   { id: "resources", label: "Resources" },
   { id: "heroes", label: "Heroes" },
   { id: "enemies", label: "Enemies" },
-  { id: "npcs", label: "NPCs", pkg: "E6" },
+  { id: "npcs", label: "NPCs" },
   { id: "items", label: "Items" },
   { id: "abilities", label: "Abilities", pkg: "E8" },
   { id: "quests", label: "Quests", pkg: "E7" },
@@ -151,6 +152,18 @@ export function App({ project }: { project: Project }) {
         <HeroesScreen project={project} />
       ) : screen === "enemies" ? (
         <EnemiesScreen project={project} />
+      ) : screen === "npcs" ? (
+        <NpcsScreen
+          project={project}
+          openMap={(m, entity) => {
+            // the map in Entity mode with the entity selected (MapsScreen reads these when it opens)
+            writeStored("maps.mode", "entity");
+            writeStored("maps.tab", "edit");
+            writeStored("maps.selected", { kind: "event", key: entity });
+            setMap(m);
+            setScreen("maps");
+          }}
+        />
       ) : screen === "items" ? (
         <ItemsScreen project={project} />
       ) : (

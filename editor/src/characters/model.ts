@@ -48,14 +48,14 @@ export function classUsers(raw: RawContent, classId: string): string[] {
 }
 
 /** Where an NPC stands: the maps and entities that show it (as the figure or behind a counter). */
-export function npcPlacements(raw: RawContent, npcId: string): { map: string; entity: string }[] {
-  const out: { map: string; entity: string }[] = [];
+export function npcPlacements(raw: RawContent, npcId: string): { map: string; entity: string; index: number }[] {
+  const out: { map: string; entity: string; index: number }[] = [];
   const uses = (v: unknown): boolean => {
     if (Array.isArray(v)) return v.some(uses);
     if (v && typeof v === "object") return Object.entries(v).some(([k, x]) => ((k === "npc" || k === "keeper") && x === npcId) || uses(x));
     return false;
   };
-  for (const [map, m] of Object.entries(raw.maps)) for (const e of m.events ?? []) if (uses(e)) out.push({ map, entity: e.id });
+  for (const [map, m] of Object.entries(raw.maps)) (m.events ?? []).forEach((e, index) => uses(e) && out.push({ map, entity: e.id, index }));
   return out;
 }
 

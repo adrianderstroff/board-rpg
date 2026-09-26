@@ -424,9 +424,12 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ Items screen: list by category (search, library marked), New ▾ (Empty or a preset), one form – basics (icon picker, quest item), equipment, battle use, board use (pattern pickers with a cell preview), teaches; the category follows the sections until overridden; the inspector shows the item as the game does and what it does in words; Duplicate / Delete; library items read-only with Copy to project
 - ☑ Effect list editor (forms/EffectList, shared with abilities later) and presets (healing / MP potion, cure, revive, attack, status, field item, weapon, armor, accessory, scroll, quest item)
 - ☑ Checkboxes across the editor in its own style (the box-check look)
-## E6 · Characters ☐
-- ☐ Heroes (+ class: stats and growth chart, abilities by level, equipment), enemies (AI, board AI, drops/steal), NPCs; graphics previews
-
+## E6 · Characters ☑
+- ☑ Heroes: hero + class on one page (shared-class banner, library class read-only with Copy class to project, New class from the current one), stats per level with the game's formula and start equipment, abilities by level, movement preview, equipment kinds, start equipment (only what the class wears), starting party
+- ☑ Enemies: stats with growth and a preview at another level, resistances, immunities, permanent statuses, equipment, movement / swimming, battle AI rules in plain words, board AI, its items (uses / stolen / drops), rewards, boss music
+- ☑ NPCs: graphics, optional stats, movement, attacked by enemies, steal list, where it stands (links open the map with the entity selected)
+- ☑ Graphics picked from thumbnails; previews: walking in four facings, battle poses, face sizes
+- ☑ Game: enemies carry items into battle and use them (`items`, AI rules `action: item`, game-design §12.5); library immunities got their `lib:` prefix back and are validated
 ## E7 · Quests & dialogs ☐
 - ☐ Quest steps/endings with condition/action builders, flow view; dialog node editor with markup preview
 

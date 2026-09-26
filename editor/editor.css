@@ -488,3 +488,6 @@ table.stat-table tr.on td { color: var(--accent); }
 .ai-words { color: var(--accent); font-size: 12px; }
 .ai-when { font-size: 12px; }
 .ai-rule .row > select { flex: none; width: auto; }
+.placements { margin: 0; padding-left: 18px; }
+.placements li { margin: 3px 0; }
+button.link { border: 0; background: none; padding: 0; color: var(--accent-2); text-decoration: underline; cursor: pointer; }

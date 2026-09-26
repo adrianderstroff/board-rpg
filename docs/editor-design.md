@@ -546,6 +546,10 @@ Order: E1 → E2 → E3 → E4, then E5–E8 in any order, E9 alongside.
 9. **Three map modes** – Board, Decor, Entity – each with its own tools; W / S raise and lower, A / D
    turn, right mouse erases (holes, no decor, delete); sections as icons in the top bar; inspector
    tabs Edit and Info; Quick Play edited only through its entity (user decisions).
+10. **Content screens share one layout** (E5, E6): list · form of boxes · the entry as the game shows
+    it; library entries read-only with Copy to project; a hero whose class is shared gets **New
+    class** (a copy for this hero) rather than editing the class under the others' feet.
+11. **Chances are percentages in the editor** and fractions in the files (0.25 = 25 %).
 10. **Teleports** (user decisions): exit + arrival are one editor kind; arrivals come and go with what
     leads there; one-way by default, "way back" optional, arrivals one cell in front of exits; the
     starts are arrivals with a role (§6.3, §6.4).
