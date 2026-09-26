@@ -34,7 +34,10 @@ it. Where the tree lives is the **storage**:
 
 - The game can start from a `.brpg`: its content (the project and the library it bundles) is read
   from the zip, its assets become `blob:` URLs.
-- `apps/player/` is a Tauri app around the game build. It opens a `.brpg` by file association
+- `npm run build:player` builds the game without a game of its own (`VITE_PLAYER`, the `player`
+  mode): it starts with a screen to drop a `.brpg` onto or open one. Each game keeps its own save
+  slots (by its name).
+- `apps/player/` is a Tauri app around that build. It opens a `.brpg` by file association
   (double-click), by dragging it onto the window or from a file dialog; with a `game.brpg` next to
   the executable it starts that one right away (a finished game = the player + its `game.brpg`).
 - The editor's ▶ Play keeps running the game in a browser tab – testing never needs the player.

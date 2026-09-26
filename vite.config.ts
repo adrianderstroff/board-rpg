@@ -16,6 +16,7 @@ import { ProjectStore } from "./editor/src/storage/ops.ts";
 function shipProject(): Plugin {
   const project = process.env.VITE_PROJECT || "demo";
   let outDir = "dist";
+  let player = false;
   let library = "";
   let usage: LibraryUsage | null = null;
   let libFiles: [string, string][] = [];
@@ -25,6 +26,7 @@ function shipProject(): Plugin {
     enforce: "pre", // before Vite expands the content glob
     configResolved(c) {
       outDir = c.build.outDir;
+      player = c.mode === "player";
     },
     async buildStart() {
       const p = await new ProjectStore(new NodeTree(process.cwd())).loadProject(project);
@@ -49,7 +51,8 @@ function shipProject(): Plugin {
       return `export default ${JSON.stringify(trimLibraryFile(path, text, usage) ?? "")};`;
     },
     closeBundle() {
-      if (!usage) return;
+      // the player brings no game of its own: its games come as .brpg files with their assets
+      if (!usage || player) return;
       const own = `projects/${project}/assets`;
       if (existsSync(own)) cpSync(own, resolve(outDir, own), { recursive: true, filter: (f) => !f.endsWith(".gitkeep") });
       for (const a of usedAssets(libFiles, usage)) {

@@ -381,9 +381,9 @@ Layering (see also [architecture](../CLAUDE.md)):
 ## DS2 · The editor as a static site ☑
 - ☑ `npm run build:editor` → `dist-editor/` (the editor at editor/, the runtime's assets beside it, the library bundled); ▶ Play opens the game at `VITE_GAME_URL` (the website: ../play/)
 
-## DS3 · The player ☐
-- ☐ The game starts from a `.brpg` (content from the zip, assets as blob: URLs)
-- ☐ `apps/player/`: Tauri app – file association, drag and drop, file dialog, a `game.brpg` beside it
+## DS3 · The player ◐
+- ☑ The game starts from a `.brpg` (`content/brpg.ts`: content from the zip, assets as blob: URLs); `npm run build:player` → `dist-player/` (no game of its own: a start screen – drop a game or open one); each game keeps its own save slots
+- ◐ `apps/player/`: Tauri app – file association, a `game.brpg` beside the executable, the start screen otherwise; written, not built yet (needs Rust here – or the release workflow, DS5); macOS "open with" events still to add
 
 ## DS4 · The website ☐
 - ☐ Landing page (features, generated screenshots), `/editor/`, `/play/`, `/download/` (GitHub Releases API)

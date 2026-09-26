@@ -43,10 +43,10 @@ export class Session {
 
   constructor(
     readonly db: Database,
-    opts: { playtest?: boolean } = {},
+    opts: { playtest?: boolean; saveKey?: string } = {},
   ) {
-    // play-tests from the editor keep their own save slots
-    this.storage = new LocalSaveStorage(opts.playtest ? "board-rpg:playtest:save:" : undefined);
+    // play-tests from the editor keep their own save slots, and so does every game the player runs
+    this.storage = new LocalSaveStorage(opts.playtest ? "board-rpg:playtest:save:" : opts.saveKey ? `board-rpg:game:${opts.saveKey}:save:` : undefined);
     try {
       const s = localStorage.getItem("board-rpg:settings");
       if (s) this.settings = { ...this.settings, ...JSON.parse(s) };
@@ -88,7 +88,7 @@ export class Session {
 
 let session: Session | null = null;
 
-export function initSession(db: Database, opts: { playtest?: boolean } = {}) {
+export function initSession(db: Database, opts: { playtest?: boolean; saveKey?: string } = {}) {
   session = new Session(db, opts);
   return session;
 }
