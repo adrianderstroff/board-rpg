@@ -73,7 +73,7 @@ export function SavePrefabWindow({ project, mapId, refs, origin, onClose }: { pr
             </datalist>
           </Field>
           <hr />
-          <Field label="Description" hint="Shown in the prefab picker.">
+          <Field label="Description">
             <textarea rows={2} value={description} placeholder="What it is and how it works" onInput={(e) => setDescription(e.currentTarget.value)} />
           </Field>
           <Field label="Icon">
@@ -85,7 +85,7 @@ export function SavePrefabWindow({ project, mapId, refs, origin, onClose }: { pr
               ))}
             </div>
           </Field>
-          <Field label="Anchor" hint={`The cell a click places – ${at.x}, ${at.y} now; the others keep their places around it.`}>
+          <Field label="Anchor">
             <select value={anchor} onChange={(e) => setAnchor(e.currentTarget.value)}>
               <option value="corner">{origin ? "the selected area's top-left corner" : "their top-left corner"}</option>
               {chosen.map((e, i) => (
@@ -96,7 +96,7 @@ export function SavePrefabWindow({ project, mapId, refs, origin, onClose }: { pr
             </select>
           </Field>
           {names.length > 0 && (
-            <Field label="Names" hint="Per copy: each placed copy gets its own (gate, gate_2 …) – two copies don't affect each other. Shared: every copy uses the same (a flag the whole game knows).">
+            <Field label="Names" hint="Per copy: each placement gets its own. Shared: all placements use the same one.">
               <table class="prefab-names">
                 <tbody>
                   {names.map((n, i) => (
