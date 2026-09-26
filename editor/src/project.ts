@@ -54,6 +54,8 @@ const SESSION_HISTORY = 100;
 export interface FileApi {
   load(): Promise<ProjectFiles>;
   save(path: string, text: string): Promise<void>;
+  /** Deletes a file (a removed map); without it, removed files are only emptied. */
+  remove?(path: string): Promise<void>;
 }
 
 /** One project in the editor's storage (distribution.md §1): its files, and saving one of them. */
@@ -65,6 +67,7 @@ export function storageFileApi(project: string): FileApi {
       return files;
     },
     save: (path, text) => storage().store.saveFile(project, path, text),
+    remove: (path) => storage().store.deleteFile(project, path),
   };
 }
 
@@ -215,8 +218,9 @@ export class Project {
     this.changed();
   }
 
+  /** Paths of the files (removed ones – emptied, until saved – are gone). */
   paths(prefix = ""): string[] {
-    return [...this.files.keys()].filter((p) => p.startsWith(prefix)).sort();
+    return [...this.files].filter(([p, f]) => p.startsWith(prefix) && f.text !== "").map(([p]) => p).sort();
   }
 
   doc(path: string): Document {
@@ -234,7 +238,7 @@ export class Project {
   get content() {
     if (this.cache?.version !== this.version) {
       // the library version's files, then the project's (projects.md §4)
-      const all = [...this.files].map(([p, f]) => [p, f.js] as [string, unknown]);
+      const all = [...this.files].filter(([, f]) => f.text !== "").map(([p, f]) => [p, f.js] as [string, unknown]);
       const raw = layeredRaw(
         all.filter(([p]) => isLibraryFile(p)),
         all.filter(([p]) => !isLibraryFile(p)),
@@ -277,10 +281,26 @@ export class Project {
     this.record(path, before, after, label, group);
   }
 
+  /**
+   * Removes a file (a renamed map): it is emptied now – undo brings it back – and deleted from the
+   * storage on Save.
+   */
+  remove(path: string, label: string) {
+    if (isLibraryFile(path)) throw new Error(`${path}: the library is read-only (projects.md §6)`);
+    const f = this.files.get(path);
+    if (!f || f.text === "") return;
+    const before = f.text;
+    this.setText(path, "");
+    this.record(path, before, "", label);
+  }
+
   /** Creates a new data file (e.g. a new map). */
   create(path: string, text: string) {
-    if (this.files.has(path)) throw new Error(`${path} exists`);
-    this.files.set(path, this.entry(text, ""));
+    const old = this.files.get(path);
+    if (old && old.text !== "") throw new Error(`${path} exists`);
+    // a removed file (not saved yet) comes back with the new text
+    if (old) this.setText(path, text);
+    else this.files.set(path, this.entry(text, ""));
     this.record(path, "", text, `New ${path}`);
   }
 
@@ -357,6 +377,11 @@ export class Project {
   async save() {
     for (const path of this.dirtyPaths()) {
       const f = this.files.get(path)!;
+      if (f.text === "" && this.api.remove) {
+        await this.api.remove(path);
+        this.files.delete(path);
+        continue;
+      }
       await this.api.save(path, f.text);
       f.saved = f.text;
     }

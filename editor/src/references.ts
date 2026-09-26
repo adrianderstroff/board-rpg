@@ -1,4 +1,5 @@
-import { keyTarget, refTarget, type RefCollection } from "../../src/content/refs";
+import { isMap, isScalar, type Document } from "yaml";
+import { keyTarget, refTarget, rewriteRefs, type RefCollection } from "../../src/content/refs";
 import type { MapDef } from "../../src/core/data/types";
 import { isLibraryFile, type Project } from "./project";
 
@@ -90,4 +91,77 @@ export function usagePlaces(usages: Usage[]): Usage[] {
     seen.add(k);
     return true;
   });
+}
+
+// ---------- rename, delete protection (E9) ----------
+
+/** The collections an entry can be renamed in, and the file that holds a project's entry. */
+const ENTRY_FILES: Partial<Record<RefCollection, string>> = {
+  items: "data/items.yaml",
+  heroes: "data/heroes.yaml",
+  classes: "data/classes.yaml",
+  enemies: "data/enemies.yaml",
+  npcs: "data/npcs.yaml",
+  abilities: "data/abilities.yaml",
+  shops: "data/shops.yaml",
+  quests: "data/quests.yaml",
+};
+
+/** The file of a project entry (a dialog's file, a map's own file), if the project has it. */
+export function entryFile(project: Project, collection: RefCollection, id: string): string | undefined {
+  if (id.startsWith("lib:")) return undefined;
+  if (collection === "maps") return project.paths(`data/maps/${id}.yaml`)[0];
+  if (collection === "dialogs") return project.paths("data/dialogs/").find((f) => id in (project.data<Record<string, unknown>>(f) ?? {}));
+  const file = ENTRY_FILES[collection];
+  return file && id in (project.data<Record<string, unknown>>(file) ?? {}) ? file : undefined;
+}
+
+/** Whether an entry of `collection` with this id exists (project or library). */
+function exists(project: Project, collection: RefCollection, id: string): boolean {
+  const raw = project.content.raw as unknown as Record<string, Record<string, unknown> | undefined>;
+  if (collection === "dialogs") return !!entryFile(project, "dialogs", id);
+  return !!raw[collection]?.[id];
+}
+
+/** Why an id can't be used for a renamed entry, or null. */
+export function renameProblem(project: Project, collection: RefCollection, from: string, to: string): string | null {
+  if (to === from) return "That's its id already";
+  if (!/^[a-z0-9_]+$/.test(to)) return "Ids use a–z, 0–9 and _";
+  if (exists(project, collection, to)) return `There is a ${to} already`;
+  return null;
+}
+
+/** The usages outside the entry itself (its own references to itself don't keep it alive). */
+export function outsideUsages(project: Project, collection: RefCollection, id: string): Usage[] {
+  const own = entryFile(project, collection, id);
+  return findUsages(project, collection, id).filter((u) => !(u.file === own && (collection === "maps" || u.path[0] === id)));
+}
+
+/**
+ * Renames a project entry and repoints every reference to it in the project's files – one undo
+ * step. A map is its file: the file is moved (deleted on Save). Returns how many references moved.
+ */
+export function renameEntry(project: Project, collection: RefCollection, from: string, to: string): number {
+  const problem = renameProblem(project, collection, from, to);
+  if (problem) throw new Error(problem);
+  const file = entryFile(project, collection, from);
+  if (!file) throw new Error(`${from} isn't the project's own (library entries can't be renamed)`);
+  let moved = 0;
+  project.transaction(`Rename ${from} to ${to}`, () => {
+    if (collection === "maps") {
+      const text = project.doc(file).toString({ lineWidth: 0 });
+      project.create(`data/maps/${to}.yaml`, project.paths(file).length ? text : "");
+      project.remove(file, `Rename ${from} to ${to}`);
+    } else
+      project.edit(file, `Rename ${from} to ${to}`, (doc: Document) => {
+        // the key keeps its place in the file
+        const pair = isMap(doc.contents) ? doc.contents.items.find((p) => isScalar(p.key) && p.key.value === from) : undefined;
+        if (pair && isScalar(pair.key)) pair.key.value = to;
+      });
+    for (const path of project.paths("data/")) {
+      if (!path.endsWith(".yaml")) continue;
+      project.edit(path, `Rename ${from} to ${to}`, (doc: Document) => void (moved += rewriteRefs(doc, collection, from, to)));
+    }
+  });
+  return moved;
 }

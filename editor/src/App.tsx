@@ -175,22 +175,19 @@ export function App({ project }: { project: Project }) {
         <IssuesButton project={project} />
       </div>
       {screen === "maps" ? (
-        <MapsScreen project={project} selected={map} onSelect={setMap} />
+        <MapsScreen project={project} selected={map} onSelect={setMap} goTo={goTo} />
       ) : screen === "resources" ? (
         <ResourcesScreen project={project} />
       ) : screen === "heroes" ? (
-        <HeroesScreen project={project} />
+        <HeroesScreen project={project} goTo={goTo} />
       ) : screen === "enemies" ? (
-        <EnemiesScreen project={project} />
+        <EnemiesScreen project={project} goTo={goTo} />
       ) : screen === "npcs" ? (
-        <NpcsScreen
-          project={project}
-          openMap={openMap}
-        />
+        <NpcsScreen project={project} openMap={openMap} goTo={goTo} />
       ) : screen === "abilities" ? (
-        <AbilitiesScreen project={project} />
+        <AbilitiesScreen project={project} goTo={goTo} />
       ) : screen === "shops" ? (
-        <ShopsScreen project={project} openMap={openMap} />
+        <ShopsScreen project={project} openMap={openMap} goTo={goTo} />
       ) : screen === "settings" ? (
         <SettingsScreen project={project} openMap={openMap} />
       ) : screen === "quests" ? (
@@ -198,7 +195,7 @@ export function App({ project }: { project: Project }) {
       ) : screen === "dialogs" ? (
         <DialogsScreen project={project} goTo={goTo} />
       ) : screen === "items" ? (
-        <ItemsScreen project={project} />
+        <ItemsScreen project={project} goTo={goTo} />
       ) : (
         <>
           <main class="main">

@@ -91,7 +91,8 @@ export function ContentList({ entries, groups, selected, onSelect, searchKey, pl
 }
 
 /** The inspector's buttons for an entry: Copy to project (library), Duplicate, Delete (the project's). */
-export function EntryActions({ id, onCopy, onDuplicate, onDelete }: { id: string; onCopy: () => void; onDuplicate: () => void; onDelete: () => void }) {
+/** `used`: places that still refer to it – Delete waits until there are none (E9). */
+export function EntryActions({ id, onCopy, onDuplicate, onDelete, used = 0 }: { id: string; onCopy: () => void; onDuplicate: () => void; onDelete: () => void; used?: number }) {
   const lib = id.startsWith("lib:");
   return (
     <div class="row wrap">
@@ -103,7 +104,11 @@ export function EntryActions({ id, onCopy, onDuplicate, onDelete }: { id: string
       <button title="A copy in the project, with a new id" onClick={onDuplicate}>
         Duplicate
       </button>
-      {!lib && <button onClick={onDelete}>Delete</button>}
+      {!lib && (
+        <button disabled={used > 0} title={used ? `Still used in ${used} place${used === 1 ? "" : "s"} – change or remove ${used === 1 ? "it" : "them"} first` : "Delete it from the project"} onClick={onDelete}>
+          Delete
+        </button>
+      )}
     </div>
   );
 }

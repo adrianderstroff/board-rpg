@@ -7,6 +7,8 @@ import { flowNode, patchIn, tidy } from "../forms/entries";
 import { Box } from "../forms/Section";
 import { usePersistentState } from "../persist";
 import type { Project } from "../project";
+import { EntryReferences } from "../forms/References";
+
 import { findUsages, usagePlaces, type UsageTarget } from "../references";
 import { stepText } from "../script/words";
 
@@ -180,7 +182,7 @@ function DialogLinks({ project, id, file, goTo, onDeleted, onCopied }: { project
       ) : (
         <p class="hint">It ends on its own.</p>
       )}
-      <p class="hint">Referenced as {id}.</p>
+      <EntryReferences project={project} collection="dialogs" id={id} goTo={goTo} onRenamed={onCopied} list={false} />
       <div class="row wrap">
         <button
           onClick={() => {
@@ -193,8 +195,10 @@ function DialogLinks({ project, id, file, goTo, onDeleted, onCopied }: { project
           Duplicate
         </button>
         <button
+          disabled={opened.length > 0}
+          title={opened.length ? "Still opened somewhere – change or remove those places first (listed above)" : "Delete it from the project"}
           onClick={() => {
-            if (!confirm(`Delete the dialog ${id}?${opened.length ? ` ${opened.length} place(s) open it and will show problems.` : ""}`)) return;
+            if (!confirm(`Delete the dialog ${id}?`)) return;
             project.edit(file, `Delete ${id}`, (doc: Document) => doc.deleteIn([id]));
             onDeleted();
           }}

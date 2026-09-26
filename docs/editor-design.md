@@ -571,6 +571,11 @@ Order: E1 → E2 → E3 → E4, then E5–E8 in any order, E9 alongside.
 12. **Edits patch the YAML** (E7): a form writes only the values that changed – a changed text keeps
     its node and quoting, steps added or removed are spliced into the list – so hand-written files
     keep their look line for line.
+13. **References** (E9): an entry's panel shows its id with **Rename** and where it is used; a
+    rename repoints the project's files in one undo step (the library can't be renamed, and
+    play-test saves that name a renamed map start over); **Delete** waits until nothing outside the
+    entry refers to it – its references to itself (a quest's ending checking its own steps) don't
+    count. A map's id is its file name: renaming it moves the file.
 10. **Teleports** (user decisions): exit + arrival are one editor kind; arrivals come and go with what
     leads there; one-way by default, "way back" optional, arrivals one cell in front of exits; the
     starts are arrivals with a role (§6.3, §6.4).

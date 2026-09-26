@@ -12,6 +12,9 @@ import { Section } from "../forms/Section";
 import { CATEGORIES, EMPTY_ITEM, ITEMS_FILE, PRESETS, SLOTS, addItem, categoryIsAuto, categoryLabel, deleteItem, deriveCategory, itemSummary, withChange, type Item } from "../items/model";
 import { usePersistentState } from "../persist";
 import type { Project } from "../project";
+import { EntryReferences, usedIn } from "../forms/References";
+import type { UsageTarget } from "../references";
+
 
 /**
  * Items (editor-design §8): the list (grouped by category, the library's marked), one form with a
@@ -21,7 +24,7 @@ import type { Project } from "../project";
 const STAT_LABEL: Record<StatKey, string> = { maxHp: "HP", maxMp: "MP", str: "STR", def: "DEF", mag: "MAG", mdef: "MDEF", spd: "SPD" };
 
 
-export function ItemsScreen({ project }: { project: Project }) {
+export function ItemsScreen({ project, goTo }: { project: Project; goTo: (t: UsageTarget) => void }) {
   const [selected, select] = usePersistentState<string | null>("items.selected", null);
   const raw = project.content.raw;
   const items = raw.items as Record<string, Item>;
@@ -51,7 +54,7 @@ export function ItemsScreen({ project }: { project: Project }) {
       </main>
       <aside class="inspector">
         {current ? (
-          <ItemCard project={project} id={current} onSelect={select} />
+          <ItemCard project={project} id={current} onSelect={select} goTo={goTo} />
         ) : (
           <p class="hint">Items the party can carry: potions, equipment, scrolls, quest items (editor-design §8).</p>
         )}
@@ -61,10 +64,9 @@ export function ItemsScreen({ project }: { project: Project }) {
 }
 
 /** The item as the game shows it, what it does in words, and what can be done with it. */
-function ItemCard({ project, id, onSelect }: { project: Project; id: string; onSelect: (id: string | null) => void }) {
+function ItemCard({ project, id, onSelect, goTo }: { project: Project; id: string; onSelect: (id: string | null) => void; goTo: (t: UsageTarget) => void }) {
   const raw = project.content.raw;
   const item = raw.items[id] as Item;
-  const lib = id.startsWith("lib:");
   const nameOf = (c: "abilities" | "classes" | "statuses", x: string) => (raw[c] as Record<string, { name?: string }>)[x]?.name ?? x.replace(/^lib:/, "");
   return (
     <div class="item-card">
@@ -83,13 +85,14 @@ function ItemCard({ project, id, onSelect }: { project: Project; id: string; onS
           <li key={line}>{line}</li>
         ))}
       </ul>
-      <p class="hint">{lib ? `Library content (${project.info.library}) – read-only. Referenced as ${id}.` : `Referenced as ${id}.`}</p>
+      <EntryReferences project={project} collection="items" id={id} goTo={goTo} onRenamed={onSelect} />
       <EntryActions
         id={id}
+        used={usedIn(project, "items", id)}
         onCopy={() => onSelect(copyEntryToProject(project, "items", id))}
         onDuplicate={() => onSelect(addItem(project, { ...structuredClone(item), name: `${item.name} copy` }, `Duplicate ${id}`))}
         onDelete={() => {
-          if (!confirm(`Delete ${item.name} (${id})? Content that uses it will show problems.`)) return;
+          if (!confirm(`Delete ${item.name} (${id})?`)) return;
           deleteItem(project, id);
           onSelect(null);
         }}

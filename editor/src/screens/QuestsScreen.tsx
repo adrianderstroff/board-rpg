@@ -9,6 +9,8 @@ import { Check, Field, ListEditor, Select, Text } from "../forms/fields";
 import { Box, Section } from "../forms/Section";
 import { usePersistentState } from "../persist";
 import type { Project } from "../project";
+import { EntryReferences, usedIn } from "../forms/References";
+
 import { findUsages, type Usage, type UsageTarget } from "../references";
 import { conditionText, scriptText } from "../script/words";
 
@@ -252,11 +254,13 @@ function QuestFlow({ project, id, goTo, onDeleted }: { project: Project; id: str
         ) : null,
       )}
       {!roles.get("starts it")?.length && !roles.get("the first quest")?.length && <p class="bad-text">Nothing starts this quest yet.</p>}
-      <p class="hint">Referenced as {id}.</p>
+      <EntryReferences project={project} collection="quests" id={id} goTo={goTo} onRenamed={(n) => goTo({ screen: "quests", id: n })} list={false} />
       <div class="row wrap">
         <button
+          disabled={usedIn(project, "quests", id) > 0}
+          title={usedIn(project, "quests", id) ? "Still used – change or remove those places first (listed above)" : "Delete it from the project"}
           onClick={() => {
-            if (!confirm(`Delete the quest ${q.title}?${usages.length ? ` ${usages.length} place(s) refer to it and will show problems.` : ""}`)) return;
+            if (!confirm(`Delete the quest ${q.title}?`)) return;
             deleteEntry(project, QUESTS_FILE, id);
             onDeleted();
           }}

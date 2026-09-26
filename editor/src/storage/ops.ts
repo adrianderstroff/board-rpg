@@ -102,6 +102,12 @@ export class ProjectStore {
     await writeText(this.tree, `projects/${id}/${path}`, text);
   }
 
+  /** Deletes one of a project's data files (a renamed or deleted map). */
+  async deleteFile(id: string, path: string) {
+    if (!PROJECT_ID.test(id) || !path.startsWith("data/") || !path.endsWith(".yaml") || !safePath(path)) throw new Error(`Can't delete "${path}"`);
+    await this.tree.write(`projects/${id}/${path}`, null);
+  }
+
   /** Writes (bytes) or deletes (null) one of a project's asset files. */
   async putAsset(id: string, path: string, bytes: Uint8Array | null) {
     await this.projectDef(id);

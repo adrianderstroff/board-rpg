@@ -19,6 +19,8 @@ import type { Pos } from "../../../src/core/util/grid";
 import { usePersistentState } from "../persist";
 import { MapContext } from "../mapContext";
 import type { Project } from "../project";
+import { EntryReferences } from "../forms/References";
+import type { UsageTarget } from "../references";
 
 const mapPath = (id: string) => `data/maps/${id}.yaml`;
 
@@ -28,7 +30,7 @@ const DEFAULT_BRUSH: Brush = { board: "terrain", terrain: "grass", piece: [], he
  * Maps (editor-design §5): the map list, the canvas with its three modes, and the inspector with
  * an Edit tab (brushes, or the selected entity) and an Info tab (the map's properties).
  */
-export function MapsScreen({ project, selected: mapSel, onSelect }: { project: Project; selected: string | null; onSelect: (id: string) => void }) {
+export function MapsScreen({ project, selected: mapSel, onSelect, goTo }: { project: Project; selected: string | null; onSelect: (id: string) => void; goTo: (t: UsageTarget) => void }) {
   // remembered across reloads (persist.ts)
   const [filter, setFilter] = usePersistentState("maps.filter", "");
   const [tab, setTab] = usePersistentState<"edit" | "info">("maps.tab", "edit");
@@ -122,7 +124,7 @@ export function MapsScreen({ project, selected: mapSel, onSelect }: { project: P
             {tab === "edit" && chip && mode === "board" && <BoardPalette chip={chip} brush={brush} setBrush={setBrush} />}
             {tab === "edit" && chip && mode === "decor" && <DecorPalette chip={chip} signs={db?.graphics.wallSigns} brush={brush} setBrush={setBrush} />}
             {tab === "edit" && mode === "entity" && <EntitiesPanel project={project} mapId={mapSel} entities={entities} />}
-            {tab === "info" && <MapProperties project={project} id={mapSel} resizeBy={resizeBy} setResizeBy={setResizeBy} />}
+            {tab === "info" && <MapProperties project={project} id={mapSel} resizeBy={resizeBy} setResizeBy={setResizeBy} goTo={goTo} onRenamed={onSelect} />}
           </>
         )}
         </MapContext.Provider>
@@ -131,7 +133,7 @@ export function MapsScreen({ project, selected: mapSel, onSelect }: { project: P
   );
 }
 
-function MapProperties({ project, id, resizeBy, setResizeBy }: { project: Project; id: string; resizeBy: { x: number; y: number }; setResizeBy: (d: { x: number; y: number }) => void }) {
+function MapProperties({ project, id, resizeBy, setResizeBy, goTo, onRenamed }: { project: Project; id: string; resizeBy: { x: number; y: number }; setResizeBy: (d: { x: number; y: number }) => void; goTo: (t: UsageTarget) => void; onRenamed: (id: string) => void }) {
   const path = mapPath(id);
   const map = project.data<MapDef>(path);
   const db = project.content.db;
@@ -213,6 +215,7 @@ function MapProperties({ project, id, resizeBy, setResizeBy }: { project: Projec
           </tr>
         </tbody>
       </table>
+      <EntryReferences project={project} collection="maps" id={id} goTo={goTo} onRenamed={onRenamed} />
       <h3 title="What happens on this map as a whole: when the party arrives (map loaded) or when a condition turns true (intro scenes, all enemies defeated…)">Events</h3>
       {db && <HandlerTabs project={project} file={path} path={["on"]} handlers={map.on ?? []} triggers={MAP_TRIGGERS} db={db} mapId={id} resetKey={id} />}
     </div>

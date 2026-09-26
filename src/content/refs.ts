@@ -23,11 +23,14 @@ export type RefCollection =
   | "music"
   | "prefabs"
   | "quests"
-  | "dialogs";
+  | "dialogs"
+  | "npcs"
+  | "shops"
+  | "maps";
 
 const FIELDS: Record<string, RefCollection[]> = {
   giveItem: ["items"], takeItem: ["items"], item: ["items"], items: ["items"],
-  party: ["heroes", "enemies"], partyHas: ["heroes"], addMember: ["heroes"], removeMember: ["heroes"], who: ["heroes"], speaker: ["heroes"], hero: ["heroes"],
+  party: ["heroes", "enemies"], partyHas: ["heroes"], addMember: ["heroes"], removeMember: ["heroes"], who: ["heroes"], speaker: ["heroes", "npcs"], hero: ["heroes"],
   enemy: ["enemies"], enemies: ["enemies"],
   ability: ["abilities", "items"], action: ["abilities"], grants: ["abilities"],
   status: ["statuses"], statuses: ["statuses"], targetLacksStatus: ["statuses"],
@@ -37,6 +40,9 @@ const FIELDS: Record<string, RefCollection[]> = {
   prefab: ["prefabs"],
   startQuest: ["quests"], completeQuest: ["quests"], questActive: ["quests"], questDone: ["quests"], questStepsDone: ["quests"], quest: ["quests"], parent: ["quests"],
   dialog: ["dialogs"], goto: ["dialogs"], then: ["dialogs"], else: ["dialogs"],
+  npc: ["npcs"], keeper: ["npcs"], talkedTo: ["npcs"],
+  shop: ["shops"],
+  map: ["maps"], onMap: ["maps"], defeatedAllOn: ["maps"], to: ["maps"],
   chipset: ["chipsets"], battleback: ["battlebacks"], charset: ["charsets"], battler: ["battlers"], face: ["faces"], music: ["music"],
 };
 

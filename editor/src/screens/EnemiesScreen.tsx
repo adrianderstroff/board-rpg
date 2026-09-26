@@ -15,6 +15,9 @@ import { SLOTS } from "../items/model";
 import { frameStyle } from "../map/sprites";
 import { usePersistentState } from "../persist";
 import type { Project } from "../project";
+import { EntryReferences, usedIn } from "../forms/References";
+import type { UsageTarget } from "../references";
+
 
 /**
  * Enemies (editor-design §7.2): identity, graphics, stats (with growth and a preview at another
@@ -51,7 +54,7 @@ const TARGETS: [NonNullable<AiRule["target"]>, string][] = [
 /** Decor ids of every chipset (a dormant enemy looks like one). */
 const decorIds = (raw: RawContent) => [...new Set(Object.values(raw.chipsets).flatMap((c) => Object.keys(c.decor ?? {})))].sort();
 
-export function EnemiesScreen({ project }: { project: Project }) {
+export function EnemiesScreen({ project, goTo }: { project: Project; goTo: (t: UsageTarget) => void }) {
   const [selected, select] = usePersistentState<string | null>("enemies.selected", null);
   const raw = project.content.raw;
   const enemies = raw.enemies as Record<string, Enemy>;
@@ -74,7 +77,7 @@ export function EnemiesScreen({ project }: { project: Project }) {
           <div class="form-scroll">{current ? <EnemyForm project={project} id={current} /> : <p class="placeholder">Select an enemy, or make one with New.</p>}</div>
         </div>
       </main>
-      <aside class="inspector">{current ? <EnemyCard project={project} id={current} onSelect={select} /> : <p class="hint">The monsters on the boards and in battles (editor-design §7.2).</p>}</aside>
+      <aside class="inspector">{current ? <EnemyCard project={project} id={current} onSelect={select} goTo={goTo} /> : <p class="hint">The monsters on the boards and in battles (editor-design §7.2).</p>}</aside>
     </>
   );
 }
@@ -86,7 +89,7 @@ export function CharsetThumb({ raw, charset }: { raw: RawContent; charset?: stri
   return <span class="list-sprite" style={frameStyle(s.image, s.frameWidth, s.frameHeight, 3, 4, 20 / s.frameHeight)} />;
 }
 
-function EnemyCard({ project, id, onSelect }: { project: Project; id: string; onSelect: (id: string | null) => void }) {
+function EnemyCard({ project, id, onSelect, goTo }: { project: Project; id: string; onSelect: (id: string | null) => void; goTo: (t: UsageTarget) => void }) {
   const raw = project.content.raw;
   const e = raw.enemies[id] as Enemy;
   const db = project.content.db;
@@ -110,13 +113,14 @@ function EnemyCard({ project, id, onSelect }: { project: Project; id: string; on
           <li key={i}>{aiRuleText(r, name)}</li>
         ))}
       </ul>
-      <p class="hint">{id.startsWith("lib:") ? `Library content (${project.info.library}) – read-only. Referenced as ${id}.` : `Referenced as ${id}.`}</p>
+      <EntryReferences project={project} collection="enemies" id={id} goTo={goTo} onRenamed={onSelect} />
       <EntryActions
         id={id}
+        used={usedIn(project, "enemies", id)}
         onCopy={() => onSelect(copyEntryToProject(project, "enemies", id))}
         onDuplicate={() => onSelect(addEntry(project, ENEMIES_FILE, header("enemies"), { ...structuredClone(e), name: `${e.name} copy` }, (x) => x in project.content.raw.enemies, `Duplicate ${id}`, "enemy"))}
         onDelete={() => {
-          if (!confirm(`Delete ${e.name} (${id})? Maps that place it will show problems.`)) return;
+          if (!confirm(`Delete ${e.name} (${id})?`)) return;
           deleteEntry(project, ENEMIES_FILE, id);
           onSelect(null);
         }}

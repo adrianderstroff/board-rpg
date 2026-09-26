@@ -10,6 +10,9 @@ import { PatternField } from "../forms/PatternField";
 import { Box, Section } from "../forms/Section";
 import { usePersistentState } from "../persist";
 import type { Project } from "../project";
+import { EntryReferences, usedIn } from "../forms/References";
+import type { UsageTarget } from "../references";
+
 import type { EntityRef } from "../entities/model";
 import { ChanceList, CharsetThumb } from "./EnemiesScreen";
 
@@ -21,7 +24,7 @@ import { ChanceList, CharsetThumb } from "./EnemiesScreen";
 const DEFAULT_STATS: Stats = { maxHp: 20, maxMp: 0, str: 5, def: 5, mag: 5, mdef: 5, spd: 5 };
 const filled = (v: Partial<Stats>): Stats => Object.fromEntries(STAT_KEYS.map((k) => [k, v[k] ?? 0])) as Stats;
 
-export function NpcsScreen({ project, openMap }: { project: Project; openMap: (map: string, entity: EntityRef) => void }) {
+export function NpcsScreen({ project, openMap, goTo }: { project: Project; openMap: (map: string, entity: EntityRef) => void; goTo: (t: UsageTarget) => void }) {
   const [selected, select] = usePersistentState<string | null>("npcs.selected", null);
   const raw = project.content.raw;
   const npcs = raw.npcs as Record<string, Npc>;
@@ -43,12 +46,12 @@ export function NpcsScreen({ project, openMap }: { project: Project; openMap: (m
           <div class="form-scroll">{current ? <NpcForm project={project} id={current} openMap={openMap} /> : <p class="placeholder">Select an NPC, or make one with New.</p>}</div>
         </div>
       </main>
-      <aside class="inspector">{current ? <NpcCard project={project} id={current} onSelect={select} /> : <p class="hint">The people on the maps: villagers, shopkeepers, guides (editor-design §7.3).</p>}</aside>
+      <aside class="inspector">{current ? <NpcCard project={project} id={current} onSelect={select} goTo={goTo} /> : <p class="hint">The people on the maps: villagers, shopkeepers, guides (editor-design §7.3).</p>}</aside>
     </>
   );
 }
 
-function NpcCard({ project, id, onSelect }: { project: Project; id: string; onSelect: (id: string | null) => void }) {
+function NpcCard({ project, id, onSelect, goTo }: { project: Project; id: string; onSelect: (id: string | null) => void; goTo: (t: UsageTarget) => void }) {
   const raw = project.content.raw;
   const n = raw.npcs[id] as Npc;
   return (
@@ -61,9 +64,10 @@ function NpcCard({ project, id, onSelect }: { project: Project; id: string; onSe
       {n.description && <p class="item-text">{n.description}</p>}
       <WalkPreview graphics={raw.graphics} charset={n.charset} />
       <PosePreview graphics={raw.graphics} battler={n.battler} />
-      <p class="hint">Referenced as {id}.</p>
+      <EntryReferences project={project} collection="npcs" id={id} goTo={goTo} onRenamed={onSelect} list={false} />
       <EntryActions
         id={id}
+        used={usedIn(project, "npcs", id)}
         onCopy={() => {}}
         onDuplicate={() => onSelect(addEntry(project, NPCS_FILE, header("NPCs"), { ...structuredClone(n), name: `${n.name} copy` }, (x) => x in project.content.raw.npcs, `Duplicate ${id}`, "npc"))}
         onDelete={() => {

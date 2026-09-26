@@ -439,5 +439,8 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ Abilities: list by menu, New ▾ (empty or a preset), one form (icon, menu and group, MP, offensive automatic or set, the special rule shown), the battle and board boxes shared with items (swallow / summon for enemy skills); the inspector says what it does and who has it (classes by level, items granting / teaching, enemies)
 - ☑ Shops: name, sign, goods (with price and category); the inspector shows the shop window and the entities that open it, with links
 - ☑ Settings (config.yaml): title and music; the start (shown with a link to the Game start entity), party, gold, items, first quest; max level, party size, the EXP curve with a chart; the damage formula with a worked example, chances; inn price, sell ratio; burn floor, exploration round
-## E9 · References ☐
-- ☐ Rename id everywhere, "where used", delete protection
+## E9 · References ☑
+- ☑ Rename id on every content screen (items, heroes, enemies, NPCs, abilities, shops, quests, dialogs) and for maps (Info tab – the file moves, deleted on Save): the key keeps its place, every reference in the project's files is repointed, one undo step
+- ☑ "Used in": every place an entry is used – the project's and the library's – with links to the map entity or the entry (editor/src/references.ts; NPCs, shops and maps added to content/refs.ts)
+- ☑ Delete protection: Delete waits while anything outside the entry still refers to it (the tooltip says how many; the list shows where)
+- ☐ Later: renaming classes, resources (graphics, music – their files would move too), statuses and patterns

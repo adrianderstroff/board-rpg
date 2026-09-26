@@ -12,6 +12,9 @@ import { BattleUseFields, BoardUseFields } from "../forms/UseFields";
 import { useSummary } from "../items/model";
 import { usePersistentState } from "../persist";
 import type { Project } from "../project";
+import { EntryReferences, usedIn } from "../forms/References";
+import type { UsageTarget } from "../references";
+
 
 /**
  * Abilities (editor-design §10): the list by menu (Magic, Sword Art …), one form with the same
@@ -21,7 +24,7 @@ import type { Project } from "../project";
 const plain = (id: string) => id.replace(/^lib:/, "");
 const SPECIAL: Record<string, string> = { joinParty: "joins a party next to it", leaveParty: "leaves its party" };
 
-export function AbilitiesScreen({ project }: { project: Project }) {
+export function AbilitiesScreen({ project, goTo }: { project: Project; goTo: (t: UsageTarget) => void }) {
   const [selected, select] = usePersistentState<string | null>("abilities.selected", null);
   const raw = project.content.raw;
   const abilities = raw.abilities as Record<string, Ability>;
@@ -48,12 +51,12 @@ export function AbilitiesScreen({ project }: { project: Project }) {
           <div class="form-scroll">{current ? <AbilityForm project={project} id={current} /> : <p class="placeholder">Select an ability, or make one with New.</p>}</div>
         </div>
       </main>
-      <aside class="inspector">{current ? <AbilityCard project={project} id={current} onSelect={select} /> : <p class="hint">What heroes learn and enemies use: spells, skills, arts (editor-design §10).</p>}</aside>
+      <aside class="inspector">{current ? <AbilityCard project={project} id={current} onSelect={select} goTo={goTo} /> : <p class="hint">What heroes learn and enemies use: spells, skills, arts (editor-design §10).</p>}</aside>
     </>
   );
 }
 
-function AbilityCard({ project, id, onSelect }: { project: Project; id: string; onSelect: (id: string | null) => void }) {
+function AbilityCard({ project, id, onSelect, goTo }: { project: Project; id: string; onSelect: (id: string | null) => void; goTo: (t: UsageTarget) => void }) {
   const raw = project.content.raw;
   const a = raw.abilities[id] as Ability;
   const users = abilityUsers(raw, id);
@@ -91,9 +94,10 @@ function AbilityCard({ project, id, onSelect }: { project: Project; id: string; 
       ) : (
         <p class="hint">Nobody yet – a class learns it, an item grants or teaches it, or an enemy uses it.</p>
       )}
-      <p class="hint">{id.startsWith("lib:") ? `Library content (${project.info.library}) – read-only. Referenced as ${id}.` : `Referenced as ${id}.`}</p>
+      <EntryReferences project={project} collection="abilities" id={id} goTo={goTo} onRenamed={onSelect} list={false} />
       <EntryActions
         id={id}
+        used={usedIn(project, "abilities", id)}
         onCopy={() => onSelect(copyEntryToProject(project, "abilities", id))}
         onDuplicate={() => onSelect(addAbility(project, { ...structuredClone(a), name: `${a.name} copy` }, `Duplicate ${id}`))}
         onDelete={() => {

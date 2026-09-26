@@ -15,6 +15,9 @@ import { SLOTS } from "../items/model";
 import { assetUrl as assetUrlOf } from "../map/sprites";
 import { usePersistentState } from "../persist";
 import type { Project } from "../project";
+import { EntryReferences, usedIn } from "../forms/References";
+import type { UsageTarget } from "../references";
+
 
 /**
  * Heroes (editor-design §7.1): a hero and its class on one page – who it is, how it looks, its
@@ -45,7 +48,7 @@ function equipKinds(raw: RawContent): [string, string][] {
   return [...kinds].sort().map((k) => [k, k]);
 }
 
-export function HeroesScreen({ project }: { project: Project }) {
+export function HeroesScreen({ project, goTo }: { project: Project; goTo: (t: UsageTarget) => void }) {
   const [selected, select] = usePersistentState<string | null>("heroes.selected", null);
   const raw = project.content.raw;
   const heroes = raw.heroes as Record<string, Hero>;
@@ -69,7 +72,7 @@ export function HeroesScreen({ project }: { project: Project }) {
           <div class="form-scroll">{current ? <HeroForm project={project} id={current} /> : <p class="placeholder">Select a hero, or make one with New.</p>}</div>
         </div>
       </main>
-      <aside class="inspector">{current ? <HeroCard project={project} id={current} onSelect={select} /> : <p class="hint">The heroes the player can have in the party (editor-design §7.1).</p>}</aside>
+      <aside class="inspector">{current ? <HeroCard project={project} id={current} onSelect={select} goTo={goTo} /> : <p class="hint">The heroes the player can have in the party (editor-design §7.1).</p>}</aside>
     </>
   );
 }
@@ -79,7 +82,7 @@ function FaceThumb({ raw, face }: { raw: RawContent; face?: string }) {
   return f ? <img class="list-face" src={assetUrlOf(f.image)} alt="" /> : <span class="list-face none" />;
 }
 
-function HeroCard({ project, id, onSelect }: { project: Project; id: string; onSelect: (id: string | null) => void }) {
+function HeroCard({ project, id, onSelect, goTo }: { project: Project; id: string; onSelect: (id: string | null) => void; goTo: (t: UsageTarget) => void }) {
   const raw = project.content.raw;
   const hero = raw.heroes[id] as Hero;
   const cls = raw.classes[hero.classId] as Klass | undefined;
@@ -98,13 +101,14 @@ function HeroCard({ project, id, onSelect }: { project: Project; id: string; onS
       <WalkPreview graphics={raw.graphics} charset={hero.charset} />
       <PosePreview graphics={raw.graphics} battler={hero.battler} />
       {stats && <StatTable rows={[{ level: hero.level, stats }]} />}
-      <p class="hint">{id.startsWith("lib:") ? `Library content (${project.info.library}) – read-only. Referenced as ${id}.` : `Referenced as ${id}.`}</p>
+      <EntryReferences project={project} collection="heroes" id={id} goTo={goTo} onRenamed={onSelect} />
       <EntryActions
         id={id}
+        used={usedIn(project, "heroes", id)}
         onCopy={() => onSelect(copyEntryToProject(project, "heroes", id))}
         onDuplicate={() => onSelect(addEntry(project, HEROES_FILE, header("heroes"), { ...structuredClone(hero), name: `${hero.name} copy` }, (x) => x in project.content.raw.heroes, `Duplicate ${id}`, "hero"))}
         onDelete={() => {
-          if (!confirm(`Delete ${hero.name} (${id})? Content that uses it will show problems.`)) return;
+          if (!confirm(`Delete ${hero.name} (${id})?`)) return;
           project.transaction(`Delete ${id}`, () => {
             if (startParty(project).includes(id)) setInParty(project, id, false);
             deleteEntry(project, HEROES_FILE, id);

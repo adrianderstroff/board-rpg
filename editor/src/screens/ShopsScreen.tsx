@@ -7,6 +7,8 @@ import { Box } from "../forms/Section";
 import { categoryLabel, type Item } from "../items/model";
 import { usePersistentState } from "../persist";
 import type { Project } from "../project";
+import { EntryReferences, usedIn } from "../forms/References";
+import type { UsageTarget } from "../references";
 import type { EntityRef } from "../entities/model";
 import { newShop, SHOP_TYPES, shopUsers, SHOPS_FILE, SHOPS_HEADER, type Shop } from "../shops/model";
 
@@ -16,7 +18,7 @@ import { newShop, SHOP_TYPES, shopUsers, SHOPS_FILE, SHOPS_HEADER, type Shop } f
  */
 
 
-export function ShopsScreen({ project, openMap }: { project: Project; openMap: (map: string, entity: EntityRef) => void }) {
+export function ShopsScreen({ project, openMap, goTo }: { project: Project; openMap: (map: string, entity: EntityRef) => void; goTo: (t: UsageTarget) => void }) {
   const [selected, select] = usePersistentState<string | null>("shops.selected", null);
   const raw = project.content.raw;
   const shops = raw.shops as Record<string, Shop>;
@@ -59,9 +61,10 @@ export function ShopsScreen({ project, openMap }: { project: Project; openMap: (
             ) : (
               <p class="hint">No entity opens it yet – give a shopkeeper a "Shop" option on the Maps screen.</p>
             )}
-            <p class="hint">Referenced as {current}.</p>
+            <EntryReferences project={project} collection="shops" id={current} goTo={goTo} onRenamed={select} list={false} />
             <EntryActions
               id={current}
+              used={usedIn(project, "shops", current)}
               onCopy={() => {}}
               onDuplicate={() => add({ ...structuredClone(shops[current]), name: `${shops[current].name} copy` }, `Duplicate ${current}`)}
               onDelete={() => {
