@@ -4,7 +4,7 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import type { Plugin } from "vite";
 import { parse, parseDocument } from "yaml";
 import { projectIdFor, type ProjectFiles, type ProjectInfo } from "./src/projectFiles.ts";
-import { libraryUsage, trimLibraryFile, usedAssets } from "../src/content/bundle.ts";
+import { libraryUsage, missingInLibrary, trimLibraryFile, usedAssets } from "../src/content/bundle.ts";
 
 /** The project the editor opens when it names none (EDITOR_PROJECT, else the demo). */
 export const editorProject = () => process.env.EDITOR_PROJECT || "demo";
@@ -40,6 +40,39 @@ export function readProject(root = process.cwd(), project = editorProject()): Pr
     music,
     roots: { library: `library/${def.library}/assets/`, project: `projects/${project}/assets/` },
   };
+}
+
+/** The library versions installed (library/<v>/library.yaml). */
+export function listLibraries(root = process.cwd()): { id: string; name: string; bundled: boolean }[] {
+  const dir = resolve(root, "library");
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && PROJECT_ID.test(e.name) && existsSync(join(dir, e.name, "library.yaml")))
+    .map((e) => {
+      const def = parse(readFileSync(join(dir, e.name, "library.yaml"), "utf8")) as { name?: string; bundled?: boolean };
+      return { id: e.name, name: def.name ?? e.name, bundled: !!def.bundled };
+    })
+    .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+}
+
+/**
+ * Checks (and with `apply`, makes) a project's move to another library version (projects.md §3):
+ * the references that version lacks. It only moves when nothing is missing.
+ */
+export function moveToLibrary(root: string, project: string, library: string, apply = false): { missing: string[]; moved: boolean } {
+  if (!PROJECT_ID.test(library) || !existsSync(resolve(root, "library", library, "library.yaml"))) throw new Error(`No library "${library}"`);
+  const { files } = readProject(root, project);
+  const own = Object.entries(files).filter(([p]) => !p.startsWith("library/"));
+  const libDir = resolve(root, "library", library);
+  const lib = walk(join(libDir, "data")).map((abs) => [`library/${library}/data/${relative(join(libDir, "data"), abs).split(sep).join("/")}`, readFileSync(abs, "utf8")] as [string, string]);
+  const musicDir = join(libDir, "assets/audio/music");
+  const missing = missingInLibrary(lib, own, existsSync(musicDir) ? readdirSync(musicDir).map((f) => f.replace(/\.wav$/, "")) : []);
+  if (!apply || missing.length) return { missing, moved: false };
+  const file = resolve(root, "projects", project, "project.yaml");
+  const doc = parseDocument(readFileSync(file, "utf8"));
+  doc.set("library", library);
+  writeFileSync(file, doc.toString());
+  return { missing, moved: true };
 }
 
 /** Every project in projects/ (by name). */
@@ -167,6 +200,8 @@ export function importProject(root: string, bytes: Uint8Array): ProjectInfo {
  *   GET  /__editor/export?project=id → <id>.brpg (exportProject)
  *   POST /__editor/import           ← the bytes of a .brpg → ProjectInfo (importProject)
  *   PUT|DELETE /__editor/asset?project=id&path=charsets/x.png ← the file's bytes (writeAsset)
+ *   GET  /__editor/libraries        → the installed library versions
+ *   GET  /__editor/library?project=&library= → { missing } · POST { project, library } → moves (moveToLibrary)
  */
 export function editorFiles(root = process.cwd()): Plugin {
   /** A safe absolute path for one of a project's data files, or null. */
@@ -203,6 +238,25 @@ export function editorFiles(root = process.cwd()): Plugin {
         if (req.method !== "POST") return void res.writeHead(405).end();
         body(req)
           .then((b) => json(res, createProject(root, b as { id: string; name: string; from?: string })))
+          .catch((e) => res.writeHead(400).end((e as Error).message));
+      });
+      server.middlewares.use("/__editor/libraries", (req, res) => json(res, listLibraries(root)));
+      server.middlewares.use("/__editor/library", (req, res) => {
+        // GET ?project=&library= checks, POST { project, library } moves
+        if (req.method === "GET") {
+          const q = new URL(req.url ?? "", "http://x").searchParams;
+          try {
+            return json(res, moveToLibrary(root, q.get("project") ?? "", q.get("library") ?? ""));
+          } catch (e) {
+            return void res.writeHead(400).end((e as Error).message);
+          }
+        }
+        if (req.method !== "POST") return void res.writeHead(405).end();
+        body(req)
+          .then((b) => {
+            const { project, library } = b as { project: string; library: string };
+            json(res, moveToLibrary(root, project, library, true));
+          })
           .catch((e) => res.writeHead(400).end((e as Error).message));
       });
       server.middlewares.use("/__editor/export", (req, res) => {

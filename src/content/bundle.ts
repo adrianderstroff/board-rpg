@@ -50,6 +50,16 @@ function libraryEntries(library: File[]): Map<string, unknown[]> {
   return entries;
 }
 
+/**
+ * Moving a project to another library version (projects.md §3): the `lib:` references in its files
+ * that the other version doesn't have (entries or music tracks) – sorted, empty when it fits.
+ */
+export function missingInLibrary(library: File[], project: File[], tracks: string[]): string[] {
+  const entries = libraryEntries(library);
+  const refs = new Set(project.flatMap(([, text]) => libRefs(parse(text))));
+  return [...refs].filter((id) => !entries.has(id) && !tracks.includes(id.slice(LIB.length))).sort();
+}
+
 /** What `project` uses of `library` (both as [path, text] of their data files). `tracks`: the library's music. */
 export function libraryUsage(library: File[], project: File[], tracks: string[]): LibraryUsage {
   const entries = libraryEntries(library);

@@ -344,8 +344,10 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ Import (button or drop): PNG / WAV copied into the project's assets, registered in its graphics.yaml with the layout worked out from the size (ASSETS.md); frame size / floor adjustable; delete
 - ☐ Chipsets (terrain definitions with the sheet) – later
 
-## PJ5 · Library content in the editor ☐
-- ☐ Library badge, read-only forms, Copy to project (references follow); moving a project to a newer library version
+## PJ5 · Library content in the editor ☑
+- ☑ Library badge and read-only forms (Resources); Copy to project for graphics and music (the file too) – references follow by field (`content/refs.ts`), one undo step
+- ☑ `copyEntryToProject` for content entries (heroes, items …) – its buttons come with the E5–E8 screens
+- ☑ Library versions in the project menu: moving to another version is checked first (what it lacks is listed; nothing moves then)
 
 # Editor (see [editor-design.md](editor-design.md))
 

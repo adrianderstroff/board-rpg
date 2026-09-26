@@ -7,6 +7,7 @@ import { usePersistentState } from "../persist";
 import { putAsset, type Project } from "../project";
 import { RESOURCE_KINDS, resourceId, resourcesOf, sheetFor, type ResourceKind } from "../resources";
 import { MusicPreview } from "./MapsScreen";
+import { copyResourceToProject } from "../copyToProject";
 
 /** The project's own graphics (projects.md §6). */
 const GRAPHICS_FILE = "data/graphics.yaml";
@@ -121,7 +122,7 @@ export function ResourcesScreen({ project }: { project: Project }) {
       </main>
       <aside class="inspector">
         {db && selected && list.some((r) => r.id === selected) ? (
-          <ResourceForm project={project} kind={kind} id={selected} onDeleted={() => setSelected(null)} />
+          <ResourceForm project={project} kind={kind} id={selected} onDeleted={() => setSelected(null)} onCopied={(id) => setSelected(id)} />
         ) : (
           <p class="hint">Select a resource, or import files: {info.hint}</p>
         )}
@@ -144,7 +145,7 @@ function Thumb({ graphics, kind, id }: { graphics: GraphicsDb; kind: ResourceKin
 }
 
 /** A resource's settings: the project's own can be adjusted or deleted, the library's are read-only. */
-function ResourceForm({ project, kind, id, onDeleted }: { project: Project; kind: ResourceKind; id: string; onDeleted: () => void }) {
+function ResourceForm({ project, kind, id, onDeleted, onCopied }: { project: Project; kind: ResourceKind; id: string; onDeleted: () => void; onCopied: (id: string) => void }) {
   const db = project.content.db!;
   const lib = id.startsWith("lib:");
   const sheet = kind === "music" ? null : (db.graphics[kind][id] as Sheet);
@@ -167,7 +168,25 @@ function ResourceForm({ project, kind, id, onDeleted }: { project: Project; kind
   return (
     <div class="resource-form">
       <h3>{lib ? id.slice(4) : id}</h3>
-      {lib && <p class="hint">Library content ({project.info.library}) – read-only. Referenced as {id}.</p>}
+      {lib && (
+        <>
+          <p class="hint">Library content ({project.info.library}) – read-only. Referenced as {id}.</p>
+          <div class="row">
+            <button
+              title="An editable copy in the project; the project's references to it use the copy from then on"
+              onClick={async () => {
+                try {
+                  onCopied(await copyResourceToProject(project, kind, id));
+                } catch (e) {
+                  alert((e as Error).message);
+                }
+              }}
+            >
+              Copy to project
+            </button>
+          </div>
+        </>
+      )}
       {kind === "music" ? (
         <Field label="Listen">
           <MusicPreview src={assetUrl(db.musicPath(id))} />

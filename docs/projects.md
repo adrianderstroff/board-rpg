@@ -84,7 +84,14 @@ public/assets/               the runtime's own: system graphics (cursor, highlig
   import. The open project is remembered (and `?project=<id>` opens one); unsaved work is kept per
   project, so switching loses nothing.
 - Library content shows in every list with a *library* badge. Its forms are read-only with
-  **Copy to project**.
+  **Copy to project**: an editable copy under a plain id (a free one), and the project's references
+  follow – by field (`src/content/refs.ts` knows which fields refer to which kind of content), so a
+  copied charset doesn't take the same-named face along. One undo step. Graphics and music bring
+  their file into the project's assets. (Content entries – heroes, items … – get the button with
+  their editor screens; the function is there.)
+- The project menu names the library version; **Move to library vN** checks that version first and
+  lists what it lacks (entries or music the project refers to) – it only moves when nothing is
+  missing.
 - **Resources** screen (the image icon): charsets, battlers, faces, battle backgrounds and music –
   the project's own first, then the library's (read-only). **Import** (button, or drop files on
   the list): a PNG is copied into the project's `assets/<kind>/<id>.png` (id from the file name) and

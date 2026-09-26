@@ -24,6 +24,7 @@ export function ProjectMenu({ project }: { project: Project }) {
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [projects, setProjects] = useState<ProjectInfo[] | null>(null);
+  const [libraries, setLibraries] = useState<{ id: string; name: string; bundled: boolean }[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,6 +32,10 @@ export function ProjectMenu({ project }: { project: Project }) {
     fetchProjects()
       .then(setProjects)
       .catch((e: Error) => setError(e.message));
+    fetch("/__editor/libraries")
+      .then((r) => r.json())
+      .then(setLibraries)
+      .catch(() => setLibraries([]));
   }, [open, creating]);
 
   // a click elsewhere closes the menu
@@ -40,6 +45,19 @@ export function ProjectMenu({ project }: { project: Project }) {
     addEventListener("mousedown", close);
     return () => removeEventListener("mousedown", close);
   }, [open]);
+
+  /** Checks the other version first: it only moves when that version has everything the project uses. */
+  const moveLibrary = async (library: string) => {
+    setOpen(false);
+    const q = `project=${encodeURIComponent(project.info.id)}&library=${encodeURIComponent(library)}`;
+    const check = (await (await fetch(`/__editor/library?${q}`)).json()) as { missing: string[] };
+    if (check.missing.length) return alert(`Library ${library} lacks what this project uses:\n${check.missing.join(", ")}`);
+    if (project.dirtyPaths().length && !confirm("Unsaved changes stay unsaved – move anyway?")) return;
+    if (!confirm(`Move ${project.info.name} to library ${library}?`)) return;
+    const r = await fetch("/__editor/library", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ project: project.info.id, library }) });
+    if (!r.ok) return alert(await r.text());
+    openProject(project, project.info.id);
+  };
 
   return (
     <div class="project-menu">
@@ -80,6 +98,17 @@ export function ProjectMenu({ project }: { project: Project }) {
           >
             Export {project.info.name}…
           </button>
+          <hr />
+          <div class="dim pad" title="The library version this project uses (projects.md §3)">
+            Library {project.info.library}
+          </div>
+          {libraries
+            .filter((l) => l.id !== project.info.library)
+            .map((l) => (
+              <button key={l.id} role="menuitem" title={l.bundled ? "Installed from an exported project: only what that project uses" : l.name} onClick={() => void moveLibrary(l.id)}>
+                Move to library {l.id}…
+              </button>
+            ))}
           <label role="menuitem" class="menu-file" title="Open a .brpg file as a new project">
             Import…
             <input

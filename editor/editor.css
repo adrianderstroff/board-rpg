@@ -309,7 +309,7 @@ details.lintel summary { cursor: pointer; color: var(--dim); }
 .project-menu .menu button:hover { background: #ffffff10; }
 .project-menu .menu button.on { color: var(--accent); }
 .project-menu .menu hr { border: none; border-top: 1px solid var(--line); margin: 4px 0; width: 100%; }
-.project-menu .pad { padding: 6px 8px; }
+.project-menu .pad { padding: 6px 8px; font-size: 12px; }
 .project-menu .bad, .new-project .bad { color: var(--bad); }
 .new-project { display: flex; flex-direction: column; gap: 4px; padding: 4px; }
 .new-project input, .new-project select { width: 100%; }

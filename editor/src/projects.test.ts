@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { unzipSync } from "fflate";
@@ -7,7 +7,7 @@ import { layeredRaw } from "../../src/content/raw";
 import { Database } from "../../src/core/data/database";
 import { validateContent } from "../../src/core/data/validate";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createProject, exportProject, importProject, listProjects, readProject } from "../vite-plugin-files";
+import { createProject, exportProject, importProject, listLibraries, listProjects, moveToLibrary, readProject } from "../vite-plugin-files";
 import { projectIdFor } from "./ProjectMenu";
 
 /**
@@ -80,5 +80,26 @@ describe("projects (projects.md §6)", () => {
 
   it("rejects what isn't a project", () => {
     expect(() => importProject(root, new Uint8Array([1, 2, 3]))).toThrow();
+  });
+
+  it("moves a project to another library version only when that version has everything it uses", () => {
+    // v2 lost the potion; v3 is v1 again
+    cpSync(join(root, "library/v1"), join(root, "library/v2"), { recursive: true });
+    cpSync(join(root, "library/v1"), join(root, "library/v3"), { recursive: true });
+    // (the scratch library has no assets: stand-ins for the music tracks, by name)
+    for (const v of ["v2", "v3"]) {
+      mkdirSync(join(root, `library/${v}/assets/audio/music`), { recursive: true });
+      for (const f of readdirSync("library/v1/assets/audio/music")) writeFileSync(join(root, `library/${v}/assets/audio/music`, f), "");
+    }
+    const items = join(root, "library/v2/data/items.yaml");
+    const doc = parse(readFileSync(items, "utf8")) as Record<string, unknown>;
+    delete doc.potion;
+    writeFileSync(items, JSON.stringify(doc)); // JSON is YAML
+    expect(listLibraries(root).map((l) => l.id)).toEqual(["v1", "v2", "v3"]);
+    expect(moveToLibrary(root, "demo", "v2", true)).toEqual({ missing: ["lib:potion"], moved: false });
+    expect(readProject(root, "demo").project.library).toBe("v1");
+    expect(moveToLibrary(root, "demo", "v3", true)).toEqual({ missing: [], moved: true });
+    expect(readProject(root, "demo").project.library).toBe("v3");
+    expect(readFileSync(join(root, "projects/demo/project.yaml"), "utf8")).toContain("# The demo"); // comments kept
   });
 });
