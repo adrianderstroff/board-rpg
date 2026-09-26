@@ -65,6 +65,7 @@ export function ProjectMenu({ project }: { project: Project }) {
         <span class="name">{project.info.name}</span>
         <span class="caret">▾</span>
       </button>
+
       {open && (
         <div class="menu" role="menu">
           {(projects ?? []).map((p) => (
@@ -131,6 +132,46 @@ export function ProjectMenu({ project }: { project: Project }) {
       )}
       {creating && <NewProjectWindow project={project} projects={projects ?? []} onClose={() => setCreating(false)} />}
     </div>
+  );
+}
+
+/** The project's issues (content validation): a red "!" when there are any; clicking lists them in a window. */
+export function IssuesButton({ project }: { project: Project }) {
+  const [show, setShow] = useState(false);
+  const { problems } = project.content;
+  if (!problems.length) return null;
+  return (
+    <>
+      <button class="issues-button" title={`${problems.length} issue${problems.length > 1 ? "s" : ""} – click for the list`} aria-label="Issues" onClick={() => setShow(!show)}>
+        !
+      </button>
+      {show && <IssuesWindow name={project.info.name} problems={problems} onClose={() => setShow(false)} />}
+    </>
+  );
+}
+
+/** Every problem content validation finds, one entry each: where, then what. */
+function IssuesWindow({ name, problems, onClose }: { name: string; problems: string[]; onClose: () => void }) {
+  return (
+    <FloatingWindow id="issues" title={`Issues in ${name} (${problems.length})`} onClose={onClose} size={{ w: 560, h: 420 }}>
+      <ul class="issues">
+        {problems.map((p) => {
+          const at = p.indexOf(": ");
+          return (
+            <li key={p}>
+              {at > 0 ? (
+                <>
+                  <span class="where">{p.slice(0, at)}</span>
+                  <span>{p.slice(at + 2)}</span>
+                </>
+              ) : (
+                <span>{p}</span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </FloatingWindow>
   );
 }
 

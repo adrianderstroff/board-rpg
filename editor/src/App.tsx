@@ -7,7 +7,7 @@ import { ResourcesScreen } from "./screens/ResourcesScreen";
 import { knownFlags } from "./forms/ConditionEditor";
 import { Icon } from "./icons";
 import { usePersistentState } from "./persist";
-import { ProjectMenu } from "./ProjectMenu";
+import { IssuesButton, ProjectMenu } from "./ProjectMenu";
 
 /** Navigation entries; the ones without a screen yet are shown greyed out (editor-design §12). */
 const SCREENS = [
@@ -34,13 +34,11 @@ export function App({ project }: { project: Project }) {
   const [storedMap, setMap] = usePersistentState<string | null>("map", null);
   // the first map is open right away (if there is one, and the remembered one is gone)
   const map = storedMap && maps.includes(storedMap) ? storedMap : (maps[0] ?? null);
-  const [showProblems, setShowProblems] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(() =>
     project.dropped.length ? `Unsaved changes to ${project.dropped.join(", ")} were dropped: the file changed on disk` : null,
   );
   const dirty = project.dirtyPaths();
-  const { problems } = project.content;
 
   const save = async () => {
     setBusy(true);
@@ -140,19 +138,8 @@ export function App({ project }: { project: Project }) {
         </button>
         <span class="spacer" />
         {error && <span class="badge bad">{error}</span>}
-        <button class={`badge ${problems.length ? "bad" : "good"}`} onClick={() => setShowProblems(!showProblems)}>
-          {problems.length ? `${problems.length} problem${problems.length > 1 ? "s" : ""}` : "no problems"}
-        </button>
+        <IssuesButton project={project} />
       </div>
-      {showProblems && problems.length > 0 && (
-        <div class="popover">
-          <ul class="problems">
-            {problems.map((p) => (
-              <li key={p}>{p}</li>
-            ))}
-          </ul>
-        </div>
-      )}
       {screen === "maps" ? (
         <MapsScreen project={project} selected={map} onSelect={setMap} />
       ) : screen === "resources" ? (

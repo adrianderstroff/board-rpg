@@ -536,7 +536,7 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
     return cells.map((c) => ({ x: c.x, y: c.y, sign: brush.sign, face: brush.signFace, level: brush.signLevel ?? undefined }));
   }, [mode, brush.decorKind, brush.sign, brush.signFace, brush.signLevel, tool, ghostCells, hover?.x, hover?.y]);
 
-  if (!db) return <div class="placeholder">The content has errors – fix them to see the map (see the problems badge).</div>;
+  if (!db) return <div class="placeholder">The content has errors – fix them to see the map (see the red "!" at the top right).</div>;
   const grid = getGrid(db, mapId);
   const cell = hover ? grid.cell(hover) : undefined;
   // the layers the mode doesn't edit are greyed out

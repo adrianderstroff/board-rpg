@@ -84,7 +84,7 @@ src/…                   the game – the editor imports src/core, src/engine a
 
 - The **top bar** starts with the main sections as icons (their names as tooltips): Maps, Heroes,
   Enemies, NPCs, Items, Abilities, Quests, Dialogs, Shops, Settings. Then ▶ Play and ▶ Quick Play,
-  then Save / Revert, Undo / Redo and the problems badge.
+  then Save / Revert, Undo / Redo and, at the right end, a red "!" when the content has issues.
 - The **inspector** has two tabs: **Edit** (the brushes of the current mode, or the selected entity's
   form) and **Info** (the map's properties).
 - Every list has search, **New**, **Duplicate**, **Delete** (blocked while something still
@@ -92,7 +92,7 @@ src/…                   the game – the editor imports src/core, src/engine a
   files).
 - Every reference field (an item, an ability, a dialog, a map + spawn…) is a searchable picker with a
   preview and a "go to" link; a missing target shows as a validation problem.
-- The problems badge lists all `validateContent` problems; clicking one opens the field.
+- The red "!" (only there when `validateContent` finds problems) opens a window listing every issue: where, then what.
 
 ## 4. Play-testing
 
@@ -310,7 +310,7 @@ An exit and its arrival are one **Teleport** in the editor. Arrivals are never p
   points at it (exits, teleport actions, the inn's wake-up, the starts).
 - **Deleting** an arrival deletes the exits leading there, on any map, after a confirmation that lists
   them; teleport actions, inn wake-ups or the game start pointing at it become problems (red, in the
-  problems badge) until pointed elsewhere. Deleting an exit or a start deletes its arrival when
+  issues "!") until pointed elsewhere. Deleting an exit or a start deletes its arrival when
   nothing else uses it. Such a cascade is **one undo step** over every file it touches.
 - **Icons** tell the kinds apart on the canvas: exit (the arrow), door, arrival, game start, Quick
   Play start.
