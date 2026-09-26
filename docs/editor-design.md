@@ -237,7 +237,7 @@ A paged event (older content, until R6 converts it) has two parts:
 - **Events** – the pages as folder tabs (scrolling sideways, + at the end) over the page's box (drag a tab onto
   another to move its page there): icon buttons to go to the first / previous / next / last page,
   to duplicate or delete it, then its condition, trigger,
-  dialog, options and actions. Only this box scrolls; the rest of the form stays in place.
+  dialog, options and actions. The whole form scrolls (the bar below it stays); the boxes grow with their content.
 
 Below every entity's form a bar stays at the bottom: back to the list, **duplicate** (the copy
 follows the cursor and goes onto the next free cell clicked – ids get a free suffix) and delete.

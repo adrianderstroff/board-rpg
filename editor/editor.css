@@ -252,9 +252,10 @@ input.box-check:checked { background: var(--bg) url("data:image/svg+xml,%3Csvg x
 /* too short a window for the page box: the whole form scrolls instead */
 .inspector.fill .entity-form.event { display: flex; flex-direction: column; }
 .inspector.fill .entity-form.event > * { flex-shrink: 0; }
-.inspector.fill .entity-form.event > .pages { flex: 1 1 auto; min-height: 180px; }
-.inspector.fill .page-box { flex: 1; min-height: 0; }
-.inspector.fill .page-fields { flex: 1; min-height: 0; overflow: auto; }
+.inspector.fill .entity-form.event > .pages { flex: none; }
+.inspector.fill .page-box { flex: none; }
+/* the whole form scrolls (the bar below stays), not the events box on its own */
+.inspector.fill .page-fields { overflow: visible; }
 /* an entity's state box sizes to its content; only the Events box below scrolls */
 .inspector.fill .entity-form.event > .state-box { flex: none; }
 .inspector.fill .entity-form.event > .state-box .page-fields { overflow: visible; }
