@@ -211,10 +211,10 @@ function NewProjectWindow({ project, projects, onClose }: { project: Project; pr
         </Field>
         <Field label="Start from">
           <select value={from} onChange={(e) => setFrom(e.currentTarget.value)}>
-            <option value="">Empty (one map)</option>
+            <option value="">Empty</option>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
-                A copy of {p.name}
+                {p.name}
               </option>
             ))}
           </select>
