@@ -1,3 +1,4 @@
+import { AxisGizmo, TOP_AXES } from "./Gizmo";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { getGrid } from "../../../src/core/board/grid";
 import type { Database } from "../../../src/core/data/database";
@@ -32,6 +33,7 @@ interface Props {
   entities: EntitySprite[];
   ghost: Ghost | null;
   showGrid: boolean;
+  resizeTo?: { w: number; h: number } | null;
   handlers: CanvasHandlers;
 }
 
@@ -47,7 +49,7 @@ interface Camera {
  * square, height number, decor thumbnail, piece shape, facing; blocked cells darker. Wheel zooms
  * (around the cursor), middle drag or Space + drag pans; right mouse = the tool's eraser.
  */
-export function GridCanvas({ db, mapId, hideDecor, dim, markers, entities, ghost, showGrid, handlers }: Props) {
+export function GridCanvas({ db, mapId, hideDecor, dim, markers, entities, ghost, showGrid, resizeTo, handlers }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const [cam, setCam] = useState<Camera | null>(null);
@@ -187,6 +189,20 @@ export function GridCanvas({ db, mapId, hideDecor, dim, markers, entities, ghost
       g.fillStyle = e.selected ? "#63c74d" : color;
       g.fillText(ch, px + S - 10 - n * 10, py + S - 2);
     }
+    // a pending resize: the cells it adds green, the ones it drops red
+    if (resizeTo) {
+      for (let y = 0; y < Math.max(grid.height, resizeTo.h); y++)
+        for (let x = 0; x < Math.max(grid.width, resizeTo.w); x++) {
+          const add = x >= grid.width || y >= grid.height;
+          const drop = !add && (x >= resizeTo.w || y >= resizeTo.h);
+          if (!add && !drop) continue;
+          const [px, py] = at(x, y);
+          g.fillStyle = add ? "rgba(99,199,77,0.2)" : "rgba(228,59,68,0.4)";
+          g.fillRect(px, py, S, S);
+          g.strokeStyle = add ? "rgba(99,199,77,0.95)" : "rgba(228,59,68,0.95)";
+          g.strokeRect(px + 0.5, py + 0.5, S - 1, S - 1);
+        }
+    }
     // what the next click places
     for (const gc of ghost ? (ghost.cells ?? (hover ? [hover] : [])) : []) {
       if (!ghost) break;
@@ -236,7 +252,7 @@ export function GridCanvas({ db, mapId, hideDecor, dim, markers, entities, ghost
       g.strokeRect(px + 1, py + 1, S - 2, S - 2);
       g.lineWidth = 1;
     }
-  }, [grid, tops, decorImg, cam, size, hover, markers, hideDecor, dim, entities, ghost, showGrid]);
+  }, [grid, tops, decorImg, cam, size, hover, markers, hideDecor, dim, entities, ghost, showGrid, resizeTo?.w, resizeTo?.h]);
 
   const cellOf = (e: MouseEvent): Pos | null => {
     if (!cam) return null;
@@ -306,6 +322,7 @@ export function GridCanvas({ db, mapId, hideDecor, dim, markers, entities, ghost
           }
         }}
       />
+      <AxisGizmo axes={TOP_AXES} />
     </div>
   );
 }

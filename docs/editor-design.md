@@ -123,6 +123,8 @@ entity and enters the map. The normal game build is unaffected.
 - **Grid:** thin smooth lines (one screen pixel, not pixel art) outline every cell's top – holes at
   ground level – in both views; in the iso view they sit in the drawing order (blocks in front cover
   them) and turn with the map.
+- **Axis gizmo:** the lower right of the map view shows where the map's x and y run (two short
+  labelled lines); in the iso view it turns with the view.
 - **Strip** (above the canvas): the modes, then the tools as icons (their names in tooltips), a
   divider and two on/off buttons (pressed when on) for the grid and the decor; the turn buttons and
   the view switch (Iso / Top) are on the right.
@@ -165,8 +167,9 @@ current tool. Resize (columns on the right, rows at the bottom) is on the Info t
 
 ### 5.4 Map properties
 The Info tab is a table – labels left, values right: name, size (−x / +x and −y / +y buttons take away or
-add a column on the right or a row at the bottom; the new size shows in yellow as a preview until
-Resize applies it; new cells are empty, painted afterwards), kind (Peace / Wild
+add a column on the right or a row at the bottom; until Resize applies it the new size previews –
+the part that grows in green, the part that shrinks in red – and the canvas marks the cells it adds
+green and the ones it drops red; new cells are empty, painted afterwards), kind (Peace / Wild
 switch = `peaceful` / `wild`), chipset, **music** (picker with a ▶ button to listen), battle
 background (picker, its picture below in a full-width row). Below the table: the `onEnter` actions
 (action builder, §7.3).

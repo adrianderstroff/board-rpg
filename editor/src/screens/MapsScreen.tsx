@@ -23,11 +23,14 @@ export function MapsScreen({ project, selected: mapSel, onSelect }: { project: P
   const [selected, select] = useState<EntityRef | null>(null);
   const [placing, setPlacing] = useState<EntityKind | null>(null);
   const [brush, setBrush] = useState<Brush>({ board: "terrain", terrain: "grass", piece: [], height: null, lintel: "adobe", lintelTop: 5, decor: "palm", decorFacing: "S" });
+  // a resize being prepared on the Info tab (columns / rows added or removed), previewed on the canvas
+  const [resizeBy, setResizeBy] = useState({ x: 0, y: 0 });
   const entities = { selected, select, placing, setPlacing };
-  // another map: nothing selected
+  // another map: nothing selected, no resize pending
   useEffect(() => {
     select(null);
     setPlacing(null);
+    setResizeBy({ x: 0, y: 0 });
   }, [mapSel]);
   // selecting or placing an entity shows its form
   useEffect(() => {
@@ -58,7 +61,7 @@ export function MapsScreen({ project, selected: mapSel, onSelect }: { project: P
               </div>
             ))}
           </div>
-          {mapSel ? <MapEditor project={project} mapId={mapSel} mode={mode} setMode={setMode} brush={brush} setBrush={setBrush} entities={entities} /> : <p class="placeholder">Select a map.</p>}
+          {mapSel ? <MapEditor project={project} mapId={mapSel} mode={mode} setMode={setMode} brush={brush} setBrush={setBrush} entities={entities} resizeBy={resizeBy} /> : <p class="placeholder">Select a map.</p>}
         </div>
       </main>
       <aside class="inspector">
@@ -75,7 +78,7 @@ export function MapsScreen({ project, selected: mapSel, onSelect }: { project: P
             {tab === "edit" && chip && mode === "board" && <BoardPalette chip={chip} brush={brush} setBrush={setBrush} />}
             {tab === "edit" && chip && mode === "decor" && <DecorPalette chip={chip} brush={brush} setBrush={setBrush} />}
             {tab === "edit" && mode === "entity" && <EntitiesPanel project={project} mapId={mapSel} selected={selected} select={select} placing={placing} setPlacing={setPlacing} />}
-            {tab === "info" && <MapProperties project={project} id={mapSel} />}
+            {tab === "info" && <MapProperties project={project} id={mapSel} resizeBy={resizeBy} setResizeBy={setResizeBy} />}
           </>
         )}
       </aside>
@@ -83,7 +86,7 @@ export function MapsScreen({ project, selected: mapSel, onSelect }: { project: P
   );
 }
 
-function MapProperties({ project, id }: { project: Project; id: string }) {
+function MapProperties({ project, id, resizeBy, setResizeBy }: { project: Project; id: string; resizeBy: { x: number; y: number }; setResizeBy: (d: { x: number; y: number }) => void }) {
   const path = mapPath(id);
   const map = project.data<MapDef>(path);
   const db = project.content.db;
@@ -108,7 +111,7 @@ function MapProperties({ project, id }: { project: Project; id: string }) {
           <tr>
             <th>Size</th>
             <td>
-              <ResizeForm project={project} id={id} size={size} />
+              <ResizeForm project={project} id={id} size={size} d={resizeBy} setD={setResizeBy} />
             </td>
           </tr>
           <tr>
@@ -172,13 +175,11 @@ function MapProperties({ project, id }: { project: Project; id: string }) {
 }
 
 /**
- * −x / +x remove / add a column on the right, −y / +y a row at the bottom; the new size shows in
- * yellow (a preview) until Resize applies it. New cells are empty; things placed on the map stay.
+ * −x / +x remove / add a column on the right, −y / +y a row at the bottom; the new size (and the
+ * canvas) preview it until Resize applies it. New cells are empty; things placed on the map stay.
  */
-function ResizeForm({ project, id, size }: { project: Project; id: string; size: { w: number; h: number } }) {
-  const [d, setD] = useState({ x: 0, y: 0 });
-  // another map: forget the pending change
-  useEffect(() => setD({ x: 0, y: 0 }), [id]);
+function ResizeForm(props: { project: Project; id: string; size: { w: number; h: number }; d: { x: number; y: number }; setD: (d: { x: number; y: number }) => void }) {
+  const { project, id, size, d, setD } = props;
   const w = size.w + d.x;
   const h = size.h + d.y;
   const step = (label: string, title: string, k: "x" | "y", by: number) => (
@@ -189,8 +190,9 @@ function ResizeForm({ project, id, size }: { project: Project; id: string; size:
   return (
     <div class="resize">
       <div class="row">
-        <b class={d.x || d.y ? "pending" : ""}>
-          {w} × {h}
+        {/* the new size: a part growing in green, shrinking in red */}
+        <b>
+          <span class={d.x > 0 ? "grow" : d.x < 0 ? "shrink" : ""}>{w}</span> × <span class={d.y > 0 ? "grow" : d.y < 0 ? "shrink" : ""}>{h}</span>
         </b>
         <span class="spacer" />
         <button

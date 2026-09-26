@@ -300,6 +300,7 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ Map properties: name, kind, chipset, battleback, music (with preview); onEnter comes with the action builder (E4)
 - ☑ Smooth view turns like the game; top view zoom/pan and centring; brush preview (terrain block cut to its piece at the brush height, decor facing) – W/S/A/D change the brush while it shows; the other layer greyed out; holes pickable with a white grid; first map opened on start
 - ☑ Picking by drawn column (tall walls' sides); thin smooth grid lines in both views, also while turning; tool icons and pressed-style grid / decor toggles in the strip
+- ☑ Map info as a table (Peace / Wild, ▶ music, battle background row); size stepper previewed in the size text and on the canvas, new cells empty; x / y axis gizmo; rectangle and fill preview the whole area
 - ☑ Reworked layout (user request): sections as icons in the top bar; Board / Decor / Entity modes with their own tools; W/S height, A/D turn, right mouse erases; Edit / Info tabs; top view with unwarped terrain textures; decor ghost preview and greyed-out board
 
 ## E4 · Entities ☑

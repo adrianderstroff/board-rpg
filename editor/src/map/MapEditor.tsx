@@ -67,7 +67,7 @@ export interface EntitySelection {
 
 const typing = (e: KeyboardEvent) => e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement;
 
-export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, entities }: { project: Project; mapId: string; mode: Mode; setMode: (m: Mode) => void; brush: Brush; setBrush: (b: Brush) => void; entities: EntitySelection }) {
+export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, entities, resizeBy }: { project: Project; mapId: string; mode: Mode; setMode: (m: Mode) => void; brush: Brush; setBrush: (b: Brush) => void; entities: EntitySelection; resizeBy: { x: number; y: number } }) {
   const [tool, setTool] = useState<Tool>("pencil");
   const [view, setView] = useState<"iso" | "grid">("iso");
   const [rotation, setRotation] = useState(0);
@@ -442,7 +442,9 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
   const grid = getGrid(db, mapId);
   const cell = hover ? grid.cell(hover) : undefined;
   const dim: "board" | "decor" | null = mode === "decor" ? "board" : mode === "board" ? "decor" : null;
-  const canvasProps = { db, mapId, hideDecor, dim, markers, entities: sprites, ghost, showGrid, handlers };
+  // the Info tab's pending resize, previewed on the canvas
+  const resizeTo = resizeBy.x || resizeBy.y ? { w: grid.width + resizeBy.x, h: grid.height + resizeBy.y } : null;
+  const canvasProps = { db, mapId, hideDecor, dim, markers, entities: sprites, ghost, showGrid, resizeTo, handlers };
   // the flat view marks entities with letters – only useful in entity mode
   const gridProps = { ...canvasProps, entities: mode === "entity" ? sprites : [] };
 

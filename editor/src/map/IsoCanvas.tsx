@@ -1,8 +1,9 @@
 import Phaser from "phaser";
-import { useEffect, useRef } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { getGrid } from "../../../src/core/board/grid";
 import type { Database } from "../../../src/core/data/database";
 import type { Pos } from "../../../src/core/util/grid";
+import { AxisGizmo, isoAxes } from "./Gizmo";
 import { loadSheet } from "../../../src/engine/assets";
 import { isoToScreen, LAYER } from "../../../src/engine/iso";
 import { IsoMapView, type IsoMapSource } from "../../../src/engine/iso/IsoMapView";
@@ -66,6 +67,8 @@ interface Props {
   ghost: Ghost | null;
   /** Thin grid lines on every cell's top (empty cells at ground level). */
   showGrid: boolean;
+  /** A pending resize: the new size – added cells are marked green, dropped ones red. */
+  resizeTo?: { w: number; h: number } | null;
   handlers: CanvasHandlers;
 }
 
@@ -87,7 +90,9 @@ class MapScene extends Phaser.Scene {
    * Grid lines: one thin, smooth outline per cell (holes at ground level) – drawn in the cell's place
    * in the drawing order, so blocks in front cover them; kept up to date while the view turns.
    */
-  private gridLines: { x: number; y: number; hole: boolean; g: Phaser.GameObjects.Graphics }[] = [];
+  private gridLines: { x: number; y: number; hole: boolean; state: "keep" | "add" | "drop"; g: Phaser.GameObjects.Graphics }[] = [];
+  /** Tells the component the view's (continuous) angle – for the axis gizmo. */
+  onAngle?: (quarters: number) => void;
   private space = false;
   /** A running view turn (the blocks spin as one solid, like in the game). */
   private spin?: Phaser.Tweens.Tween;
@@ -237,6 +242,7 @@ class MapScene extends Phaser.Scene {
     this.drawEntities();
     this.drawGhost();
     this.buildGrid();
+    this.onAngle?.(props.rotation);
   }
 
   /** (Re)creates the grid lines for the current map. */
@@ -244,7 +250,14 @@ class MapScene extends Phaser.Scene {
     for (const l of this.gridLines) l.g.destroy();
     this.gridLines = [];
     const grid = getGrid(this.props.db, this.props.mapId);
-    for (let y = 0; y < grid.height; y++) for (let x = 0; x < grid.width; x++) this.gridLines.push({ x, y, hole: !grid.has({ x, y }), g: this.add.graphics() });
+    const r = this.props.resizeTo;
+    const w = Math.max(grid.width, r?.w ?? 0);
+    const h = Math.max(grid.height, r?.h ?? 0);
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        const state = x >= grid.width || y >= grid.height ? "add" : r && (x >= r.w || y >= r.h) ? "drop" : "keep";
+        this.gridLines.push({ x, y, hole: !grid.has({ x, y }), state, g: this.add.graphics() });
+      }
     this.drawGrid();
   }
 
@@ -255,11 +268,21 @@ class MapScene extends Phaser.Scene {
     const width = 1 / this.cameras.main.zoom;
     for (const l of this.gridLines) {
       l.g.clear();
-      l.g.setVisible(this.props.showGrid);
-      if (!this.props.showGrid) continue;
+      const shown = this.props.showGrid || l.state !== "keep";
+      l.g.setVisible(shown);
+      if (!shown) continue;
       l.g.setDepth(view.depthOf(l.x, l.y, LAYER.block, 0.9));
-      // a light line on a slightly wider dark one: readable on bright sand and dark stone alike
       const pts = view.topCorners(l.x, l.y).map((c) => new Phaser.Math.Vector2(c.x, c.y));
+      if (l.state !== "keep") {
+        // the resize preview: cells it adds green, cells it drops red
+        const color = l.state === "add" ? 0x63c74d : 0xe43b44;
+        l.g.fillStyle(color, l.state === "add" ? 0.2 : 0.35);
+        l.g.fillPoints(pts, true);
+        l.g.lineStyle(width * 1.5, color, 0.95);
+        l.g.strokePoints(pts, true, true);
+        continue;
+      }
+      // a light line on a slightly wider dark one: readable on bright sand and dark stone alike
       if (!l.hole) {
         l.g.lineStyle(width * 2.5, 0x000000, 0.22);
         l.g.strokePoints(pts, true, true);
@@ -310,6 +333,7 @@ class MapScene extends Phaser.Scene {
         const c = view.cellTop(pivot.x, pivot.y);
         cam.centerOn(c.x + offset.x, c.y + offset.y);
         this.drawGrid(); // the grid turns with the map
+        this.onAngle?.(q);
       },
       onComplete: () => {
         this.spin = undefined;
@@ -416,8 +440,11 @@ export function IsoCanvas(props: Props) {
   latest.current = props;
   const scene = useRef<MapScene | null>(null);
 
+  const [angle, setAngle] = useState(props.rotation);
+
   useEffect(() => {
     const s = new MapScene(() => latest.current);
+    s.onAngle = setAngle;
     scene.current = s;
     const game = new Phaser.Game({
       type: Phaser.AUTO,
@@ -486,8 +513,22 @@ export function IsoCanvas(props: Props) {
     }
   }, [props.showGrid]);
 
+  useEffect(() => {
+    const s = scene.current;
+    if (s?.view) {
+      s.props = latest.current;
+      s.buildGrid();
+    }
+  }, [props.resizeTo?.w, props.resizeTo?.h]);
+
   // handlers change every render – keep the scene's copy fresh without redrawing
   if (scene.current) scene.current.props = { ...scene.current.props, handlers: props.handlers };
 
-  return <div ref={host} class="iso-canvas" />;
+  const chip = getGrid(props.db, props.mapId).chipset;
+  return (
+    <div class="iso-canvas">
+      <div ref={host} class="phaser-host" />
+      <AxisGizmo axes={isoAxes(angle, chip.tileHeight / chip.tileWidth)} />
+    </div>
+  );
 }

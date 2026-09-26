@@ -130,7 +130,11 @@ button.on { background: #124e89; border-color: var(--accent-2); color: #fff; }
 .resize { display: flex; flex-direction: column; gap: 6px; }
 .resize .row { gap: 8px; align-items: center; }
 .resize .spacer { flex: 1; }
-.resize b.pending { color: var(--accent); }
+.resize .grow { color: var(--good); }
+.resize .shrink { color: var(--bad); }
+.iso-canvas .phaser-host { position: absolute; inset: 0; }
+/* the x / y axes in the lower right of the map view */
+.axis-gizmo { position: absolute; right: 10px; bottom: 10px; pointer-events: none; background: rgba(20, 22, 28, 0.55); border-radius: 50%; font: bold 11px system-ui, sans-serif; overflow: visible; }
 /* map info: labels left, values right; a row of class "joined" continues the one above (no line) */
 table.props { width: 100%; border-collapse: collapse; }
 table.props th { width: 1%; white-space: nowrap; padding: 6px 10px 6px 0; text-align: left; vertical-align: top; font-weight: normal; color: var(--dim); line-height: 26px; }
