@@ -475,13 +475,24 @@ actions and read them with conditions.
 - A **flow view** shows the step chain and which events/dialogs start, advance or check the quest
   (found by scanning all actions and conditions).
 
+**The screens** (E7) have the layout of the other content screens (§7): the list, the form in the
+middle, the inspector. Quests are listed as main quests with their sub-quests below them; the form
+has the quest's fields, then one box per step (objective, *done when*, lock, on start / on
+complete) and the endings; the inspector is the flow view – the steps as a chain, each with its
+condition in words, and every place that starts, advances or checks the quest, with links.
+
 ---
 
 ## 10. Dialogs, shops, abilities, settings
 
-- **Dialogs**: a list of nodes – *say* (speaker picker with face preview, text with the game's
-  markup and a live preview in the game's font), *choice* (options with conditions and actions),
-  *if* (condition → dialog), *do* (actions), *go to*, *end*. A graph view shows how dialogs link.
+- **Dialogs**: a dialog is a script (game-design §10.2) edited with the same step editor as the
+  entities' events – *say* (speaker, text with the game's markup), *question* (options with
+  conditions and steps), *if / else*, actions, *wait*, *continue in* another dialog, *end*. Every
+  line said shows a **live preview of the game's text box** (the pixel font, colours, the face and
+  name; placeholders filled with sample values) and warns when it doesn't fit the box. The list
+  groups dialogs by file (New puts one into the file of the selected one); the inspector shows the
+  links around the dialog – where it is opened (entities, quests, other dialogs) and where it
+  continues – each with a link.
 - **Shops**: name, sign type, item list (picker, reorder); the inspector shows the goods as the
   shop window lists them (icon, name, price) and the entities that open the shop, with links.
 - **Abilities**: name, type (the menu it is listed under: Magic, Sword Art …) and group, MP, icon,
@@ -557,6 +568,9 @@ Order: E1 → E2 → E3 → E4, then E5–E8 in any order, E9 alongside.
     it; library entries read-only with Copy to project; a hero whose class is shared gets **New
     class** (a copy for this hero) rather than editing the class under the others' feet.
 11. **Chances are percentages in the editor** and fractions in the files (0.25 = 25 %).
+12. **Edits patch the YAML** (E7): a form writes only the values that changed – a changed text keeps
+    its node and quoting, steps added or removed are spliced into the list – so hand-written files
+    keep their look line for line.
 10. **Teleports** (user decisions): exit + arrival are one editor kind; arrivals come and go with what
     leads there; one-way by default, "way back" optional, arrivals one cell in front of exits; the
     starts are arrivals with a role (§6.3, §6.4).

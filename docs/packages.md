@@ -430,9 +430,11 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ NPCs: graphics, optional stats, movement, attacked by enemies, steal list, where it stands (links open the map with the entity selected)
 - ☑ Graphics picked from thumbnails; previews: walking in four facings, battle poses, face sizes
 - ☑ Game: enemies carry items into battle and use them (`items`, AI rules `action: item`, game-design §12.5); library immunities got their `lib:` prefix back and are validated
-## E7 · Quests & dialogs ☐
-- ☐ Quest steps/endings with condition/action builders, flow view; dialog node editor with markup preview
-
+## E7 · Quests & dialogs ☑
+- ☑ Quests: main quests and sub-quests, the quest's fields and on-start script, one box per step (objective, id, done when, lock, on start / on complete folded to words until opened), endings; the flow view: steps in words, endings, sub-quests, and every place that starts, sets, completes or checks the quest – with links
+- ☑ Dialogs: listed by file, New (in the file of the selected one or a new file), the step editor with a live preview of every line in the game's text box (window, face, name, pixel font, colours, sample placeholders; warns when it doesn't fit); who opens it and where it continues, with links; speakers: the event's own, the narrator, a character or any name
+- ☑ Where-used lookup for every kind of content (editor/src/references.ts, quests and dialogs added to content/refs.ts) – the base for E9
+- ☑ Edits patch the YAML: only changed values are written, texts keep their quoting, added / removed steps are spliced in
 ## E8 · Abilities, shops, settings ☑
 - ☑ Abilities: list by menu, New ▾ (empty or a preset), one form (icon, menu and group, MP, offensive automatic or set, the special rule shown), the battle and board boxes shared with items (swallow / summon for enemy skills); the inspector says what it does and who has it (classes by level, items granting / teaching, enemies)
 - ☑ Shops: name, sign, goods (with price and category); the inspector shows the shop window and the entities that open it, with links

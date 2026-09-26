@@ -4,6 +4,7 @@ import { useProjectContext } from "../projectContext";
 import type { Database } from "../../../src/core/data/database";
 import type { Action, ChoiceOption, Condition, Script, Step } from "../../../src/core/data/types";
 import { ConditionEditor } from "./ConditionEditor";
+import { SayPreview, useSayPreview } from "../dialogs/SayPreview";
 import { ListEditor, Num, Select, Text } from "./fields";
 import { EMOTES } from "../../../src/core/data/types";
 import { SFX } from "../../../src/game/sfxNames";
@@ -15,6 +16,45 @@ function CellInput({ value, onChange }: { value: { x: number; y: number }; onCha
       <Num value={value.x} min={0} width={44} onChange={(n) => onChange({ ...value, x: n ?? 0 })} />
       <Num value={value.y} min={0} width={44} onChange={(n) => onChange({ ...value, y: n ?? 0 })} />
     </span>
+  );
+}
+
+/**
+ * Who says a line: the event's own character (nothing set), the narrator (no name, ""), a character
+ * of the content (its name and face) or any name ("Sign").
+ */
+function SpeakerField({ value, db, onChange }: { value: string | undefined; db: Database; onChange: (v: string | undefined) => void }) {
+  const known = value === undefined || value === "" || db.npcs.has(value) || db.heroes.has(value);
+  const mode = value === undefined ? "own" : value === "" ? "narrator" : known ? value : "name";
+  return (
+    <div class="row">
+      <select
+        value={mode}
+        onChange={(e) => {
+          const v = e.currentTarget.value;
+          onChange(v === "own" ? undefined : v === "narrator" ? "" : v === "name" ? "Someone" : v);
+        }}
+      >
+        <option value="own">(the event's own character)</option>
+        <option value="narrator">(narrator – no name)</option>
+        <option value="name">a name…</option>
+        <optgroup label="Characters">
+          {[...db.npcs.entries()].map(([id, n]) => (
+            <option key={id} value={id}>
+              {n.name}
+            </option>
+          ))}
+        </optgroup>
+        <optgroup label="Heroes">
+          {[...db.heroes.entries()].map(([id, h]) => (
+            <option key={id} value={id}>
+              {h.name}
+            </option>
+          ))}
+        </optgroup>
+      </select>
+      {mode === "name" && <input value={value} placeholder="the name shown" onInput={(e) => onChange(e.currentTarget.value)} />}
+    </div>
   );
 }
 
@@ -152,6 +192,7 @@ function defaultAction(kind: string, db: Database, mapId?: string): Action {
 
 export function ActionEditor({ value, onChange, db, mapId }: { value: Script | undefined; onChange: (a: Script) => void; db: Database; mapId?: string }) {
   const project = useProjectContext();
+  const preview = useSayPreview();
   const map = mapId ? db.maps.get(mapId) : undefined;
   const ids = <T,>(m: Map<string, T>, name?: (t: T) => string) => [...m.entries()].map(([id, t]) => [id, name ? `${name(t)} (${id})` : id] as [string, string]);
   // who a script moves / turns / points at: the party, a hero, or an entity of this map
@@ -175,11 +216,11 @@ export function ActionEditor({ value, onChange, db, mapId }: { value: Script | u
           switch (kind) {
             case "say": {
               const o = a as Extract<Step, { say: string }>;
-              const speakers: [string, string][] = [...[...db.npcs.entries()].map(([id, n]) => [id, n.name] as [string, string]), ...[...db.heroes.entries()].map(([id, h]) => [id, h.name] as [string, string])];
               return (
                 <div class="block">
-                  <Select value={o.speaker} options={speakers} empty="(the event's own / narrator)" onChange={(x) => set({ ...o, speaker: x })} />
+                  <SpeakerField value={o.speaker} db={db} onChange={(x) => set({ ...o, speaker: x })} />
                   <textarea rows={2} value={o.say} placeholder="What is said (markup: *bold*, {hero}…)" onInput={(e) => set({ ...o, say: e.currentTarget.value })} />
+                  {preview && <SayPreview text={o.say} speakerId={o.speaker} raw={preview} />}
                 </div>
               );
             }

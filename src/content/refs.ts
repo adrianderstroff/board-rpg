@@ -21,7 +21,9 @@ export type RefCollection =
   | "faces"
   | "battlebacks"
   | "music"
-  | "prefabs";
+  | "prefabs"
+  | "quests"
+  | "dialogs";
 
 const FIELDS: Record<string, RefCollection[]> = {
   giveItem: ["items"], takeItem: ["items"], item: ["items"], items: ["items"],
@@ -33,6 +35,8 @@ const FIELDS: Record<string, RefCollection[]> = {
   classId: ["classes"], classes: ["classes"],
   move: ["patterns"], range: ["patterns"], area: ["patterns"], include: ["patterns"],
   prefab: ["prefabs"],
+  startQuest: ["quests"], completeQuest: ["quests"], questActive: ["quests"], questDone: ["quests"], questStepsDone: ["quests"], quest: ["quests"], parent: ["quests"],
+  dialog: ["dialogs"], goto: ["dialogs"], then: ["dialogs"], else: ["dialogs"],
   chipset: ["chipsets"], battleback: ["battlebacks"], charset: ["charsets"], battler: ["battlers"], face: ["faces"], music: ["music"],
 };
 
@@ -41,6 +45,7 @@ export function refTarget(path: string[]): RefCollection[] {
   const field = path[path.length - 1];
   const parent = path[path.length - 2];
   if (field === "id" && ["giveItem", "takeItem", "item"].includes(parent)) return ["items"];
+  if (field === "id" && ["startQuest", "completeQuest"].includes(parent)) return ["quests"];
   if (parent === "equipment") return ["items"]; // equipment: { weapon: … }
   if (parent === "music") return ["music"]; // config: music: { title: … }
   if (path[path.length - 3] === "abilities" && parent !== undefined && path.includes("quickPlay")) return ["abilities"]; // quickPlay abilities: { hero: [ … ] }
@@ -48,7 +53,7 @@ export function refTarget(path: string[]): RefCollection[] {
 }
 
 /** Mapping keys that are ids: the start items (config), a Quick Play's items and abilities per hero. */
-function keyTarget(path: string[]): RefCollection | null {
+export function keyTarget(path: string[]): RefCollection | null {
   const at = path.join(".");
   if (at === "start.items" || (path[path.length - 1] === "items" && path.includes("quickPlay"))) return "items";
   if (path[path.length - 1] === "abilities" && path.includes("quickPlay")) return "heroes";

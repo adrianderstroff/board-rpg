@@ -11,6 +11,9 @@ import { NpcsScreen } from "./screens/NpcsScreen";
 import { AbilitiesScreen } from "./screens/AbilitiesScreen";
 import { ShopsScreen } from "./screens/ShopsScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
+import { QuestsScreen } from "./screens/QuestsScreen";
+import { DialogsScreen } from "./screens/DialogsScreen";
+import type { UsageTarget } from "./references";
 import { knownFlags } from "./forms/ConditionEditor";
 import type { EntityRef } from "./entities/model";
 import { Icon } from "./icons";
@@ -26,8 +29,8 @@ const SCREENS = [
   { id: "npcs", label: "NPCs" },
   { id: "items", label: "Items" },
   { id: "abilities", label: "Abilities" },
-  { id: "quests", label: "Quests", pkg: "E7" },
-  { id: "dialogs", label: "Dialogs", pkg: "E7" },
+  { id: "quests", label: "Quests" },
+  { id: "dialogs", label: "Dialogs" },
   { id: "shops", label: "Shops" },
   { id: "settings", label: "Settings" },
 ] as const;
@@ -99,6 +102,20 @@ export function App({ project }: { project: Project }) {
     writeStored("maps.selected", entity);
     setMap(m);
     setScreen("maps");
+  };
+
+  /** Goes to where something is used: a map entity, or an entry of a content screen. */
+  const goTo = (t: UsageTarget) => {
+    if (t.screen === "maps") {
+      if (t.entity) openMap(t.map, t.entity);
+      else {
+        setMap(t.map);
+        setScreen("maps");
+      }
+      return;
+    }
+    if (t.id) writeStored(`${t.screen}.selected`, t.id);
+    setScreen(t.screen);
   };
 
   const flags = knownFlags(project.content.raw);
@@ -176,6 +193,10 @@ export function App({ project }: { project: Project }) {
         <ShopsScreen project={project} openMap={openMap} />
       ) : screen === "settings" ? (
         <SettingsScreen project={project} openMap={openMap} />
+      ) : screen === "quests" ? (
+        <QuestsScreen project={project} goTo={goTo} />
+      ) : screen === "dialogs" ? (
+        <DialogsScreen project={project} goTo={goTo} />
       ) : screen === "items" ? (
         <ItemsScreen project={project} />
       ) : (
