@@ -161,11 +161,15 @@ strings stay readable in the YAML.
 Pencil (B), rectangle (R), fill (G, by terrain / decor), pick (I), select area (M) – copy / paste
 (also into another map) / move / clear a block of cells across all board layers; moving takes the
 entities standing in it along and leaves the terrain brush behind. Right mouse is the eraser of the
-current tool. Resize (add / remove rows and columns on any side) is on the Info tab.
+current tool. Resize (columns on the right, rows at the bottom) is on the Info tab.
 
 ### 5.4 Map properties
-Name, kind (`peaceful` / `wild`), chipset, battleback (with preview), **music** (picker with a ▶
-preview of the track), `onEnter` actions (action builder, §7.3), size.
+The Info tab is a table – labels left, values right: name, size (−x / +x and −y / +y buttons take away or
+add a column on the right or a row at the bottom; the new size shows in yellow as a preview until
+Resize applies it; new cells are empty, painted afterwards), kind (Peace / Wild
+switch = `peaceful` / `wild`), chipset, **music** (picker with a ▶ button to listen), battle
+background (picker, its picture below in a full-width row). Below the table: the `onEnter` actions
+(action builder, §7.3).
 
 ---
 

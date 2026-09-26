@@ -94,96 +94,111 @@ function MapProperties({ project, id }: { project: Project; id: string }) {
     return { w: Math.max(0, ...rows.map((r) => r.length)), h: rows.length };
   }, [map?.layers?.terrain]);
   if (!map) return null;
-  const counts = [
-    ["events", map.events?.length ?? 0],
-    ["exits", map.exits?.length ?? 0],
-    ["spawns", Object.keys(map.spawns ?? {}).length],
-    ["enemies", map.enemies?.length ?? 0],
-    ["gates", map.gates?.length ?? 0],
-    ["switches", map.switches?.length ?? 0],
-  ].filter(([, n]) => n);
 
   return (
     <div class="stack">
-      <label>Name</label>
-      <input value={map.name} onInput={(e) => set("name", e.currentTarget.value, "Map name", `name:${id}`)} />
-      <label>Kind</label>
-      <select value={map.kind} onChange={(e) => set("kind", e.currentTarget.value, "Map kind")}>
-        <option value="peaceful">peaceful – no random fights</option>
-        <option value="wild">wild – enemies, traps allowed</option>
-      </select>
-      <label>Chipset</label>
-      <select value={map.chipset} onChange={(e) => set("chipset", e.currentTarget.value, "Chipset")}>
-        {[...(db?.chipsets.keys() ?? [])].map((c) => (
-          <option key={c}>{c}</option>
-        ))}
-      </select>
-      <label>Battleback</label>
-      <select value={map.battleback} onChange={(e) => set("battleback", e.currentTarget.value, "Battleback")}>
-        {Object.keys(db?.graphics.battlebacks ?? {}).map((b) => (
-          <option key={b}>{b}</option>
-        ))}
-      </select>
-      <img src={`/assets/battlebacks/${map.battleback}.png`} class="preview-wide" alt="" />
-      <label>Music</label>
-      <div class="row">
-        <select value={map.music ?? ""} onChange={(e) => set("music", e.currentTarget.value, "Music")}>
-          <option value="">(none)</option>
-          {project.music.map((m) => (
-            <option key={m}>{m}</option>
-          ))}
-        </select>
-        <MusicPreview track={map.music} />
-      </div>
+      <table class="props">
+        <tbody>
+          <tr>
+            <th>Name</th>
+            <td>
+              <input value={map.name} onInput={(e) => set("name", e.currentTarget.value, "Map name", `name:${id}`)} />
+            </td>
+          </tr>
+          <tr>
+            <th>Size</th>
+            <td>
+              <ResizeForm project={project} id={id} size={size} />
+            </td>
+          </tr>
+          <tr>
+            <th>Kind</th>
+            <td>
+              <div class="segmented">
+                <button class={map.kind === "peaceful" ? "on" : ""} onClick={() => set("kind", "peaceful", "Map kind")} title="No random fights">
+                  Peace
+                </button>
+                <button class={map.kind === "wild" ? "on" : ""} onClick={() => set("kind", "wild", "Map kind")} title="Enemies, traps allowed">
+                  Wild
+                </button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th>Chipset</th>
+            <td>
+              <select value={map.chipset} onChange={(e) => set("chipset", e.currentTarget.value, "Chipset")}>
+                {[...(db?.chipsets.keys() ?? [])].map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </select>
+            </td>
+          </tr>
+          <tr>
+            <th>Music</th>
+            <td>
+              <div class="row">
+                <select aria-label="Music" value={map.music ?? ""} onChange={(e) => set("music", e.currentTarget.value, "Music")}>
+                  <option value="">(none)</option>
+                  {project.music.map((m) => (
+                    <option key={m}>{m}</option>
+                  ))}
+                </select>
+                <MusicPreview track={map.music} />
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th>Battle background</th>
+            <td>
+              <select value={map.battleback} onChange={(e) => set("battleback", e.currentTarget.value, "Battleback")}>
+                {Object.keys(db?.graphics.battlebacks ?? {}).map((b) => (
+                  <option key={b}>{b}</option>
+                ))}
+              </select>
+            </td>
+          </tr>
+          <tr class="joined">
+            <td colSpan={2}>
+              <img src={`/assets/battlebacks/${map.battleback}.png`} class="preview-wide" alt="" />
+            </td>
+          </tr>
+        </tbody>
+      </table>
       <label>On entering</label>
       <OnEnter project={project} id={id} />
-      <label>Contents</label>
-      <span>{counts.map(([k, n]) => `${n} ${k}`).join(", ") || "–"}</span>
-      <span class="hint">edited on the Entities layer</span>
-      <label>
-        Size: {size.w} × {size.h}
-      </label>
-      <ResizeForm project={project} id={id} />
     </div>
   );
 }
 
-/** Add (+) or remove (−) rows and columns on each side; things placed on the map move along. */
-function ResizeForm({ project, id }: { project: Project; id: string }) {
-  const [d, setD] = useState({ left: 0, right: 0, top: 0, bottom: 0 });
-  const [fill, setFill] = useState("grass");
-  const db = project.content.db;
-  const map = project.data<MapDef>(mapPath(id));
-  const terrains = db ? Object.keys(db.chipsets.get(map.chipset)?.terrains ?? {}) : [];
-  const field = (k: keyof typeof d, label: string) => (
-    <label class="check" title={`${label}: + adds, − removes`}>
+/**
+ * −x / +x remove / add a column on the right, −y / +y a row at the bottom; the new size shows in
+ * yellow (a preview) until Resize applies it. New cells are empty; things placed on the map stay.
+ */
+function ResizeForm({ project, id, size }: { project: Project; id: string; size: { w: number; h: number } }) {
+  const [d, setD] = useState({ x: 0, y: 0 });
+  // another map: forget the pending change
+  useEffect(() => setD({ x: 0, y: 0 }), [id]);
+  const w = size.w + d.x;
+  const h = size.h + d.y;
+  const step = (label: string, title: string, k: "x" | "y", by: number) => (
+    <button title={title} disabled={(k === "x" ? w : h) + by < 1} onClick={() => setD({ ...d, [k]: d[k] + by })}>
       {label}
-      <input type="number" style={{ width: 52 }} value={d[k]} onInput={(e) => setD({ ...d, [k]: Number(e.currentTarget.value) || 0 })} />
-    </label>
+    </button>
   );
   return (
     <div class="resize">
       <div class="row">
-        {field("left", "−x")}
-        {field("right", "+x")}
-      </div>
-      <div class="row">
-        {field("top", "−y")}
-        {field("bottom", "+y")}
-      </div>
-      <div class="row">
-        new cells
-        <select value={fill} onChange={(e) => setFill(e.currentTarget.value)}>
-          {terrains.map((t) => (
-            <option key={t}>{t}</option>
-          ))}
-        </select>
+        <b class={d.x || d.y ? "pending" : ""}>
+          {w} × {h}
+        </b>
+        <span class="spacer" />
         <button
-          disabled={!d.left && !d.right && !d.top && !d.bottom}
+          disabled={!d.x && !d.y}
           onClick={() => {
             try {
-              project.edit(mapPath(id), "Resize map", (doc) => resize(doc, doc.toJS() as MapDef, d, fill));
-              setD({ left: 0, right: 0, top: 0, bottom: 0 });
+              project.edit(mapPath(id), "Resize map", (doc) => resize(doc, doc.toJS() as MapDef, { left: 0, right: d.x, top: 0, bottom: d.y }));
+              setD({ x: 0, y: 0 });
             } catch (e) {
               alert((e as Error).message);
             }
@@ -191,6 +206,16 @@ function ResizeForm({ project, id }: { project: Project; id: string }) {
         >
           Resize
         </button>
+      </div>
+      <div class="row">
+        <div class="segmented">
+          {step("−x", "One column less (right side)", "x", -1)}
+          {step("+x", "One column more (right side)", "x", 1)}
+        </div>
+        <div class="segmented">
+          {step("−y", "One row less (bottom)", "y", -1)}
+          {step("+y", "One row more (bottom)", "y", 1)}
+        </div>
       </div>
     </div>
   );
@@ -223,8 +248,8 @@ function MusicPreview({ track }: { track?: string }) {
     setPlaying(true);
   };
   return (
-    <button disabled={!track} onClick={toggle} title="Listen">
-      {playing ? "■ Stop" : "▶ Listen"}
+    <button class="play" disabled={!track} onClick={toggle} title={playing ? "Stop" : "Listen"} aria-label={playing ? "Stop" : "Listen"}>
+      {playing ? "■" : "▶"}
     </button>
   );
 }

@@ -473,7 +473,7 @@ const scenarios = {
     await page.locator(".inspector input[placeholder^='e.g.']").fill("monks_trial");
     // an unsaved edit the play-test must see: other music
     await page.getByRole("button", { name: "Info", exact: true }).click();
-    await page.locator(".inspector select").nth(3).selectOption("boss");
+    await page.getByRole("combobox", { name: "Music" }).selectOption("boss");
     d.expect(await page.getByRole("button", { name: "Save (1)" }).isVisible(), "the map is marked unsaved");
     await d.shot("editor");
     const [game] = await Promise.all([page.context().waitForEvent("page"), page.getByRole("button", { name: /▶ Quick Play/ }).click()]);

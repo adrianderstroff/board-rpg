@@ -143,15 +143,15 @@ export function rectCells(a: Pos, b: Pos): Pos[] {
 }
 
 /**
- * Adds (positive) or removes (negative) rows/columns on each side. New cells get `fill` terrain at
- * height 0; everything placed on the map (events, exits, spawns…) moves along.
+ * Adds (positive) or removes (negative) rows/columns on each side. New cells are empty (holes) or get
+ * `fill` terrain at height 0; everything placed on the map (events, exits, spawns…) moves along.
  */
-export function resize(doc: Document, map: MapDef, delta: { left: number; right: number; top: number; bottom: number }, fill: string) {
+export function resize(doc: Document, map: MapDef, delta: { left: number; right: number; top: number; bottom: number }, fill: string | null = null) {
   const { w, h } = mapSize(map);
   const nw = w + delta.left + delta.right;
   const nh = h + delta.top + delta.bottom;
   if (nw < 1 || nh < 1) throw new Error("A map needs at least one cell");
-  const fillCh = legendChar(doc, map, "terrain", fill);
+  const fillCh = fill === null ? EMPTY.terrain : legendChar(doc, map, "terrain", fill);
   const layers: LayerName[] = ["terrain", "height", "decor", "decorDir", "shape"];
   for (const layer of layers) {
     const present = layer === "terrain" || (map.layers as Record<string, unknown>)[layer] !== undefined;

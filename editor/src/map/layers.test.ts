@@ -81,6 +81,13 @@ describe("map layers (editor-design §5.2)", () => {
     expect(m.spawns.start).toEqual({ x: 2, y: 4 });
     expect(m.events![0]).toMatchObject({ x: 4, y: 2 });
   });
+
+  it("new cells are empty (holes) unless a fill terrain is given", () => {
+    const { doc, map } = load();
+    resize(doc, map(), { left: 0, right: 1, top: 0, bottom: 0 });
+    expect(rowsOf(map(), "terrain").every((r) => r[r.length - 1] === " ")).toBe(true);
+    expect(rowsOf(map(), "height").every((r) => r[r.length - 1] === "0")).toBe(true);
+  });
 });
 
 describe("door lintels", () => {
