@@ -1,31 +1,23 @@
 import { parse } from "yaml";
 import { Database, type RawContent } from "../core/data/database";
+import { assembleRaw } from "./raw";
 
 /**
  * Loads every YAML file under /data (bundled at build time, works in tests too).
- *   data/<collection>.yaml        → raw[collection]
- *   data/maps/<id>.yaml           → raw.maps[id]
- *   data/chipsets/<id>.yaml       → raw.chipsets[id]
- *   data/dialogs/*.yaml           → merged into raw.dialogs
+ * Where each file belongs: see assembleRaw.
  */
 const files = import.meta.glob("/data/**/*.yaml", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 
 export function loadRawContent(sources: Record<string, string> = files): RawContent {
-  const raw: Record<string, unknown> = { maps: {}, chipsets: {}, dialogs: {} };
-  for (const [path, text] of Object.entries(sources)) {
-    const parts = path.replace(/^.*\/data\//, "").replace(/\.yaml$/, "").split("/");
-    let data: unknown;
-    try {
-      data = parse(text);
-    } catch (e) {
-      throw new Error(`YAML error in ${path}: ${(e as Error).message}`);
-    }
-    if (parts.length === 1) raw[parts[0]] = data;
-    else if (parts[0] === "maps" || parts[0] === "chipsets") (raw[parts[0]] as Record<string, unknown>)[parts[1]] = data;
-    else if (parts[0] === "dialogs") Object.assign(raw.dialogs as object, data);
-    else throw new Error(`Don't know where ${path} belongs`);
-  }
-  return raw as unknown as RawContent;
+  return assembleRaw(
+    Object.entries(sources).map(([path, text]) => {
+      try {
+        return [path, parse(text)] as [string, unknown];
+      } catch (e) {
+        throw new Error(`YAML error in ${path}: ${(e as Error).message}`);
+      }
+    }),
+  );
 }
 
 export function loadDatabase(): Database {

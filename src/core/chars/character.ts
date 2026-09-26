@@ -28,21 +28,33 @@ export function createHero(db: Database, heroId: string): Character {
   return c;
 }
 
-export function createEnemy(db: Database, id: string, enemyId: string): Character {
+/** An enemy at its own level, or at `level` (stats follow its `growth`, §12.6), wearing its equipment. */
+export function createEnemy(db: Database, id: string, enemyId: string, level?: number): Character {
   const def = db.enemy(enemyId);
-  return {
+  const c: Character = {
     id,
     name: def.name,
     kind: "enemy",
     def: enemyId,
-    level: def.level,
+    level: Math.max(1, level ?? def.level),
     exp: 0,
-    hp: def.stats.maxHp,
-    mp: def.stats.maxMp,
+    hp: 0,
+    mp: 0,
     statuses: (def.statuses ?? []).map((s) => ({ id: s })),
-    equipment: {},
+    equipment: { ...(def.equipment ?? {}) },
     learned: [],
   };
+  const s = computeStats(db, c);
+  c.hp = s.maxHp;
+  c.mp = s.maxMp;
+  return c;
+}
+
+/** EXP and gold for defeating an enemy: scaled by its level against its own (§12.6). */
+export function enemyRewards(db: Database, c: Character): { exp: number; gold: number } {
+  const def = db.enemy(c.def);
+  const k = c.level / Math.max(1, def.level);
+  return { exp: Math.round(def.exp * k), gold: Math.round(def.gold * k) };
 }
 
 export function createNpc(db: Database, id: string, npcId: string): Character {
@@ -92,7 +104,15 @@ export function baseStats(db: Database, c: Character): Stats {
     for (const k of STAT_KEYS) out[k] = Math.floor(cls.base[k] + cls.growth[k] * (c.level - 1));
     return out;
   }
-  if (c.kind === "enemy") return { ...db.enemy(c.def).stats };
+  if (c.kind === "enemy") {
+    const def = db.enemy(c.def);
+    const out = { ...def.stats };
+    const levels = c.level - def.level;
+    if (def.growth && levels) {
+      for (const k of STAT_KEYS) out[k] = Math.max(k === "maxMp" ? 0 : 1, Math.floor(def.stats[k] + (def.growth[k] ?? 0) * levels));
+    }
+    return out;
+  }
   return { ...(db.npc(c.def).stats ?? { maxHp: 20, maxMp: 0, str: 5, def: 5, mag: 5, mdef: 5, spd: 5 }) };
 }
 
@@ -140,13 +160,13 @@ export function elementMultiplier(db: Database, c: Character, element: Element |
 }
 
 export function weaponElement(db: Database, c: Character): Element | undefined {
-  if (c.kind === "enemy") return db.enemy(c.def).element;
+  if (c.kind === "enemy" && db.enemy(c.def).element) return db.enemy(c.def).element;
   const w = c.equipment.weapon;
   return w ? db.item(w).equip?.element : undefined;
 }
 
 export function onHitEffect(db: Database, c: Character) {
-  if (c.kind === "enemy") return db.enemy(c.def).onHit;
+  if (c.kind === "enemy" && db.enemy(c.def).onHit) return db.enemy(c.def).onHit;
   const w = c.equipment.weapon;
   return w ? db.item(w).equip?.onHit : undefined;
 }
@@ -219,6 +239,7 @@ export function knownAbilities(db: Database, c: Character): string[] {
   } else if (c.kind === "enemy") {
     const def = db.enemy(c.def);
     for (const r of def.ai) if (r.action !== "attack") out.add(r.action);
+    for (const i of Object.values(c.equipment)) for (const g of (i && db.item(i).equip?.grants) || []) out.add(g);
     for (const a of def.boardAi.abilities ?? []) out.add(a.ability);
     if (def.boardAi.pack) for (const [id, a] of db.abilities) if (a.special) out.add(id);
   }

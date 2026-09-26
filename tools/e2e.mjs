@@ -217,6 +217,44 @@ async function d_endParty(d) {
 // ---------------- scenarios ----------------
 
 const scenarios = {
+  /** Editor (editor-design §4): Quick Play settings → ▶ Quick Play runs the unsaved content on that map. */
+  async editorQuickPlay(d) {
+    const page = d.page;
+    await page.goto(new URL("editor/", url).href);
+    await page.getByText("Temple of the Still Sky").click();
+    await page.getByRole("button", { name: "+ Hero" }).click();
+    const party = page.locator(".inspector select").first();
+    await party.selectOption("tarek");
+    await page.locator(".inspector input[type=number]").nth(3).fill("9"); // level (x, y, gold, level)
+    await page.locator(".inspector input[placeholder^='e.g.']").fill("monks_trial");
+    // an unsaved edit the play-test must see: other music
+    await page.locator(".content select").nth(3).selectOption("boss");
+    d.expect(await page.getByRole("button", { name: "Save (1)" }).isVisible(), "the map is marked unsaved");
+    await d.shot("editor");
+    const [game] = await Promise.all([page.context().waitForEvent("page"), page.getByRole("button", { name: /Quick Play/ }).click()]);
+    await game.waitForFunction(() => {
+      try {
+        return window.__game.debug.state().board.mapId === "temple";
+      } catch {
+        return false; // still loading
+      }
+    }, null, { timeout: 30000 });
+    await game.waitForTimeout(1500);
+    const st = await game.evaluate(() => {
+      const s = __game.debug.state();
+      return { roster: s.roster, level: s.heroes.tarek.level, flag: s.flags.monks_trial, music: __game.debug.ctx().db.map("temple").music };
+    });
+    await game.screenshot({ path: `${OUT}/editorQuickPlay-02-game.png` });
+    d.expect(JSON.stringify(st.roster) === '["tarek"]', `party from Quick Play (${st.roster})`);
+    d.expect(st.level === 9, `level 9 (${st.level})`);
+    d.expect(st.flag === true, "flag set");
+    d.expect(st.music === "boss", "unsaved edit reached the game");
+    // nothing was written to disk: undo everything
+    await page.bringToFront();
+    for (let i = 0; i < 6; i++) await page.keyboard.press("Control+z");
+    d.expect(await page.getByRole("button", { name: "Save", exact: true }).isDisabled(), "undo brought the files back");
+  },
+
   /** The Gull (§5.9): a pointed bow and a flared hull, from all four sides and mid-spin. */
   async shipLook(d) {
     await d.newGame({ prologue: true });

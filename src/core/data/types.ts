@@ -270,7 +270,12 @@ export interface EnemyDef extends GraphicsRef {
   name: string;
   description?: string;
   level: number;
+  /** Stats at `level`. */
   stats: Stats;
+  /** Optional: added per level above `level` (subtracted below) when a map places it at another level (§12.6). */
+  growth?: Partial<Stats>;
+  /** Optional: items it wears (weapon, armor, accessory) – stats, weapon element, on-hit and immunities like a hero's. */
+  equipment?: Partial<Record<EquipSlot, string>>;
   move: string;
   elements?: Partial<Record<Element, number>>;
   immune?: string[];
@@ -424,6 +429,20 @@ export interface GraphicsDb {
   wallSigns?: SheetDef & { frames: Record<string, number> };
 }
 
+/**
+ * The editor's Quick Play entity (one per map): where and with whom a play-test starts
+ * (editor-design §4, §6.3). Everything is optional.
+ */
+export interface QuickPlayDef {
+  x?: number;
+  y?: number;
+  party?: { hero: string; level?: number }[];
+  items?: Record<string, number>;
+  abilities?: Record<string, string[]>;
+  flags?: string[];
+  gold?: number;
+}
+
 /** A corner of a cell: N = -y, S = +y, W = -x, E = +x. */
 export type Corner = "NW" | "NE" | "SE" | "SW";
 
@@ -574,6 +593,8 @@ export interface MapEnemyDef {
   y: number;
   /** Additional party members (enemy ids). */
   party?: string[];
+  /** Level of the placed enemy (default: its own); party members shift by the same amount (§12.6). */
+  level?: number;
   when?: Condition;
   dir?: Dir;
 }
@@ -612,6 +633,8 @@ export interface MapDef {
    * one). Drawn onto the face (isometrically distorted), only while that side faces the camera.
    */
   wallDecor?: { x: number; y: number; sign: string; face: Dir; level?: number }[];
+  /** Editor-only data (editor-design §6.3) – the game only reads it for Quick Play. */
+  editor?: { quickPlay?: QuickPlayDef };
   /** Actions when the map is entered. */
   onEnter?: Action[];
 }

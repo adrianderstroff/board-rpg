@@ -275,3 +275,45 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ Diagonal pieces (`shape` layer, cut corners), hull flare with water underlay, bulwarks open at gangways – static and while rotating (§5.9)
 - ☑ The Gull: pointed bow, raised stern, bulwarks, steering wheel (decor `ship_wheel`)
 - ☑ Directional decor: one frame per view, turning with the board (the wheel)
+
+## P28 · Enemy levels and equipment ☑
+- ☑ Optional `growth` and per-placement `level` (party shifts alike), rewards scale with level (§12.6)
+- ☑ Optional enemy equipment with hero rules (stats, element, on-hit, immunities, grants); Fishfolk: Coral Spear + Scale Vest
+
+---
+
+# Editor (see [editor-design.md](editor-design.md))
+
+## E1 · Editor foundation ☑
+- ☑ `editor/` app (own Vite entry, Preact), dev-server file API (`data/` only), project model: YAML documents, dirty files, save/revert, undo/redo (typing and strokes merge)
+- ☑ Saving changes only the edited lines (alignment, comments, line endings kept)
+- ☑ Shell layout (navigation, toolbar, inspector), live `validateContent` problems; Maps list + properties (music with preview)
+
+## E2 · Play-testing ☑
+- ☑ Game boot hook `?editor=`: content over `postMessage`; play-tests use their own save slots
+- ☑ Play (title → New Game) and Quick Play (current map, Quick Play settings: position, party/levels, items, abilities, flags, gold) – set in the map inspector for now, placed on the canvas with E4
+
+## E3 · Map editor ☐
+- ☐ Canvas: isometric (engine renderer, rotation) and grid view
+- ☐ Layers: terrain, height, decor, decor facing, shape, overhead; tools: pencil, rectangle, fill, eyedropper, height brush, area copy/move, resize
+- ☐ Map properties: name, kind, chipset, battleback, music (with preview), onEnter
+
+## E4 · Entities ☐
+- ☐ Events (pages, appearance, triggers, interactions), exits/teleports, spawns, enemies, gates & switches, traps, wall signs, Quick Play
+- ☐ Condition and action builders
+
+## E5 · Items ☐
+- ☐ One form: basics (quest item), equipment, battle use, board use, teaches; derived category
+- ☐ Effect list editor and presets
+
+## E6 · Characters ☐
+- ☐ Heroes (+ class: stats and growth chart, abilities by level, equipment), enemies (AI, board AI, drops/steal), NPCs; graphics previews
+
+## E7 · Quests & dialogs ☐
+- ☐ Quest steps/endings with condition/action builders, flow view; dialog node editor with markup preview
+
+## E8 · Abilities, shops, settings ☐
+- ☐ Ability form (shared target/effect editors), shops, `config.yaml` (real start, level curve, formula constants)
+
+## E9 · References ☐
+- ☐ Rename id everywhere, "where used", delete protection

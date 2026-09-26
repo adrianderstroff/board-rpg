@@ -116,6 +116,11 @@ export function validateContent(db: Database): string[] {
     graphics(e, w);
     for (const r of e.ai) if (r.action !== "attack") has(db.abilities, r.action, w, "ability");
     for (const r of e.ai) if (r.when?.targetLacksStatus) has(db.statuses, r.when.targetLacksStatus, w, "status");
+    for (const [slot, itemId] of Object.entries(e.equipment ?? {})) {
+      has(db.items, itemId, w, "item");
+      const item = itemId ? db.items.get(itemId) : undefined;
+      if (item && item.equip?.slot !== slot) err(w, `"${itemId}" can't be worn as ${slot}`);
+    }
     for (const s of e.statuses ?? []) has(db.statuses, s, w, "status");
     for (const a of e.boardAi.abilities ?? []) {
       has(db.abilities, a.ability, w, "ability");

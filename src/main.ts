@@ -1,4 +1,6 @@
 import { loadDatabase } from "./content/loader";
+import { Database } from "./core/data/database";
+import { isEditorPlaytest, receiveFromEditor } from "./game/editorLink";
 import { validateContent } from "./core/data/validate";
 import { createGame } from "./engine/boot";
 import { BattleScene } from "./game/scenes/BattleScene";
@@ -8,10 +10,13 @@ import { GameOverScene, TitleScene } from "./game/scenes/TitleScene";
 import { initSession, getSession } from "./game/session";
 import { installDebug } from "./game/debug";
 
-const db = loadDatabase();
+// Play-testing from the editor: its (possibly unsaved) content instead of the bundled files.
+const playtest = isEditorPlaytest() ? await receiveFromEditor() : null;
+const db = playtest ? new Database(playtest.raw) : loadDatabase();
 const problems = validateContent(db);
 if (problems.length) console.warn(`Content problems:\n${problems.join("\n")}`);
-initSession(db);
+const session = initSession(db, { playtest: !!playtest });
+if (playtest?.mode === "quick" && playtest.map) session.pendingQuickPlay = playtest.map;
 
 const game = createGame("game", [BootScene, TitleScene, BoardScene, BattleScene, GameOverScene]);
 

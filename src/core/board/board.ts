@@ -1,5 +1,6 @@
 import {
   createEnemy,
+  enemyRewards,
   createNpc,
   effectiveStats,
   gainExp,
@@ -8,7 +9,7 @@ import {
   movePatternOf,
 } from "../chars/character";
 import { findChar, getChar, type Ctx } from "../context";
-import type { EventPageDef, ExitDef, MapEventDef } from "../data/types";
+import type { EventPageDef, ExitDef, MapEnemyDef, MapEventDef } from "../data/types";
 import type { GameEvent } from "../events";
 import { check } from "../script/conditions";
 import type { BoardState, Character, MapMemory, Piece } from "../state/types";
@@ -219,7 +220,7 @@ export function enterMap(ctx: Ctx, mapId: string, spawnId: string, groups?: { me
     if (mem.defeated.includes(e.id) || !check(ctx, e.when)) continue;
     const ids = [e.enemy, ...(e.party ?? [])].map((enemyId, i) => {
       const cid = `${e.id}#${i}`;
-      b.chars[cid] = createEnemy(ctx.db, cid, enemyId);
+      b.chars[cid] = createEnemy(ctx.db, cid, enemyId, placedLevel(ctx, e, enemyId));
       return cid;
     });
     b.pieces[`e:${e.id}`] = { id: `e:${e.id}`, faction: "enemy", members: ids, x: e.x, y: e.y, facing: e.dir ?? "S", sourceId: e.id, home: { x: e.x, y: e.y }, ...dormancy(ctx, e.enemy) };
@@ -237,11 +238,17 @@ export function spawnMapEnemy(ctx: Ctx, entryId: string): GameEvent[] {
   if (!e || b.pieces[`e:${e.id}`] || mapMemory(ctx, b.mapId).defeated.includes(e.id)) return [];
   const ids = [e.enemy, ...(e.party ?? [])].map((enemyId, i) => {
     const cid = `${e.id}#${i}`;
-    b.chars[cid] = createEnemy(ctx.db, cid, enemyId);
+    b.chars[cid] = createEnemy(ctx.db, cid, enemyId, placedLevel(ctx, e, enemyId));
     return cid;
   });
   b.pieces[`e:${e.id}`] = { id: `e:${e.id}`, faction: "enemy", members: ids, x: e.x, y: e.y, facing: e.dir ?? "S", sourceId: e.id, home: { x: e.x, y: e.y }, ...dormancy(ctx, e.enemy) };
   return [{ type: "pieces" }];
+}
+
+/** Level of an enemy in a map entry: the entry's `level` for its leader, party members shifted alike (§12.6). */
+function placedLevel(ctx: Ctx, e: MapEnemyDef, enemyId: string): number | undefined {
+  if (e.level === undefined) return undefined;
+  return ctx.db.enemy(enemyId).level + (e.level - ctx.db.enemy(e.enemy).level);
 }
 
 /** Enemies with `boardAi.dormant` start lying still (§7.5). */
@@ -295,10 +302,10 @@ export function reconcile(ctx: Ctx, opts: { rewardKills?: boolean; fallenAt?: Re
         const at = opts.fallenAt?.[id] ?? piece;
         b.pieces[`f:${id}`] = { id: `f:${id}`, faction: "hero", members: [id], x: at.x, y: at.y, facing: piece.facing, fallen: true };
       } else if (c.kind === "enemy") {
-        const def = ctx.db.enemy(c.def);
         ctx.state.records.kills[c.def] = (ctx.state.records.kills[c.def] ?? 0) + 1;
-        expPool += def.exp;
-        goldPool += def.gold;
+        const r = enemyRewards(ctx.db, c);
+        expPool += r.exp;
+        goldPool += r.gold;
         delete b.chars[id];
         // Map entries are remembered as defeated once all their characters are gone
         // (works even when enemy parties split up or merge).

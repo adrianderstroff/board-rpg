@@ -1,6 +1,7 @@
 import {
   computeStats,
   createEnemy,
+  enemyRewards,
   addStatus,
   removeStatus,
   dropNonPersistent,
@@ -382,8 +383,9 @@ function grantRewards(ctx: Ctx): GameEvent[] {
     const ch = getChar(ctx, c.id);
     if (ch.kind !== "enemy") continue;
     const def = ctx.db.enemy(ch.def);
-    rewards.exp += def.exp;
-    if (!c.summoned) rewards.gold += def.gold;
+    const r = enemyRewards(ctx.db, ch);
+    rewards.exp += r.exp;
+    if (!c.summoned) rewards.gold += r.gold;
     for (const d of def.drops ?? []) if (ctx.rng.chance(d.chance)) rewards.items.push(d.item);
   }
   rewards.gold = Math.max(0, rewards.gold - (b.spent ?? 0)); // what the boss paid for its summons

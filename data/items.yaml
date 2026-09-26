@@ -282,7 +282,23 @@ tiger_fangs:
   description: Fast and fierce.
   equip: { slot: weapon, kind: claw, stats: { str: 18, mag: 2, spd: 1 } }
 
+coral_spear:
+  name: Coral Spear
+  category: weapon
+  price: 180
+  icon: staff
+  description: A fishfolk spear tipped with sharp red coral. No hero school teaches the spear.
+  equip: { slot: weapon, kind: spear, stats: { str: 6, spd: 1 } }
+
 # ---------------- armor ----------------
+scale_vest:
+  name: Scale Vest
+  category: armor
+  price: 120
+  icon: vest
+  description: Overlapping fish scales on kelp cord. Light, and shrugs off the cold.
+  equip: { slot: armor, kind: lightArmor, stats: { def: 4, mdef: 2 }, immune: [slow] }
+
 leather_vest:
   name: Leather Vest
   category: armor

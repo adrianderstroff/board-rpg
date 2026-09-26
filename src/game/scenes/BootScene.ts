@@ -56,6 +56,13 @@ export class BootScene extends Phaser.Scene {
     setMiniStatusIndex((this.cache.json.get("statusMiniIndex") as Record<string, number>) ?? {});
     const s = getSession().settings;
     if (!getAudio()) initAudio(this.game, { music: s.musicVolume, sfx: s.sfxVolume });
+    // editor Quick Play: straight onto the map being edited
+    const quick = getSession().pendingQuickPlay;
+    if (quick) {
+      getSession().pendingQuickPlay = undefined;
+      this.scene.start("board", { enter: getSession().startQuickPlay(quick) });
+      return;
+    }
     this.scene.start("title");
   }
 }

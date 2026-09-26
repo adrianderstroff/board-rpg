@@ -6,9 +6,11 @@ Web first; desktop (Tauri/Electron) and mobile (Capacitor) later.
 - Design: [docs/game-design.md](docs/game-design.md) (sections referenced as §N in code)
 - Work breakdown & status: [docs/packages.md](docs/packages.md) – update statuses when finishing work
 - Ideas designed but not built yet: [docs/todo.md](docs/todo.md) – move an item into the design doc when picking it up
+- Editor (content editor + play-testing): [docs/editor-design.md](docs/editor-design.md), packages E1–E9
 - Asset sheet layouts: [public/assets/ASSETS.md](public/assets/ASSETS.md)
 
 ## Commands
+- `npm run editor` – the content editor (docs/editor-design.md) at http://localhost:5173/editor/ – edits data/ in place; ▶ Play / ▶ Quick Play run the unsaved content in a game tab
 - `npm run dev` – dev server at http://localhost:5173 (`npm run dev:phone` also serves on the LAN for testing on a phone; `?touch=1` forces touch controls on desktop)
 - `npm test` – unit tests (`src/**/*.test.ts`), incl. content validation and a scripted playthrough
 - `npm run build` – typecheck + production build to `dist/`

@@ -11,7 +11,11 @@
     "noFallthroughCasesInSwitch": true,
     "isolatedModules": true,
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact"
   },
-  "include": ["src"]
+  "include": ["src", "editor/src"],
+  // editor tests read the real data files with node:fs; vitest runs them, tsc only checks browser code
+  "exclude": ["editor/**/*.test.ts"]
 }

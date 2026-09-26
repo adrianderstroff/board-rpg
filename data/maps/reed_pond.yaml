@@ -76,7 +76,7 @@ exits:
 
 enemies:
   - { id: fish_a, enemy: fishfolk, x: 4, y: 4, dir: S }
-  - { id: fish_pair, enemy: fishfolk, party: [fishfolk], x: 11, y: 7, dir: W }
+  - { id: fish_pair, enemy: fishfolk, party: [fishfolk], x: 11, y: 7, dir: W, level: 6 }   # a little stronger (§12.6)
   - { id: toad_a, enemy: bog_toad, x: 3, y: 9, dir: E }
   - { id: toad_b, enemy: bog_toad, x: 12, y: 3, dir: S }
 

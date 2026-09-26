@@ -107,7 +107,10 @@ fishfolk:
   name: Fishfolk
   description: Scaly spear-fishers of the Reed Pond. At home in deep water where no hero can follow.
   level: 5
-  stats: { maxHp: 48, maxMp: 0, str: 14, def: 9, mag: 5, mdef: 8, spd: 9 }
+  # base stats without its gear; the spear and scale vest add STR 6, SPD 1, DEF 4, MDEF 2
+  stats: { maxHp: 48, maxMp: 0, str: 8, def: 5, mag: 5, mdef: 6, spd: 8 }
+  growth: { maxHp: 6, str: 1.4, def: 1, mag: 0.5, mdef: 1, spd: 0.6 }
+  equipment: { weapon: coral_spear, armor: scale_vest }
   move: walk1
   swims: amphibious
   elements: { thunder: 1.5, ice: 0.5, fire: 0.5 }
@@ -121,7 +124,7 @@ fishfolk:
   boardAi: { behavior: guard, aggroRange: 4, pack: true }
   exp: 20
   gold: 14
-  drops: [{ item: potion, chance: 0.2 }]
+  drops: [{ item: potion, chance: 0.2 }, { item: coral_spear, chance: 0.1 }]
 
 bog_toad:
   name: Bog Toad

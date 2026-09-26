@@ -398,6 +398,11 @@ Targets: any living combatant (heroes can target enemies and allies, e.g. heal a
 - **Board AI** behaviors: `aggressive` (engage reachable hero, else approach nearest visible hero), `guard` (hold until a hero is within `aggroRange`, then aggressive), `wander` (random moves within radius), `static`. Hidden heroes are ignored. NPCs use wander/static.
 - **Before moving** an enemy may use its ability action: leave/join a party (§8.7) or a **board ability** from `boardAi.abilities` (each with a chance per turn). Targets are scored: offensive abilities prefer cells with the most visible heroes and avoid hitting allies; supportive ones prefer wounded allies. The area is flashed briefly before it lands.
 
+### 12.6 Enemy levels and equipment
+- An enemy has stats at its own `level`. With an optional `growth` (per level, like a class) a map can place it at another level (`level` on the map entry; party members shift by the same amount). Without `growth` only the rewards change.
+- EXP and gold scale with the placed level against its own (`exp × level / own level`).
+- Enemies may **wear equipment** (`equipment: { weapon, armor, accessory }`), which works exactly like a hero's: stat bonuses, the weapon's element and on-hit status (unless the enemy has its own), status immunities, granted abilities. Creatures (scorpions, condors…) wear nothing; the Fishfolk carry a Coral Spear and a Scale Vest (and sometimes drop the spear).
+
 ### 12.7 Swallow, blessings and summons (the Grave Toad)
 - **Swallow** (enemy skill): the target disappears into the user. While inside it **can't act and can't be targeted by anyone** (friend or foe; group effects skip it). The swallower's next two turns are forced and are its whole action:
   1. **Digest** – it gains half of what it will take (shown as +HP / +MP on it),
@@ -641,3 +646,4 @@ Where the rough ideas were incomplete or conflicting, these rules were chosen:
 34. **Henchmen** buff first, then attack (priority AI rules); **re-summoning** costs the boss 120 G of its reward and happens with 40 % per turn once both are down, so not right away (§12.7).
 35. **Final boss placement**: the cave opens half-way up the mountain after the Holy Orb – Holy is the answer to an undead boss (§18).
 36. **Ships** (user request: "diagonal pieces instead of straight blocks and overhangs", "small walls on deck and a steering wheel") → shaped blocks: diagonal cuts, hull flare with water beneath, bulwarks open at the gangway; the wheel is decor (§5.9).
+37. **Enemy levels and equipment** (user request) → optional `growth` + a level per map entry; optional equipment slots using the hero equipment rules; rewards scale with level (§12.6).
