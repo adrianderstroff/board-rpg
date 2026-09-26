@@ -29,9 +29,9 @@ describe("bundling the used library content (projects.md §5)", () => {
   it("a new project ships a small library that is complete for it", () => {
     const { usage, db, assets } = shipped(under("/library/v1/template/data/"));
     expect(validateContent(db)).toEqual([]);
-    // the hero and what hangs off it; what the rules need; nothing unrelated
-    for (const id of ["lib:aldric", "lib:knight", "lib:potion", "lib:desert", "lib:defending", "lib:join_party"]) expect(usage.ids).toContain(id);
-    for (const id of ["lib:grave_toad", "lib:mira", "lib:token_serenity"]) expect(usage.ids).not.toContain(id);
+    // what its own hero uses (class, equipment); what the rules need; nothing unrelated – not even the library's heroes
+    for (const id of ["lib:knight", "lib:bronze_sword", "lib:chain_mail", "lib:potion", "lib:desert", "lib:defending", "lib:join_party"]) expect(usage.ids).toContain(id);
+    for (const id of ["lib:grave_toad", "lib:aldric", "lib:mira", "lib:token_serenity"]) expect(usage.ids).not.toContain(id);
     expect(usage.music).toContain("village");
     expect(usage.music).not.toContain("final");
     expect(assets).toContain("charsets/hero_knight.png");

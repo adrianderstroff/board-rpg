@@ -79,8 +79,9 @@ public/assets/               the runtime's own: system graphics (cursor, highlig
 
 - A **project menu** (the toolbar's left end, showing the open project's name): switch to another
   project, **New project** – a name (its folder id follows from it) and what to start from: the
-  library's **template** (`library/v1/template/`: default rules, one sand map, a hero and two
-  potions – valid and playable right away) or a **copy** of an existing project. Later export and
+  library's **template** (`library/v1/template/`: default rules, a 9 × 9 sand map with the game
+  start in its middle, the project's own hero **Hero** in the starting party and two potions –
+  valid and playable right away) or a **copy** of an existing project. Later export and
   import. The open project is remembered (and `?project=<id>` opens one); unsaved work is kept per
   project, so switching loses nothing.
 - Library content shows in every list with a *library* badge. Its forms are read-only with

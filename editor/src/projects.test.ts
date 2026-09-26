@@ -38,7 +38,7 @@ describe("projects (projects.md §6)", () => {
     expect(info).toEqual({ id, name: "Test Game", library: "v1" });
     const p = await at(root).loadProject(id);
     expect(p.project.name).toBe("Test Game");
-    expect(Object.keys(p.files).filter((f) => f.startsWith("data/")).sort()).toEqual(["data/config.yaml", "data/maps/start.yaml"]);
+    expect(Object.keys(p.files).filter((f) => f.startsWith("data/")).sort()).toEqual(["data/config.yaml", "data/heroes.yaml", "data/maps/start.yaml"]);
     expect(Object.keys(p.files).some((f) => f.startsWith("library/v1/data/heroes"))).toBe(true);
     expect(readFileSync(join(root, `projects/${id}/project.yaml`), "utf8")).toContain("# A new project"); // comments kept
   });

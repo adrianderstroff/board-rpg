@@ -1,0 +1,12 @@
+# The project's own heroes (docs/game-design.md §3, edited in the editor: docs/editor-design.md §7).
+# A new project starts with one, in the starting party (config.yaml) – rename it, change its class and looks.
+
+hero:
+  name: Hero
+  classId: lib:knight
+  level: 1
+  description: The one this story is about.
+  charset: lib:hero_knight
+  battler: lib:hero_knight
+  face: lib:hero_knight
+  equipment: { weapon: lib:bronze_sword, armor: lib:chain_mail }

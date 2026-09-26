@@ -36,6 +36,9 @@ describe("content", () => {
       const db = new Database(layeredRaw(under(`/library/${v}/data/`), under(`/library/${v}/template/data/`), { library: "", project: "" }));
       expect(validateContent(db)).toEqual([]);
       expect(db.maps.has(db.config.start.map)).toBe(true);
+      // its own hero, in the starting party
+      expect(db.config.start.party).toEqual(["hero"]);
+      expect(db.heroes.get("hero")?.name).toBe("Hero");
       // the game start stands in the middle of the first map
       const map = db.maps.get(db.config.start.map)!;
       const rows = map.layers.terrain.trim().split(/\r?\n/);

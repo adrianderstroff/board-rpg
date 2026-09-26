@@ -4,7 +4,7 @@ title: New Project
 start:
   map: start
   spawn: start
-  party: [lib:aldric]
+  party: [hero]
   gold: 100
   items:
     lib:potion: 2
