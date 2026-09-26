@@ -599,7 +599,10 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
   // entity mode shows everything with labels; the other modes only what the game itself shows
   const sprites = useMemo(() => {
     if (!db) return [];
-    const all = entitySprites(db, mapData, rotation, entities.selected, mode === "entity");
+    // the selected entity – or every member of a selected group – has its label in green
+    const all = entitySprites(db, mapData, rotation, entities.selected, mode === "entity").map((e) =>
+      entities.group.some((g) => sameRef(g, e.ref)) ? { ...e, selected: true } : e,
+    );
     if (mode !== "entity") return all.filter((e) => e.texture && !e.editorOnly).map((e) => ({ ...e, label: undefined }));
     // a prefab: its whole footprint follows the cursor – its looks, and a tile per cell (red where it doesn't fit)
     const prefab = entities.placingPrefab ? prefabOf(entities.placingPrefab) : undefined;
@@ -618,7 +621,7 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
       ? all.filter((e) => sameRef(e.ref, src)).map((e) => ({ ...e, x: hover.x, y: hover.y, label: undefined, selected: false, preview: true, blocked }))
       : [{ ...placingSprite(entities.placing!, hover), blocked }];
     return [...all, ...ghost];
-  }, [db, mapData, rotation, entities.selected, mode, entities.placing, entities.copying, entities.placingPrefab, hover?.x, hover?.y]);
+  }, [db, mapData, rotation, entities.selected, mode, entities.placing, entities.copying, entities.placingPrefab, entities.group, hover?.x, hover?.y]);
   // what the next click places, see-through under the cursor: a terrain block or a decor object
   // the rectangle being dragged (not while erasing) or the area the fill would reach; else the hovered cell
   const ghostCells: Pos[] | undefined = useMemo(() => {
