@@ -192,12 +192,18 @@ table.entity-table td:not(:first-child) { color: var(--dim); font-size: 12px; }
 .sprite-view { image-rendering: pixelated; }
 .section-head { display: flex; align-items: baseline; gap: 10px; }
 .section-head h3 { margin-right: auto; }
-/* the appearance picker: sprites to choose from, over the form below the preview */
-.look-picker { position: absolute; left: 0; right: 0; top: 108px; z-index: 5; max-height: 380px; overflow: auto; padding: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55); }
-.look-picker .search { width: 100%; margin-bottom: 6px; }
-.look-picker h4 { margin: 8px 0 4px; font-size: 12px; font-weight: normal; color: var(--dim); }
-.look-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 4px; }
-.look-tile { height: 54px; padding: 2px; display: grid; place-items: center; background: var(--bg); }
+/* floating windows over the editor (forms/FloatingWindow): drag the title bar, resize at the corner */
+.float-window { position: fixed; z-index: 50; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6); }
+.float-title { flex: none; display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 12px; border-bottom: 1px solid var(--line); cursor: move; user-select: none; font-weight: 600; color: var(--accent); }
+.float-title span { flex: 1; }
+.float-title .close { font-size: 20px; }
+.float-toolbar { flex: none; padding: 8px 10px 0; }
+.float-toolbar .search { width: 100%; }
+.float-body { flex: 1; min-height: 0; overflow: auto; padding: 8px 10px 14px; }
+.float-resize { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; border-bottom-right-radius: 8px; background: linear-gradient(135deg, transparent 55%, var(--line) 55%, var(--line) 65%, transparent 65%, transparent 75%, var(--line) 75%, var(--line) 85%, transparent 85%); }
+.look-heading { margin: 10px 0 4px; font-size: 12px; font-weight: normal; color: var(--dim); }
+.look-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 4px; }
+.look-tile { height: 76px; padding: 2px; display: grid; place-items: center; background: var(--bg); }
 .look-tile.on, .look-tile.on:hover:not(:disabled) { background: var(--bg); border-color: var(--accent); }
 .look-tile .none { color: var(--dim); font-size: 20px; }
 /* a checkbox that looks like the text boxes: same height, square */

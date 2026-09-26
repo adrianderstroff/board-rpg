@@ -209,6 +209,8 @@ and opens its form. An event's form has two parts:
 - **Appearance** – a preview of the look (its character facing its way and / or its object; empty
   when it shows nothing) next to id, cell and – for a character – its facing. Clicking the preview opens a picker of
   sprites – nothing, the characters (NPCs), the objects (decor) – and the pick sets the kind of look.
+  The picker is a floating window in the middle of the editor: dragged by its title bar, resized at
+  its corner (the size is remembered), closed with × / Esc or by picking.
   Below come that kind's settings – a character's movement and shop sign, an object's "behind it"
   character (a shop keeper at a counter) – and "hidden" (found with Discover). The facing
   (N / E / S / W) shows in the preview and on the map. The look
