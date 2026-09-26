@@ -98,7 +98,7 @@ export function ProjectMenu({ project }: { project: Project }) {
               a.click();
             }}
           >
-            Export {project.info.name}…
+            Export project…
           </button>
           <hr />
           <div class="dim pad" title="The library version this project uses (projects.md §3)">
@@ -112,7 +112,7 @@ export function ProjectMenu({ project }: { project: Project }) {
               </button>
             ))}
           <label role="menuitem" class="menu-file" title="Open a .brpg file as a new project">
-            Import…
+            Import project…
             <input
               type="file"
               accept=".brpg,.zip"
