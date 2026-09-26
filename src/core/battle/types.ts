@@ -60,6 +60,8 @@ export interface BattleState {
   swallowed?: Swallowed[];
   /** Round in which an actor last used an action: "actor:action" (AI cooldowns). */
   used?: Record<string, number>;
+  /** Items the enemies have left in this battle: actor → item → count (from their `items`, §12.5). */
+  stock?: Record<string, Record<string, number>>;
   /** Gold spent by the enemy side on summons (taken from the reward). */
   spent?: number;
 }

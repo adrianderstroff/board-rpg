@@ -46,3 +46,38 @@ describe("enemy levels and equipment (§12.6)", () => {
     expect(validateContent(db).some((p) => p.includes("lib:coral_spear"))).toBe(true);
   });
 });
+
+describe("enemies use their own items (§12.5)", () => {
+  it("an AI item rule uses one of what the enemy carries; each use takes one, then the rule is out", async () => {
+    const { chooseAiAction } = await import("../core/battle/ai");
+    const { enemyItemsLeft, nextBattleTurn, performAction, startBattle } = await import("../core/battle/battle");
+    const { getChar } = await import("../core/context");
+    const ctx = arenaCtx(arena({ enemies: [{ id: "s", enemy: "lib:sand_scorpion", x: 0, y: 0 }] }));
+    const def = ctx.db.enemy("lib:sand_scorpion");
+    const saved = { ai: def.ai, items: def.items };
+    try {
+      def.items = [{ item: "lib:potion", count: 1 }];
+      def.ai = [{ action: "item", item: "lib:potion", weight: 1 }];
+      expect(validateContent(ctx.db)).toEqual([]);
+      startBattle(ctx, { kind: "normal", heroes: ["lib:aldric"], enemies: ["s#0"], battleback: "lib:desert" });
+      const me = getChar(ctx, "s#0");
+      me.hp -= 20;
+      const hp = me.hp;
+      const inventory = { ...ctx.state.inventory };
+      const act = chooseAiAction(ctx, "s#0");
+      expect(act).toEqual({ type: "item", item: "lib:potion", target: "s#0" }); // its only ally: itself
+      nextBattleTurn(ctx);
+      performAction(ctx, "s#0", act);
+      expect(me.hp).toBe(hp + 20);
+      expect(enemyItemsLeft(ctx, "s#0", "lib:potion")).toBe(0);
+      expect(ctx.state.inventory).toEqual(inventory); // the party's potions are untouched
+      // nothing left: it falls back to attacking
+      expect(chooseAiAction(ctx, "s#0").type).toBe("attack");
+      // an item rule for something it doesn't carry is a content problem
+      def.items = [];
+      expect(validateContent(ctx.db)).toContain('enemy lib:sand_scorpion: AI uses "lib:potion", which it doesn\'t carry (items)');
+    } finally {
+      Object.assign(def, saved);
+    }
+  });
+});

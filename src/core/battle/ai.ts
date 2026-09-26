@@ -3,8 +3,18 @@ import { getChar, type Ctx } from "../context";
 import type { AiRule } from "../data/types";
 import type { Character } from "../state/types";
 import type { GameEvent } from "../events";
-import { battle, canUseBattleAbility, holding, living, nextBattleTurn, performAction, sideOf, targetCandidates } from "./battle";
+import { battle, canUseBattleAbility, enemyItemsLeft, holding, living, nextBattleTurn, performAction, sideOf, targetCandidates } from "./battle";
 import type { BattleAction } from "./types";
+
+/** What a rule's cooldown is counted by: its ability, or the item it uses. */
+const ruleKey = (r: AiRule) => (r.action === "item" ? `item:${r.item}` : r.action);
+
+/** Whether the actor can carry out a rule's action now (MP, a battle use, an item left). */
+function canDo(ctx: Ctx, actorId: string, r: AiRule): boolean {
+  if (r.action === "attack") return true;
+  if (r.action === "item") return !!r.item && !!ctx.db.items.get(r.item)?.battle && enemyItemsLeft(ctx, actorId, r.item) > 0;
+  return canUseBattleAbility(ctx, actorId, r.action);
+}
 
 const hpRatio = (ctx: Ctx, c: Character) => c.hp / computeStats(ctx.db, c).maxHp;
 
@@ -15,7 +25,7 @@ function ruleApplies(ctx: Ctx, actor: Character, rule: AiRule): boolean {
   const b = battle(ctx);
   if (w.round !== undefined && b.round % w.round !== 0) return false;
   if (w.cooldown !== undefined) {
-    const last = b.used?.[`${actor.id}:${rule.action}`];
+    const last = b.used?.[`${actor.id}:${ruleKey(rule)}`];
     if (last !== undefined && b.round - last < w.cooldown) return false;
   }
   if (w.alone && living(ctx, sideOf(ctx, actor.id)).some((c) => c.id !== actor.id)) return false;
@@ -48,13 +58,18 @@ export function chooseAiAction(ctx: Ctx, actorId: string): BattleAction {
   const actor = getChar(ctx, actorId);
   if (holding(ctx, actorId)) return { type: "digest" }; // a full stomach takes the whole turn (§12.7)
   const rules = actor.kind === "enemy" ? ctx.db.enemy(actor.def).ai : DEFAULT_RULES;
-  const usable = rules.filter((r) => ruleApplies(ctx, actor, r) && (r.action === "attack" || canUseBattleAbility(ctx, actorId, r.action)));
+  const usable = rules.filter((r) => ruleApplies(ctx, actor, r) && canDo(ctx, actorId, r));
   for (let tries = 0; tries < 4 + rules.length && usable.length; tries++) {
     // priority rules first (a henchman buffs its master before it attacks)
     const rule = usable.find((r) => r.priority) ?? ctx.rng.weighted(usable, (r) => r.weight)!;
     if (rule.action === "attack") {
       const t = pickTarget(ctx, targetCandidates(ctx, actorId, "enemy"), rule);
       if (t) return { type: "attack", target: t };
+    } else if (rule.action === "item") {
+      const use = ctx.db.item(rule.item!).battle!;
+      if (use.target === "allEnemies" || use.target === "allAllies" || use.target === "self") return { type: "item", item: rule.item! };
+      const t = pickTarget(ctx, targetCandidates(ctx, actorId, use.target), rule);
+      if (t) return { type: "item", item: rule.item!, target: t };
     } else {
       const use = ctx.db.ability(rule.action).battle!;
       if (use.target === "allEnemies" || use.target === "allAllies" || use.target === "self") {

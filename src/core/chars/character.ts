@@ -239,7 +239,7 @@ export function knownAbilities(db: Database, c: Character): string[] {
     for (const [id, a] of db.abilities) if (a.special) out.add(id);
   } else if (c.kind === "enemy") {
     const def = db.enemy(c.def);
-    for (const r of def.ai) if (r.action !== "attack") out.add(r.action);
+    for (const r of def.ai) if (r.action !== "attack" && r.action !== "item") out.add(r.action);
     for (const i of Object.values(c.equipment)) for (const g of (i && db.item(i).equip?.grants) || []) out.add(g);
     for (const a of def.boardAi.abilities ?? []) out.add(a.ability);
     if (def.boardAi.pack) for (const [id, a] of db.abilities) if (a.special) out.add(id);

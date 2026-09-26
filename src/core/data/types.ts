@@ -229,8 +229,10 @@ export interface ItemDef {
 // ---------- enemies & npcs (§3.3) ----------
 
 export interface AiRule {
-  /** Ability id or "attack". */
+  /** Ability id, "attack", or "item" (uses `item` from the enemy's own `items`, §12.5). */
   action: string;
+  /** With `action: item`: which of its items. */
+  item?: string;
   weight: number;
   when?: {
     hpBelow?: number;
@@ -292,6 +294,8 @@ export interface EnemyDef extends GraphicsRef {
   gold: number;
   drops?: { item: string; chance: number }[];
   steal?: { item: string; chance: number }[];
+  /** Items it carries into each battle and uses there (AI rules with `action: item`); each use takes one (§12.5). */
+  items?: { item: string; count: number }[];
   boss?: boolean;
   /** Battle music instead of the usual boss / battle track. */
   music?: string;

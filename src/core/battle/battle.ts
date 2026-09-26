@@ -70,6 +70,23 @@ export function combatant(ctx: Ctx, id: string): Combatant {
   return c;
 }
 
+/** How many of an item an enemy has left in this battle (its `items`, less what it used, §12.5). */
+export function enemyItemsLeft(ctx: Ctx, actorId: string, item: string): number {
+  const actor = getChar(ctx, actorId);
+  if (actor.kind !== "enemy") return 0;
+  const used = battle(ctx).stock?.[actorId];
+  if (used && item in used) return used[item];
+  return (ctx.db.enemy(actor.def).items ?? []).filter((i) => i.item === item).reduce((n, i) => n + i.count, 0);
+}
+
+function takeEnemyItem(ctx: Ctx, actorId: string, item: string): boolean {
+  const left = enemyItemsLeft(ctx, actorId, item);
+  if (left <= 0) return false;
+  const b = battle(ctx);
+  ((b.stock ??= {})[actorId] ??= {})[item] = left - 1;
+  return true;
+}
+
 export function sideOf(ctx: Ctx, id: string): Side {
   return combatant(ctx, id).side;
 }
@@ -337,10 +354,13 @@ export function performAction(ctx: Ctx, actorId: string, action: BattleAction): 
       break;
     case "item": {
       const item = ctx.db.item(action.item);
-      if (!item.battle || !removeItem(ctx, action.item)) throw new Error(`Cannot use ${action.item}`);
+      // enemies use what they carried in (§12.5), the party its inventory
+      const taken = actor.kind === "enemy" ? takeEnemyItem(ctx, actorId, action.item) : removeItem(ctx, action.item);
+      if (!item.battle || !taken) throw new Error(`Cannot use ${action.item}`);
       const targets = resolveTargets(ctx, actorId, item.battle, action.target);
       events.push({ type: "action", actor: actorId, name: item.name, item: item.id, targets });
       for (const t of targets) events.push(...applyEffects(ec, getChar(ctx, t), item.battle.effects));
+      (b.used ??= {})[`${actorId}:item:${item.id}`] = b.round;
       break;
     }
     case "defend": {

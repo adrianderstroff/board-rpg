@@ -161,7 +161,16 @@ export function validateContent(db: Database): string[] {
     const w = `enemy ${e.id}`;
     has(db.patterns, e.move, w, "pattern");
     graphics(e, w);
-    for (const r of e.ai) if (r.action !== "attack") has(db.abilities, r.action, w, "ability");
+    for (const r of e.ai) {
+      if (r.action === "attack") continue;
+      if (r.action !== "item") has(db.abilities, r.action, w, "ability");
+      else if (!r.item) err(w, "an AI rule uses an item but names none");
+      else if (!(e.items ?? []).some((i) => i.item === r.item)) err(w, `AI uses "${r.item}", which it doesn't carry (items)`);
+    }
+    for (const i of e.items ?? []) {
+      has(db.items, i.item, w, "item");
+      if (db.items.get(i.item) && !db.items.get(i.item)!.battle) err(w, `item "${i.item}" has no battle use`);
+    }
     for (const r of e.ai) if (r.when?.targetLacksStatus) has(db.statuses, r.when.targetLacksStatus, w, "status");
     for (const [slot, itemId] of Object.entries(e.equipment ?? {})) {
       has(db.items, itemId, w, "item");

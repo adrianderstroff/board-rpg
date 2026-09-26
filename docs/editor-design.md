@@ -395,7 +395,7 @@ start inventory); only enemies have their own items (§7.2). Abilities always co
 - **Its own items** – only enemies carry items of their own (heroes share the party inventory).
   Three lists (user decision):
   - **uses**: items the enemy has and uses in battle (item + count; its AI decides when – an AI rule
-    with "use item"). *Needs the game addition in §11.*
+    with "use item", game-design §12.5).
   - **can be stolen**: item + probability (Steal / Mug) – `steal` today.
   - **drops**: item + probability after defeat – `drops` today.
 - **Rewards**: EXP, gold.
@@ -492,7 +492,7 @@ These are skipped in the first editor version; each needs a game change first, t
 
 | Wish | Game today | Possible unification |
 |---|---|---|
-| Enemies **using their items** in battle (decided: a third item list) | enemies have `drops` and `steal`; in battle they only use abilities | enemy `items: [{ item, count }]` + AI rules with `action: item:<id>`; each use consumes one for that battle (planned with E6) |
+| ~~Enemies **using their items** in battle~~ – done with E6 | – | enemy `items: [{ item, count }]` + AI rules `{ action: item, item: <id> }`; each use consumes one for that battle (game-design §12.5) |
 | Items with an **elemental "normal" type** vs typed | damage has an optional element; no element = normal | already representable (element "none") – no gap |
 
 Content the editor won't edit at first (read-only, edited in YAML/tools as today):
