@@ -9,6 +9,7 @@ import { Check, Field, fileSetter, ListEditor, Num, Select, Text } from "../form
 import type { Project } from "../project";
 import { entityPath, KIND_INFO, type EntityRef } from "./model";
 import { QuickPlayForm } from "../screens/QuickPlayForm";
+import { LookPreview } from "./LookPreview";
 
 const DIRS: Dir[] = ["N", "E", "S", "W"];
 const SIGNS: [string, string][] = [
@@ -188,8 +189,7 @@ export function EntityForm({ project, mapId, entity, onSelect }: { project: Proj
 
   return (
     <div class="entity-form">
-      <h3>{KIND_INFO[entity.kind].label}</h3>
-      <p class="hint">{KIND_INFO[entity.kind].hint}</p>
+      <h3 title={KIND_INFO[entity.kind].hint}>{KIND_INFO[entity.kind].label}</h3>
       {body()}
     </div>
   );
@@ -235,18 +235,26 @@ function EventForm({ project, mapId, index, db }: { project: Project; mapId: str
 
   return (
     <>
-      <Field label="Id">
-        <Text value={ev.id} onChange={(v) => setIn(["events", index, "id"], v ?? "", "Event id", `ev${index}.id`)} />
-      </Field>
-      <Field label="Cell">
-        <div class="row">
-          x <Num value={ev.x} width={56} onChange={(v) => setIn(["events", index, "x"], v ?? 0, "Move event", `ev${index}.x`)} /> y{" "}
-          <Num value={ev.y} width={56} onChange={(v) => setIn(["events", index, "y"], v ?? 0, "Move event", `ev${index}.y`)} />
+      {/* the selected page's look on the left, the event's own fields on the right */}
+      <div class="event-head">
+        <LookPreview page={pages[p]} db={db} chip={db.chipsets.get(map.chipset)} />
+        <div>
+          <Field label="Id">
+            <Text value={ev.id} onChange={(v) => setIn(["events", index, "id"], v ?? "", "Event id", `ev${index}.id`)} />
+          </Field>
+          <Field label="Cell">
+            <div class="row">
+              x <Num value={ev.x} width={48} onChange={(v) => setIn(["events", index, "x"], v ?? 0, "Move event", `ev${index}.x`)} /> y{" "}
+              <Num value={ev.y} width={48} onChange={(v) => setIn(["events", index, "y"], v ?? 0, "Move event", `ev${index}.y`)} />
+            </div>
+          </Field>
+          <Field label="Hidden">
+            <label class="check" title="Invisible until found with Discover">
+              <input type="checkbox" checked={!!ev.hidden} onChange={(e) => setIn(["events", index, "hidden"], e.currentTarget.checked || undefined, "Hidden event")} />
+            </label>
+          </Field>
         </div>
-      </Field>
-      <Field label="Hidden">
-        <Check value={ev.hidden} label="invisible until found with Discover" onChange={(v) => setIn(["events", index, "hidden"], v, "Hidden event")} />
-      </Field>
+      </div>
       <div class="pages">
         <div class="row wrap">
           {pages.map((_, i) => (
