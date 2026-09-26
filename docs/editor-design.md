@@ -205,9 +205,15 @@ Like RPG Maker's events, but every kind maps onto a list the game already has.
 A **marker tile** is a flat tile on the cell with the kind's icon (the same icons in the top view).
 **Entity panel** (Edit tab in Entity mode): the kinds as buttons (three rows; the tooltip explains
 each), and below them the map's entities as a table – ID, type, position; a row click selects one
-and opens its form. An event's form starts with two columns: a preview of the selected page's look
-(its character and / or object, empty when the page shows nothing) on the left; id, cell and hidden
-on the right (the kind's description and "found with Discover" are tooltips). Choosing a kind to place shows its marker tile see-through under the cursor
+and opens its form. An event's form has two parts:
+- **Appearance** – a preview of the look (its character facing its way and / or its object; empty
+  when it shows nothing) next to id, cell and hidden. Clicking the preview opens a picker of
+  sprites – nothing, the characters (NPCs), the objects (decor) – and the pick sets the kind of look.
+  Below come that kind's settings: a character's facing (N / E / S / W; the map shows it too),
+  movement and shop sign; an object's "behind it" character (a shop keeper at a counter). The look
+  is stored per page; while every page looks the same the appearance is edited on all of them
+  ("every page"), otherwise on the selected page (a chest closed on one page, open on the next).
+- **Events** – the pages: when each is active, how it starts, its dialog, options and actions. Choosing a kind to place shows its marker tile see-through under the cursor
 until a cell is clicked.
 
 Editor-only markers (spawns, invisible events, traps, the Quick Play entity, gate–switch links) are

@@ -1,7 +1,7 @@
 import type { Database } from "../../../src/core/data/database";
 import type { MapDef } from "../../../src/core/data/types";
 import { DIR_VEC, dirFromStep, type Dir } from "../../../src/core/util/grid";
-import { EXIT_FRAME, K } from "../../../src/game/keys";
+import { DIR_ROW, EXIT_FRAME, K } from "../../../src/game/keys";
 import { markerKey } from "./icons";
 import { listEntities, sameRef, type EntityKind, type EntityRef } from "./model";
 
@@ -25,8 +25,8 @@ export interface EntitySprite {
   preview?: boolean;
 }
 
-/** Charset frame of a character standing idle, facing down-right (row 0, column 1). */
-const IDLE_FRONT = 1;
+/** Charset frame of a character standing idle, facing `dir` in the view (rows by facing, column 1 = idle). */
+const idleFrame = (dir: Dir) => DIR_ROW[dir] * 3 + 1;
 
 const rotateDir = (d: Dir, quarters: number): Dir => {
   let { x, y } = DIR_VEC[d];
@@ -49,7 +49,7 @@ export function entitySprites(db: Database, map: MapDef, rotation: number, selec
         const page = ev.pages.find((p) => p.npc || p.decor || p.keeper) ?? ev.pages[0];
         const npc = page?.npc ?? page?.keeper;
         const tex = npc ? charset(db.npcs.get(npc)?.charset) : undefined;
-        if (tex) out.push({ ...base, texture: tex, frame: IDLE_FRONT, originY: 1, label: labels ? ev.id : undefined });
+        if (tex) out.push({ ...base, texture: tex, frame: idleFrame(rotateDir(page?.dir ?? "S", rotation)), originY: 1, label: labels ? ev.id : undefined });
         if (page?.decor) out.push({ ...base, texture: K.decor(map.chipset), frame: decorFrame(page.decor), originY: decorOrigin, label: labels && !tex ? ev.id : undefined });
         // nothing to show yet: a flat marker tile with the event icon
         if (!tex && !page?.decor) out.push({ ...base, texture: markerKey("event"), flat: true, label: labels ? ev.id : undefined, editorOnly: true });
@@ -58,7 +58,7 @@ export function entitySprites(db: Database, map: MapDef, rotation: number, selec
       case "enemy": {
         const en = map.enemies![e.key as number];
         const tex = charset(db.enemies.get(en.enemy)?.charset);
-        out.push({ ...base, texture: tex, frame: IDLE_FRONT, originY: 1, label: labels || !tex ? e.label : undefined });
+        out.push({ ...base, texture: tex, frame: idleFrame(rotateDir(en.dir ?? "S", rotation)), originY: 1, label: labels || !tex ? e.label : undefined });
         break;
       }
       case "exit": {

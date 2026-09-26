@@ -9,7 +9,8 @@ import { Check, Field, fileSetter, ListEditor, Num, Select, Text } from "../form
 import type { Project } from "../project";
 import { entityPath, KIND_INFO, type EntityRef } from "./model";
 import { QuickPlayForm } from "../screens/QuickPlayForm";
-import { LookPreview } from "./LookPreview";
+import { LookPicker, type LookPick } from "./LookPicker";
+import { pageLayers, SpriteView } from "./LookPreview";
 
 const DIRS: Dir[] = ["N", "E", "S", "W"];
 const SIGNS: [string, string][] = [
@@ -189,7 +190,7 @@ export function EntityForm({ project, mapId, entity, onSelect }: { project: Proj
 
   return (
     <div class="entity-form">
-      <h3 title={KIND_INFO[entity.kind].hint}>{KIND_INFO[entity.kind].label}</h3>
+      {entity.kind !== "event" && <h3 title={KIND_INFO[entity.kind].hint}>{KIND_INFO[entity.kind].label}</h3>}
       {body()}
     </div>
   );
@@ -222,22 +223,77 @@ function SpawnRename({ project, file, id, onRenamed }: { project: Project; file:
 
 // ---------- events: pages ----------
 
+/** Page fields that make up an event's look – edited under "Appearance". */
+const LOOK_KEYS = ["npc", "keeper", "decor", "dir", "move", "wanderRadius", "sign"] as const;
+type Look = Pick<EventPageDef, (typeof LOOK_KEYS)[number]>;
+const NO_LOOK: Look = { npc: undefined, keeper: undefined, decor: undefined, dir: undefined, move: undefined, wanderRadius: undefined, sign: undefined };
+const lookOf = (pg: EventPageDef): Look => Object.fromEntries(LOOK_KEYS.map((k) => [k, pg[k]])) as Look;
+const sameLook = (a: EventPageDef, b: EventPageDef) => LOOK_KEYS.every((k) => a[k] === b[k]);
+
+/**
+ * An event: its appearance (what the selected page shows – a character, an object, a keeper behind
+ * a counter, or nothing) with id / cell / hidden, then its pages ("Events": when and what happens).
+ * While every page looks the same the appearance is edited on all of them at once.
+ */
 function EventForm({ project, mapId, index, db }: { project: Project; mapId: string; index: number; db: Database }) {
   const file = `data/maps/${mapId}.yaml`;
   const map = project.data<MapDef>(file);
   const ev = map.events?.[index];
   const [pageNo, setPageNo] = useState(0);
+  const [perPage, setPerPage] = useState(false);
+  const [picking, setPicking] = useState(false);
   const setIn = fileSetter(project, file);
   if (!ev) return null;
   const pages = ev.pages;
   const p = Math.min(pageNo, pages.length - 1);
+  const page = pages[p];
+  const chip = db.chipsets.get(map.chipset);
   const setPages = (next: EventPageDef[], label: string) => setIn(["events", index, "pages"], next, label);
+  const shared = pages.every((pg) => sameLook(pg, pages[0]));
+  const linked = shared && !perPage;
+  /** Sets look fields on the given pages – one undo step. */
+  const writeLook = (targets: number[], patch: Partial<Look>, label: string) => {
+    const group = `look${index}.${Date.now()}`;
+    for (const i of targets)
+      for (const [k, v] of Object.entries(patch)) if (pages[i][k as keyof Look] !== v) setIn(["events", index, "pages", i, k], v, label, group);
+  };
+  const setLook = (patch: Partial<Look>, label: string) => writeLook(linked ? pages.map((_, i) => i) : [p], patch, label);
+  const look = page.npc ? "npc" : page.keeper ? "keeper" : page.decor ? "decor" : "none";
+  const current = page.npc ? `c:${page.npc}` : page.decor ? `o:${page.decor}` : undefined;
+  const pick = (choice: LookPick) => {
+    setPicking(false);
+    if (choice.kind === "nothing") setLook(NO_LOOK, "Appearance");
+    // a character keeps its facing / moves / sign; an object keeps the keeper behind it
+    else if (choice.kind === "character") setLook({ ...(look === "npc" ? {} : NO_LOOK), npc: choice.id, keeper: undefined, decor: undefined }, "Appearance");
+    else setLook({ ...NO_LOOK, decor: choice.id, keeper: look === "keeper" ? page.keeper : undefined }, "Appearance");
+  };
+  const ids = <T,>(m: Map<string, T>, name?: (t: T) => string) => [...m.entries()].map(([id, t]) => [id, name ? `${name(t)} (${id})` : id] as [string, string]);
 
   return (
     <>
-      {/* the selected page's look on the left, the event's own fields on the right */}
+      <div class="section-head">
+        <h3 title={KIND_INFO.event.hint}>Appearance</h3>
+        {pages.length > 1 && !linked && <span class="dim">page {p + 1}</span>}
+        {pages.length > 1 && (
+          <label class="check" title="Every page looks the same (unticked: the appearance of the selected page only)">
+            <input
+              type="checkbox"
+              checked={linked}
+              onChange={(e) => {
+                if (!e.currentTarget.checked) return setPerPage(true);
+                // the selected page's look for all
+                setPerPage(false);
+                writeLook(pages.map((_, i) => i).filter((i) => i !== p), lookOf(page), "Same appearance on every page");
+              }}
+            />
+            every page
+          </label>
+        )}
+      </div>
       <div class="event-head">
-        <LookPreview page={pages[p]} db={db} chip={db.chipsets.get(map.chipset)} />
+        <button class={`look-preview ${picking ? "on" : ""}`} title="What it looks like – click to choose" onClick={() => setPicking(!picking)}>
+          <SpriteView layers={pageLayers(db, chip, page)} box={84} />
+        </button>
         <div>
           <Field label="Id">
             <Text value={ev.id} onChange={(v) => setIn(["events", index, "id"], v ?? "", "Event id", `ev${index}.id`)} />
@@ -249,24 +305,57 @@ function EventForm({ project, mapId, index, db }: { project: Project; mapId: str
             </div>
           </Field>
           <Field label="Hidden">
-            <label class="check" title="Invisible until found with Discover">
-              <input type="checkbox" checked={!!ev.hidden} onChange={(e) => setIn(["events", index, "hidden"], e.currentTarget.checked || undefined, "Hidden event")} />
-            </label>
+            <input
+              type="checkbox"
+              class="box-check"
+              title="Invisible until found with Discover"
+              checked={!!ev.hidden}
+              onChange={(e) => setIn(["events", index, "hidden"], e.currentTarget.checked || undefined, "Hidden event")}
+            />
           </Field>
         </div>
+        {picking && <LookPicker db={db} chip={chip} current={current} onPick={pick} onClose={() => setPicking(false)} />}
       </div>
+      {look === "npc" && (
+        <>
+          <Field label="Facing">
+            <div class="segmented">
+              {DIRS.map((d) => (
+                <button key={d} class={(page.dir ?? "S") === d ? "on" : ""} onClick={() => setLook({ dir: d === "S" ? undefined : d }, "Facing")}>
+                  {d}
+                </button>
+              ))}
+            </div>
+          </Field>
+          <Field label="Moves">
+            <div class="row">
+              <Select value={page.move} options={[["wander", "wanders around"]]} empty="stands still" onChange={(v) => setLook({ move: v as Look["move"], wanderRadius: v ? page.wanderRadius : undefined }, "Moves")} />
+              {page.move === "wander" && <Num value={page.wanderRadius} placeholder="2" min={1} width={56} onChange={(v) => setLook({ wanderRadius: v }, "Wander radius")} />}
+            </div>
+          </Field>
+          <Field label="Shop sign">
+            <Select value={page.sign} options={SIGNS} empty="(none)" onChange={(v) => setLook({ sign: v }, "Shop sign")} />
+          </Field>
+        </>
+      )}
+      {(look === "decor" || look === "keeper") && (
+        <Field label="Behind it">
+          <Select value={page.keeper} options={ids(db.npcs, (n) => n.name)} empty="(nobody)" onChange={(v) => setLook({ keeper: v }, "Keeper")} />
+        </Field>
+      )}
+
+      <h3>Events</h3>
       <div class="pages">
-        <div class="row wrap">
+        <div class="row wrap" title="The last page whose condition holds is the active one.">
           {pages.map((_, i) => (
             <button key={i} class={i === p ? "on" : ""} onClick={() => setPageNo(i)}>
               Page {i + 1}
             </button>
           ))}
-          <button title="Add a page (later pages win when their condition holds)" onClick={() => (setPages([...pages, { trigger: "interact" }], "Add page"), setPageNo(pages.length))}>
+          <button title="Add a page (later pages win when their condition holds)" onClick={() => (setPages([...pages, { trigger: "interact", ...Object.fromEntries(Object.entries(lookOf(page)).filter(([, v]) => v !== undefined)) }], "Add page"), setPageNo(pages.length))}>
             +
           </button>
         </div>
-        <p class="hint">The last page whose condition holds is the active one.</p>
         <PageForm key={`${index}.${p}`} project={project} mapId={mapId} db={db} path={["events", index, "pages", p]} page={pages[p]} />
         <div class="row">
           <button disabled={p === 0} onClick={() => (setPages(pages.map((x, i) => (i === p - 1 ? pages[p] : i === p ? pages[p - 1] : x)), "Move page"), setPageNo(p - 1))}>
@@ -286,9 +375,6 @@ function PageForm({ project, mapId, db, path, page }: { project: Project; mapId:
   const file = `data/maps/${mapId}.yaml`;
   const setIn = fileSetter(project, file);
   const set = (field: string, value: unknown, group?: string) => setIn([...path, field], value, `Page: ${field}`, group && `${path.join(".")}.${group}`);
-  const chip = db.chipsets.get(db.maps.get(mapId)?.chipset ?? "");
-  const ids = <T,>(m: Map<string, T>, name?: (t: T) => string) => [...m.entries()].map(([id, t]) => [id, name ? `${name(t)} (${id})` : id] as [string, string]);
-  const look = page.npc ? "npc" : page.keeper ? "keeper" : page.decor ? "decor" : "none";
   const trigger = page.trigger ?? "interact";
   const dialogs = [...db.dialogs.keys()].sort();
   return (
@@ -296,46 +382,6 @@ function PageForm({ project, mapId, db, path, page }: { project: Project; mapId:
       <Field label="Active when">
         <ConditionEditor value={page.when} onChange={(c) => set("when", c)} db={db} flags={[]} />
       </Field>
-      <Field label="Looks like">
-        <select
-          value={look}
-          onChange={(e) => {
-            const v = e.currentTarget.value;
-            setIn(path, { ...page, npc: v === "npc" ? (page.npc ?? [...db.npcs.keys()][0]) : undefined, keeper: v === "keeper" ? (page.keeper ?? [...db.npcs.keys()][0]) : undefined, decor: v === "decor" || v === "keeper" ? (page.decor ?? "counter") : undefined }, "Page look");
-          }}
-        >
-          <option value="none">nothing (invisible)</option>
-          <option value="npc">a character (NPC)</option>
-          <option value="decor">an object (decor)</option>
-          <option value="keeper">an object with a character behind it (shop counter)</option>
-        </select>
-      </Field>
-      {(look === "npc" || look === "keeper") && (
-        <Field label={look === "keeper" ? "Behind it" : "Character"}>
-          <Select value={(page.npc ?? page.keeper) as string} options={ids(db.npcs, (n) => n.name)} onChange={(v) => set(look === "keeper" ? "keeper" : "npc", v)} />
-        </Field>
-      )}
-      {(look === "decor" || look === "keeper") && (
-        <Field label="Object">
-          <Select value={page.decor} options={Object.entries(chip?.decor ?? {}).map(([id, d]) => [id, `${d.name} (${id})`] as [string, string])} onChange={(v) => set("decor", v)} />
-        </Field>
-      )}
-      {look === "npc" && (
-        <>
-          <Field label="Facing">
-            <Select value={page.dir} options={DIRS} empty="S (default)" onChange={(v) => set("dir", v)} />
-          </Field>
-          <Field label="Moves">
-            <div class="row">
-              <Select value={page.move} options={[["wander", "wanders around"]]} empty="stands still" onChange={(v) => set("move", v)} />
-              {page.move === "wander" && <Num value={page.wanderRadius} placeholder="2" min={1} width={56} onChange={(v) => set("wanderRadius", v)} />}
-            </div>
-          </Field>
-          <Field label="Shop sign">
-            <Select value={page.sign} options={SIGNS} empty="(none)" onChange={(v) => set("sign", v)} />
-          </Field>
-        </>
-      )}
       <Field label="Starts when">
         <div class="row">
           <Select
