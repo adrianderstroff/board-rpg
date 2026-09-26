@@ -25,7 +25,8 @@ type ScreenId = (typeof SCREENS)[number]["id"];
 export function App({ project }: { project: Project }) {
   useProject(project);
   const [screen, setScreen] = useState<ScreenId>("maps");
-  const [map, setMap] = useState<string | null>(null);
+  // the first map is open right away (if there is one)
+  const [map, setMap] = useState<string | null>(() => project.paths("data/maps/")[0]?.replace(/^data\/maps\//, "").replace(/\.yaml$/, "") ?? null);
   const [showProblems, setShowProblems] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

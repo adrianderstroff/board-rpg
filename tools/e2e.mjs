@@ -225,7 +225,7 @@ const scenarios = {
     await page.setViewportSize({ width: 1400, height: 820 });
     await page.goto(new URL("editor/", url).href);
     await page.getByText("Sandhollow", { exact: true }).click();
-    await page.waitForFunction(() => window.__editorMap?.view);
+    await page.waitForFunction(() => window.__editorMap?.props?.mapId === "sandhollow");
     await sleep(500);
     const f = "data/maps/sandhollow.yaml";
     const data = () => page.evaluate((f) => window.__editor.project.data(f), f);
@@ -299,7 +299,7 @@ const scenarios = {
     await page.setViewportSize({ width: 1400, height: 820 });
     await page.goto(new URL("editor/", url).href);
     await page.getByText("Temple of the Still Sky").click();
-    await page.waitForFunction(() => window.__editorMap?.view);
+    await page.waitForFunction(() => window.__editorMap?.props?.mapId === "temple");
     await sleep(500);
     const f = "data/maps/temple.yaml";
     const data = () => page.evaluate((f) => window.__editor.project.data(f), f);
@@ -355,7 +355,7 @@ const scenarios = {
     await page.setViewportSize({ width: 1400, height: 820 });
     await page.goto(new URL("editor/", url).href);
     await page.getByText("Sandhollow", { exact: true }).click();
-    await page.waitForFunction(() => window.__editorMap?.view);
+    await page.waitForFunction(() => window.__editorMap?.props?.mapId === "sandhollow");
     await page.waitForTimeout(500);
     const f = "data/maps/sandhollow.yaml";
     const row = (layer, y) => page.evaluate(([f, layer, y]) => window.__editor.project.data(f).layers[layer].split(/\n/)[y], [f, layer, y]);
@@ -392,7 +392,7 @@ const scenarios = {
     await page.keyboard.press("b");
     await click(9, 9);
     d.expect((await row("terrain", 9))[9] === "g", "picked grass and painted it");
-    // height: W raises the hovered cell
+    // the preview's height: W/S set the height the next click paints (it stays for the next cells)
     const hoverCell = async (x, y) => {
       const p = await at(x, y);
       await page.mouse.move(p.x, p.y);
@@ -401,37 +401,53 @@ const scenarios = {
     await hoverCell(10, 9);
     await page.keyboard.press("w");
     await page.keyboard.press("w");
-    d.expect((await row("height", 9))[10] === "2", "W raised twice");
-    // after turning the map, the cursor still finds the right cell
+    d.expect((await row("height", 9))[10] === "0", "W with the pencil changes only the preview");
+    await click(10, 9);
+    d.expect((await row("height", 9))[10] === "2", "the click painted at the preview's height");
+    await click(11, 9);
+    d.expect((await row("height", 9))[11] === "2", "the height stays for the next cells");
+    // the select tool: W/S change the cells on the map; after turning the view the cursor still finds them
+    await page.keyboard.press("m");
     await page.keyboard.press("e");
-    await sleep(400);
+    await sleep(900); // the view turns smoothly (~0.65 s)
     await hoverCell(10, 9);
     await page.keyboard.press("w");
     d.expect((await row("height", 9))[10] === "3", "picking works rotated");
     await page.keyboard.press("s");
     d.expect((await row("height", 9))[10] === "2", "S lowers");
-    // right click draws a hole
+    await page.keyboard.press("q");
+    await sleep(900);
+    // right click draws a hole – and the hole can be painted again
+    await page.keyboard.press("b");
     const p1 = await at(3, 5);
     await page.mouse.move(p1.x, p1.y);
     await page.mouse.down({ button: "right" });
     await page.mouse.up({ button: "right" });
     await sleep(150);
     d.expect((await row("terrain", 5))[3] === " ", "right click made a hole");
-    // a piece, turned with D
-    await page.getByRole("button", { name: "Pieces", exact: true }).click();
+    await page.mouse.move(p1.x, p1.y + 2);
+    await page.mouse.move(p1.x, p1.y);
+    await page.mouse.down();
+    await page.mouse.up();
+    await sleep(150);
+    d.expect((await row("terrain", 5))[3] !== " ", "the hole was painted again");
+    // a piece: A/D turn it in the preview; the click places it turned
     await page.getByRole("button", { name: "Half", exact: true }).click();
-    await click(6, 3);
-    const shape = async () => page.evaluate(([f]) => window.__editor.project.content.db.map(f).layers.shape, ["sandhollow"]);
-    d.expect(/[^.\s]/.test((await shape()) ?? ""), "the piece is on the map");
     await hoverCell(6, 3);
-    const cut0 = await page.evaluate(() => JSON.stringify(window.__editor.project.data("data/maps/sandhollow.yaml").legend.shapes));
     await page.keyboard.press("d");
-    const cut1 = await page.evaluate(() => JSON.stringify(window.__editor.project.data("data/maps/sandhollow.yaml").legend.shapes));
-    d.expect(cut0 !== cut1, `D turned the piece (${cut0} → ${cut1})`);
+    await click(6, 3);
+    const cut = await page.evaluate(() => JSON.stringify(Object.values(window.__editor.project.data("data/maps/sandhollow.yaml").legend.shapes ?? {})));
+    d.expect(cut.includes('"NE"'), `the piece was placed turned (${cut})`);
+    // with the select tool, D turns the piece on the map
+    await page.keyboard.press("m");
+    await hoverCell(6, 3);
+    await page.keyboard.press("d");
+    const cut2 = await page.evaluate(() => JSON.stringify(Object.values(window.__editor.project.data("data/maps/sandhollow.yaml").legend.shapes ?? {})));
+    d.expect(cut2.includes('"SE"'), `D turned the piece on the map (${cut2})`);
     await d.shot("painted");
     // everything undoes back to the file on disk
     await page.locator(".status").click();
-    for (let i = 0; i < 14; i++) await page.keyboard.press("Control+z");
+    for (let i = 0; i < 20; i++) await page.keyboard.press("Control+z");
     d.expect((await row("terrain", 7)) === before, "undo restored the terrain");
     d.expect(await page.getByRole("button", { name: "Save", exact: true }).isDisabled(), "nothing left to save");
     d.expect(!errors.length, `no page errors (${errors})`);

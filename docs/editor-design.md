@@ -115,11 +115,15 @@ entity and enters the map. The normal game build is unaffected.
 
 ### 5.1 Canvas
 - **Isometric view** (default): the map exactly as the game draws it (same renderer, heights,
-  shaped blocks, animated water), with the game's board cursor, rotation (Q / E) and zoom (wheel).
-  Middle drag or Space + drag pans. Clicking picks cells the same way the game does.
+  shaped blocks, animated water), with the game's board cursor and zoom (wheel). Q / E turn the view
+  smoothly like the game (the blocks spin as one solid, eased, around the map's centre). Middle drag
+  or Space + drag pans. Clicking picks cells the same way the game does; empty cells (holes) inside
+  the map's size show a faint white grid and can be painted.
 - **Top view** (toggle): a flat grid of the same cells for fast painting of large areas; each cell
   shows its terrain's top texture unwarped from the diamond into a square, its height as a number
-  and its decor as a thumbnail. Both views edit the same data.
+  and its decor as a thumbnail. Centred on the map at first; wheel zooms around the cursor, middle
+  drag or Space + drag pans. Both views edit the same data.
+- The first map is open when the editor starts.
 - The status bar shows the hovered cell's coordinates, terrain, height, decor and walkability (from
   the game's own grid, so blocked cells are shown as the game sees them), or the current key hints.
 
@@ -132,8 +136,16 @@ The canvas has three modes (keys 1 / 2 / 3); each shows only its own tools and b
 | **Decor** | objects (`layers.decor`; facing in `layers.decorDir`) – the board is greyed out and the object to place follows the cursor see-through | place / remove | raise / lower | turn a directional object (or the brush) |
 | **Entity** | events, exits, spawns, enemies, gates, switches, traps, signs, the Quick Play start (§6) | select, drag / delete | – | turn the selected one |
 
-The keys act on the hovered cell, or on the selected area while the cursor is in it. Heights have
-no menu of their own: W / S are the height tool. The per-map **legend** (character → terrain id) is
+**Preview:** with the pencil or the rectangle, what the next click places follows the cursor
+– in Board mode the terrain block, cut to the brush's piece at the height it will get, temporarily
+replacing the cell's own block; in
+Decor mode the object facing its way; the other layer is greyed out (decor while painting the board,
+the board while placing decor). While the preview shows, W / S set the brush's height and A / D turn
+the brush's piece or object; a left click applies them, and they stay for the next cells and other
+terrains (the brush height can be reset to "keep the cell's"). With the select, fill or pick tool
+the keys act on the map instead: the hovered cell, or the selected area while the cursor is in it.
+Heights have no menu of their own: W / S are the height tool. Pieces (full block, half, point) are
+chosen at the top of the Board brush and painted together with the terrain. The per-map **legend** (character → terrain id) is
 managed automatically: the user picks terrains, the editor assigns free characters, so layer
 strings stay readable in the YAML.
 

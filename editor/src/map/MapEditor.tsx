@@ -42,11 +42,13 @@ export const turnDir = (d: Dir, by: number): Dir => DIRS[(DIRS.indexOf(d) + by +
 export const turnCut = (cut: Corner[], by: number): Corner[] => cut.map((c) => CORNER_ORDER[(CORNER_ORDER.indexOf(c) + by + 4) % 4]);
 
 export interface Brush {
-  /** What Board mode paints. */
-  board: "terrain" | "piece" | "lintel";
+  /** What Board mode paints: terrain (with the piece shape) or door lintels. */
+  board: "terrain" | "lintel";
   terrain: string;
-  /** Corners a piece cuts off (half cells, points). */
+  /** Corners the painted piece cuts off: [] full block, one corner a half, two a point. */
   piece: Corner[];
+  /** The height painted cells get (set with W/S while the preview shows); null = keep each cell's height. */
+  height: number | null;
   lintel: string;
   lintelTop: number;
   decor: string;
@@ -107,11 +109,19 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
 
   const path = `data/maps/${mapId}.yaml`;
   const db = project.content.db;
+  // keys can repeat faster than re-renders: brush changes from keys go through the latest value
+  const brushRef = useRef(brush);
+  brushRef.current = brush;
+  const updateBrush = (fn: (b: Brush) => Brush) => {
+    brushRef.current = fn(brushRef.current);
+    setBrush(brushRef.current);
+  };
   const chip = db ? getGrid(db, mapId).chipset : null;
 
   /** Paints (or with `erase` removes) with the brush of the current mode. */
   const apply = (cells: Pos[], erase: boolean, group?: string) => {
     if (!cells.length) return;
+    const brush = brushRef.current; // the latest brush, even right after a key press
     const what = mode === "decor" ? "decor" : brush.board;
     project.edit(
       path,
@@ -122,9 +132,12 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
           paint(doc, map, "decor", cells, erase ? null : brush.decor);
           // directional decor is placed facing the brush's way
           if (!erase && chip?.decor[brush.decor]?.views) for (const c of cells) setFacing(doc, doc.toJS() as MapDef, c, brush.decorFacing);
-        } else if (brush.board === "terrain") paint(doc, map, "terrain", cells, erase ? null : brush.terrain);
-        else if (brush.board === "piece") paint(doc, map, "shape", cells, erase || !brush.piece.length ? null : "shape", brush.piece);
-        else setOverhead(doc, map, cells, erase ? null : brush.lintel, brush.lintelTop);
+        } else if (brush.board === "terrain") {
+          // terrain and piece together (right: holes, which have no piece either)
+          paint(doc, map, "terrain", cells, erase ? null : brush.terrain);
+          paint(doc, doc.toJS() as MapDef, "shape", cells, erase || !brush.piece.length ? null : "shape", brush.piece);
+          if (!erase && brush.height !== null) setHeights(doc, doc.toJS() as MapDef, cells, () => brush.height!);
+        } else setOverhead(doc, map, cells, erase ? null : brush.lintel, brush.lintelTop);
       },
       group,
     );
@@ -136,8 +149,7 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
     if (mode === "decor") {
       if (cell.decor) setBrush({ ...brush, decor: cell.decor, decorFacing: cell.decorDir ?? "S" });
     } else if (cell.overhead && brush.board === "lintel") setBrush({ ...brush, lintel: cell.overhead.terrain, lintelTop: cell.overhead.top });
-    else if (cell.cut) setBrush({ ...brush, board: "piece", piece: cell.cut, terrain: cell.terrain });
-    else setBrush({ ...brush, board: brush.board === "lintel" ? "terrain" : brush.board, terrain: cell.terrain });
+    else setBrush({ ...brush, board: "terrain", terrain: cell.terrain, piece: cell.cut ?? [], height: cell.height });
     setTool("pencil");
   };
 
@@ -228,7 +240,7 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
       const id = `stroke${++strokeNo.current}`;
       stroke.current = { id, start: c, done: new Set([`${c.x},${c.y}`]), erase };
       if (tool === "pick" && !erase) pick(c);
-      else if (tool === "fill") apply(floodArea(project.data<MapDef>(path), mode === "decor" ? "decor" : brush.board === "piece" ? "shape" : "terrain", c), erase);
+      else if (tool === "fill") apply(floodArea(project.data<MapDef>(path), mode === "decor" ? "decor" : "terrain", c), erase);
       else if (tool === "rect") setPreview([c]);
       else apply([c], erase, id);
     },
@@ -312,6 +324,23 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
         const t = TOOLS.find((x) => x.key === k);
         if (t) return setTool(t.id);
       }
+      // while a preview shows under the cursor, W/S and A/D change what the next click places
+      const previewing = (mode === "board" && brush.board === "terrain" && (tool === "pencil" || tool === "rect")) || (mode === "decor" && (tool === "pencil" || tool === "rect"));
+      if (previewing && mode === "board" && (k === "w" || k === "s")) {
+        const g = db ? getGrid(db, mapId) : null;
+        const h = hoverRef.current;
+        updateBrush((b) => {
+          const from = b.height ?? (h ? (g?.cell(h)?.height ?? 0) : 0);
+          return { ...b, height: Math.max(0, Math.min(35, from + (k === "w" ? 1 : -1))) };
+        });
+        return;
+      }
+      if (previewing && (k === "a" || k === "d")) {
+        const by = k === "d" ? 1 : -1;
+        if (mode === "board") updateBrush((b) => (b.piece.length ? { ...b, piece: turnCut(b.piece, by) } : b));
+        else updateBrush((b) => ({ ...b, decorFacing: turnDir(b.decorFacing, by) }));
+        return;
+      }
       if (k === "w" || k === "s") {
         if (mode === "entity") return;
         const cells = keyTargets();
@@ -329,7 +358,7 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
             project.edit(path, "Turn piece", (doc) => {
               for (const c of shaped) paint(doc, doc.toJS() as MapDef, "shape", [c], "shape", turnCut(g!.cell(c)!.cut!, by));
             });
-          } else if (brush.board === "piece") setBrush({ ...brush, piece: turnCut(brush.piece, by) });
+          } else if (brush.piece.length) setBrush({ ...brush, piece: turnCut(brush.piece, by) });
         } else {
           const turnable = cells.filter((c) => {
             const d = g?.cell(c)?.decor;
@@ -385,18 +414,25 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
     const all = entitySprites(db, mapData, rotation, entities.selected, mode === "entity");
     return mode === "entity" ? all : all.filter((e) => e.texture && !e.editorOnly).map((e) => ({ ...e, label: undefined }));
   }, [db, mapData, rotation, entities.selected, mode]);
-  // the decor about to be placed, see-through under the cursor
+  // what the next click places, see-through under the cursor: a terrain block or a decor object
   const ghost: Ghost | null = useMemo(() => {
-    const d = chip?.decor[brush.decor];
-    if (mode !== "decor" || !d || !chip || tool === "select" || tool === "pick" || tool === "fill") return null;
+    if (!chip || tool === "select" || tool === "pick" || tool === "fill") return null;
+    if (mode === "board") {
+      const t = chip.terrains[brush.terrain];
+      if (brush.board !== "terrain" || !t) return null;
+      return { texture: K.chipset(chip.id), frame: t.frame, originY: chip.tileHeight / 2 / chip.frameHeight, kind: "block", level: brush.height ?? undefined, cut: brush.piece, fill: t.fill ?? t.frame };
+    }
+    const d = chip.decor[brush.decor];
+    if (mode !== "decor" || !d) return null;
     const turns = d.views ? (["S", "W", "N", "E"].indexOf(brush.decorFacing) + rotation) % 4 : 0;
     return { texture: K.decor(chip.id), frame: d.frame + (d.views ? turns : 0), originY: chip.decorAnchorY / chip.decorFrameHeight };
-  }, [mode, brush.decor, brush.decorFacing, chip, tool, rotation]);
+  }, [mode, brush.decor, brush.decorFacing, brush.terrain, brush.board, brush.height, brush.piece, chip, tool, rotation]);
 
   if (!db) return <div class="placeholder">The content has errors – fix them to see the map (see the problems badge).</div>;
   const grid = getGrid(db, mapId);
   const cell = hover ? grid.cell(hover) : undefined;
-  const canvasProps = { db, mapId, hideDecor, dimBoard: mode === "decor", markers, entities: sprites, ghost, handlers };
+  const dim: "board" | "decor" | null = mode === "decor" ? "board" : mode === "board" ? "decor" : null;
+  const canvasProps = { db, mapId, hideDecor, dim, markers, entities: sprites, ghost, handlers };
   // the flat view marks entities with letters – only useful in entity mode
   const gridProps = { ...canvasProps, entities: mode === "entity" ? sprites : [] };
 

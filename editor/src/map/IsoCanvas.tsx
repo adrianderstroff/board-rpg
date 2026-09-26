@@ -4,9 +4,11 @@ import { getGrid } from "../../../src/core/board/grid";
 import type { Database } from "../../../src/core/data/database";
 import type { Pos } from "../../../src/core/util/grid";
 import { loadSheet } from "../../../src/engine/assets";
-import { LAYER } from "../../../src/engine/iso";
+import { isoToScreen, LAYER } from "../../../src/engine/iso";
 import { IsoMapView, type IsoMapSource } from "../../../src/engine/iso/IsoMapView";
-import { isoMapSource, rotateContinuous, wallDecorSources } from "../../../src/game/board/mapSource";
+import { CORNERS, isoMapSource, rotateContinuous, wallDecorSources } from "../../../src/game/board/mapSource";
+import { cutSquare } from "../../../src/engine/iso/shapes";
+import type { Corner } from "../../../src/core/data/types";
 import { K } from "../../../src/game/keys";
 import type { EntitySprite } from "../entities/visuals";
 
@@ -35,15 +37,26 @@ export interface Ghost {
   texture: string;
   frame: number;
   originY: number;
+  /** "block": a terrain block drawn over the cell's top; default: an object standing on it. */
+  kind?: "block" | "object";
+  /** Blocks: the level the painted cell will have (default: the cell's own height). */
+  level?: number;
+  /** Blocks: the corners the piece cuts off – the ghost is cut the same way. */
+  cut?: Corner[];
+  /** Blocks: the frame for the blocks below the top. */
+  fill?: number;
 }
+
+/** Duration (ms) of a quarter turn of the view – eased like the game's board rotation. */
+const TURN_MS = 650;
 
 interface Props {
   db: Database;
   mapId: string;
   rotation: number;
   hideDecor: boolean;
-  /** Grey the terrain out (decor mode) so objects stand out. */
-  dimBoard: boolean;
+  /** Grey one layer out so the other stands out: the terrain in decor mode, the decor in board mode. */
+  dim: "board" | "decor" | null;
   /** Cells to highlight (rect preview, selection…). */
   markers: Marker[];
   /** Events, exits, enemies… placed on the map (editor-design §6). */
@@ -62,7 +75,15 @@ class MapScene extends Phaser.Scene {
   private painting = false;
   private entityObjects: Phaser.GameObjects.GameObject[] = [];
   private ghostImage?: Phaser.GameObjects.Image;
+  /** A terrain ghost: a one-cell map view (so pieces are cut exactly like on the board), see-through. */
+  private ghostView?: IsoMapView;
+  /** The cell whose own blocks are hidden while the ghost stands in for them. */
+  private replaced?: Pos;
+  /** A faint white grid on the empty cells inside the map's size (holes, where nothing is placed). */
+  private holeGrid: Phaser.GameObjects.Graphics[] = [];
   private space = false;
+  /** A running view turn (the blocks spin as one solid, like in the game). */
+  private spin?: Phaser.Tweens.Tween;
 
   constructor(private readonly initial: () => Props) {
     super("editorMap");
@@ -158,12 +179,27 @@ class MapScene extends Phaser.Scene {
       cam.scrollX += before.x - after.x;
       cam.scrollY += before.y - after.y;
     });
-    this.show(this.props);
+    this.show(this.initial()); // the latest props: the map may have changed while loading
   }
 
   private cellAt(p: Phaser.Input.Pointer): Pos | null {
     const w = this.cameras.main.getWorldPoint(p.x, p.y);
-    return this.view?.cellAt(w.x, w.y) ?? null;
+    return this.view?.cellAt(w.x, w.y) ?? this.holeAt(w.x, w.y);
+  }
+
+  /** A cell of the map without a block (a hole) under a world point, at ground level – holes can be painted too. */
+  private holeAt(wx: number, wy: number): Pos | null {
+    const g = getGrid(this.props.db, this.props.mapId);
+    const m = { tileWidth: g.chipset.tileWidth, tileHeight: g.chipset.tileHeight, blockHeight: g.chipset.blockHeight };
+    let best: { x: number; y: number; d: number } | null = null;
+    for (let y = 0; y < g.height; y++)
+      for (let x = 0; x < g.width; x++) {
+        if (g.has({ x, y })) continue;
+        const v = rotateContinuous(x, y, this.shownRotation);
+        const c = isoToScreen(m, v.x, v.y, 0);
+        if (Math.abs(wx - c.x) / (m.tileWidth / 2) + Math.abs(wy - c.y) / (m.tileHeight / 2) <= 1 && (!best || v.x + v.y > best.d)) best = { x, y, d: v.x + v.y };
+      }
+    return best ? { x: best.x, y: best.y } : null;
   }
 
   /** (Re)draws the map for new content, another map, rotation or layer visibility. */
@@ -187,10 +223,86 @@ class MapScene extends Phaser.Scene {
       this.cameras.main.centerOn(b.centerX, b.centerY);
     }
     this.shownRotation = props.rotation;
-    this.view.setBlockTint(props.dimBoard ? 0x6f7086 : null);
+    this.view.setBlockTint(props.dim === "board" ? 0x6f7086 : null);
+    this.view.setDecorTint(props.dim === "decor" ? 0x8a8aa0 : null);
     this.drawMarkers();
     this.drawEntities();
     this.drawGhost();
+    this.drawHoleGrid();
+  }
+
+  drawHoleGrid() {
+    for (const g of this.holeGrid) g.destroy();
+    this.holeGrid = [];
+    const view = this.view;
+    if (!view || this.spin) return;
+    const grid = getGrid(this.props.db, this.props.mapId);
+    const hw = grid.chipset.tileWidth / 2;
+    const hh = grid.chipset.tileHeight / 2;
+    for (let y = 0; y < grid.height; y++)
+      for (let x = 0; x < grid.width; x++) {
+        if (grid.has({ x, y })) continue;
+        const c = view.cellTop(x, y);
+        const g = this.add.graphics().setDepth(view.depthOf(x, y, LAYER.block, 0));
+        g.lineStyle(1, 0xffffff, 0.28);
+        g.strokePoints([new Phaser.Math.Vector2(c.x, c.y - hh), new Phaser.Math.Vector2(c.x + hw, c.y), new Phaser.Math.Vector2(c.x, c.y + hh), new Phaser.Math.Vector2(c.x - hw, c.y)], true, true);
+        this.holeGrid.push(g);
+      }
+  }
+
+  /**
+   * Turns the view to `target` quarter turns: the map spins smoothly (eased, like the game) around
+   * its centre cell, which stays where it is on screen; then everything is redrawn at the new angle.
+   */
+  turnTo(target: number, props: Props) {
+    this.props = props;
+    const view = this.view;
+    if (!view) return;
+    if (this.spin) {
+      this.spin.complete(); // a new turn during a turn: finish the old one first
+    }
+    const from = this.shownRotation;
+    let delta = (((target - from) % 4) + 4) % 4;
+    if (delta === 3) delta = -1;
+    if (delta === 0) return;
+    const g = getGrid(props.db, props.mapId);
+    const pivot = { x: Math.floor(g.width / 2), y: Math.floor(g.height / 2) };
+    const cam = this.cameras.main;
+    const start = view.cellTop(pivot.x, pivot.y);
+    const offset = { x: cam.midPoint.x - start.x, y: cam.midPoint.y - start.y };
+    for (const o of this.entityObjects) (o as unknown as { setVisible: (v: boolean) => void }).setVisible(false);
+    this.ghostImage?.setVisible(false);
+    this.ghostView?.destroy();
+    this.ghostView = undefined;
+    for (const g of this.holeGrid) g.setVisible(false);
+    view.clearOverlay("hover");
+    view.beginSpin();
+    this.spin = this.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration: TURN_MS * Math.abs(delta),
+      ease: "Quad.easeOut", // starts turning at once, settles gently
+      onUpdate: (tw) => {
+        const q = from + delta * (tw.getValue() ?? 0);
+        view.setTransform((x, y) => rotateContinuous(x, y, q));
+        view.spinTo(q);
+        view.relayout();
+        const c = view.cellTop(pivot.x, pivot.y);
+        cam.centerOn(c.x + offset.x, c.y + offset.y);
+      },
+      onComplete: () => {
+        this.spin = undefined;
+        view.endSpin();
+        this.shownRotation = target; // no re-centring: the camera already follows the pivot
+        this.show(this.props);
+        const c = this.view!.cellTop(pivot.x, pivot.y);
+        cam.centerOn(c.x + offset.x, c.y + offset.y);
+      },
+    });
+  }
+
+  get spinning() {
+    return !!this.spin;
   }
 
   /** Entities as the game's sprites; editor-only ones (spawns, invisible events…) as labels. */
@@ -230,23 +342,48 @@ class MapScene extends Phaser.Scene {
   drawGhost() {
     const g = this.props.ghost;
     const view = this.view;
-    if (!g || !view || !this.hover || !this.textures.exists(g.texture)) {
+    this.ghostView?.destroy();
+    this.ghostView = undefined;
+    if (this.replaced) view?.setCellVisible(this.replaced.x, this.replaced.y, true);
+    this.replaced = undefined;
+    if (!g || !view || !this.hover || this.spin || !this.textures.exists(g.texture)) {
       this.ghostImage?.setVisible(false);
       return;
     }
-    const top = view.cellTop(this.hover.x, this.hover.y);
+    const h = this.hover;
+    if (g.kind === "block") {
+      // the block as it will be: its terrain, its piece shape, at the height it will get
+      this.ghostImage?.setVisible(false);
+      const chip = getGrid(this.props.db, this.props.mapId).chipset;
+      const src: IsoMapSource = {
+        metrics: { tileWidth: chip.tileWidth, tileHeight: chip.tileHeight, blockHeight: chip.blockHeight },
+        cells: [{ x: h.x, y: h.y, height: g.level ?? view.heightAt(h.x, h.y), top: g.frame, fill: g.fill ?? g.frame, outline: cutSquare((g.cut ?? []).map((k) => CORNERS[k])) }],
+        blockTexture: g.texture,
+        blockFrameHeight: chip.frameHeight,
+        decorTexture: K.decor(chip.id),
+        decorFrameHeight: chip.decorFrameHeight,
+        decorAnchorY: chip.decorAnchorY,
+      };
+      // it replaces the cell's block for now: same place in the drawing order, the old block hidden
+      this.ghostView = new IsoMapView(this, src, (x, y) => rotateContinuous(x, y, this.shownRotation));
+      this.ghostView.setPreviewLook(0.92, 0.001);
+      view.setCellVisible(h.x, h.y, false);
+      this.replaced = { x: h.x, y: h.y };
+      return;
+    }
+    const top = view.cellTop(h.x, h.y);
     if (!this.ghostImage) this.ghostImage = this.add.image(0, 0, g.texture, g.frame);
     this.ghostImage
       .setTexture(g.texture, g.frame)
       .setOrigin(0.5, g.originY)
       .setPosition(top.x, top.y)
       .setAlpha(0.65)
-      .setDepth(view.depthOf(this.hover.x, this.hover.y, LAYER.decor, 0.9))
+      .setDepth(view.depthOf(h.x, h.y, LAYER.decor, 0.9))
       .setVisible(true);
   }
 
   drawMarkers() {
-    if (!this.view) return;
+    if (!this.view || this.spin) return;
     this.view.setOverlay("markers", K.highlight, this.props.markers, { layer: LAYER.overlay, alpha: 0.75 });
     // the hovered cell: the game's board cursor, above decor and characters
     this.view.setOverlay("hover", K.boardCursor, this.hover ? [{ ...this.hover, frame: 0 }] : [], { layer: LAYER.marker, originY: 8 / 24 });
@@ -285,11 +422,17 @@ export function IsoCanvas(props: Props) {
     };
   }, []);
 
-  // redraw when the content, the map, the angle or the visible layers change
+  // redraw when the content, the map or the visible layers change; a new angle alone turns smoothly
+  const shown = useRef({ db: props.db, mapId: props.mapId, hideDecor: props.hideDecor, dim: props.dim, rotation: props.rotation });
   useEffect(() => {
     const s = scene.current;
-    if (s?.view) s.show(latest.current);
-  }, [props.db, props.mapId, props.rotation, props.hideDecor, props.dimBoard]);
+    const prev = shown.current;
+    shown.current = { db: props.db, mapId: props.mapId, hideDecor: props.hideDecor, dim: props.dim, rotation: props.rotation };
+    if (!s?.view) return;
+    const onlyTurned = prev.db === props.db && prev.mapId === props.mapId && prev.hideDecor === props.hideDecor && prev.dim === props.dim && prev.rotation !== props.rotation;
+    if (onlyTurned) s.turnTo(props.rotation, latest.current);
+    else s.show(latest.current);
+  }, [props.db, props.mapId, props.rotation, props.hideDecor, props.dim]);
 
   useEffect(() => {
     const s = scene.current;
@@ -303,7 +446,7 @@ export function IsoCanvas(props: Props) {
     const s = scene.current;
     if (s?.view) {
       s.props = latest.current;
-      s.drawEntities();
+      if (!s.spinning) s.drawEntities();
     }
   }, [props.entities]);
 

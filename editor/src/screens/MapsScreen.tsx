@@ -22,7 +22,7 @@ export function MapsScreen({ project, selected: mapSel, onSelect }: { project: P
   const [mode, setMode] = useState<Mode>("board");
   const [selected, select] = useState<EntityRef | null>(null);
   const [placing, setPlacing] = useState<EntityKind | null>(null);
-  const [brush, setBrush] = useState<Brush>({ board: "terrain", terrain: "grass", piece: ["NW"], lintel: "adobe", lintelTop: 5, decor: "palm", decorFacing: "S" });
+  const [brush, setBrush] = useState<Brush>({ board: "terrain", terrain: "grass", piece: [], height: null, lintel: "adobe", lintelTop: 5, decor: "palm", decorFacing: "S" });
   const entities = { selected, select, placing, setPlacing };
   // another map: nothing selected
   useEffect(() => {

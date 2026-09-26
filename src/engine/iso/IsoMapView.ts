@@ -690,6 +690,36 @@ export class IsoMapView {
     for (const s of this.shaped) apply(s.mesh as never);
   }
 
+  /** Shows or hides one cell's blocks (its decor stays) – e.g. while an editor previews a replacement. */
+  setCellVisible(x: number, y: number, visible: boolean) {
+    for (const p of this.placed) if (p.layer === LAYER.block && p.x === x && p.y === y) p.obj.setVisible(visible && !this.spin);
+    for (const s of this.shaped) if (s.c.x === x && s.c.y === y) s.mesh.setVisible(visible && !this.spin);
+  }
+
+  /**
+   * Makes the whole view see-through and draws it `depthBias` above its normal depth – e.g. an
+   * editor preview of a block over the cell it would replace. (Applies to what is drawn now.)
+   */
+  setPreviewLook(alpha: number, depthBias: number) {
+    for (const p of this.placed) p.obj.setAlpha(alpha).setDepth(p.obj.depth + depthBias);
+    for (const s of this.shaped) s.mesh.setAlpha(alpha).setDepth(s.mesh.depth + depthBias);
+  }
+
+  /** Tints all decor objects (e.g. an editor greying them out while terrain is painted). null restores them. */
+  setDecorTint(tint: number | null) {
+    for (const p of this.placed) {
+      if (p.layer !== LAYER.decor) continue;
+      const o = p.obj as unknown as { setTint: (t: number) => unknown; clearTint: () => unknown; setAlpha: (a: number) => unknown };
+      if (tint === null) {
+        o.clearTint();
+        o.setAlpha(1);
+      } else {
+        o.setTint(tint);
+        o.setAlpha(0.7);
+      }
+    }
+  }
+
   /** The nearest quarter turn of the current transform (orients top textures). */
   private staticQuarter(): number {
     const o = this.transform(0, 0);

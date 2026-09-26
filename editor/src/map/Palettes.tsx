@@ -48,43 +48,45 @@ export function BoardPalette({ chip, brush, setBrush }: { chip: ChipsetDef; brus
   const f = filter.toLowerCase();
   const terrains = Object.entries(chip.terrains).filter(([id, t]) => !f || id.includes(f) || t.name.toLowerCase().includes(f));
   const pieceKind = brush.piece.length === 0 ? 0 : brush.piece.length === 1 ? 1 : 2;
+  const lintel = brush.board === "lintel";
   return (
     <>
+      {/* the piece every painted cell gets – A/D turns it */}
       <div class="segmented wide">
-        {(["terrain", "piece", "lintel"] as const).map((k) => (
-          <button key={k} class={brush.board === k ? "on" : ""} onClick={() => setBrush({ ...brush, board: k })}>
-            {k === "terrain" ? "Terrain" : k === "piece" ? "Pieces" : "Lintel"}
+        {PIECES.map((p, i) => (
+          <button key={p.label} class={!lintel && pieceKind === i ? "on" : ""} title={p.hint} onClick={() => setBrush({ ...brush, board: "terrain", piece: pieceKind === i ? brush.piece : p.cut })}>
+            <ShapeIcon cut={pieceKind === i ? brush.piece : p.cut} size={14} />
+            {p.label}
           </button>
         ))}
       </div>
-      {brush.board === "terrain" && (
-        <>
-          <input class="search" placeholder="Search terrain…" value={filter} onInput={(e) => setFilter(e.currentTarget.value)} />
-          <div class="palette">
-            {terrains.map(([id, t]) => (
-              <button key={id} class={brush.terrain === id ? "on" : ""} onClick={() => setBrush({ ...brush, terrain: id })} title={`${t.name} (${id})${t.walkable ? "" : " – blocks"}`}>
-                <span class="swatch" style={frameStyle(chip.image, chip.frameWidth, chip.frameHeight, 8, t.frame, 1, chip.frameHeight)} />
-                {id}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-      {brush.board === "piece" && (
-        <div class="palette pieces">
-          {PIECES.map((p, i) => (
-            <button key={p.label} class={pieceKind === i ? "on" : ""} title={p.hint} onClick={() => setBrush({ ...brush, piece: pieceKind === i ? brush.piece : p.cut })}>
-              <ShapeIcon cut={pieceKind === i ? brush.piece : p.cut} />
-              {p.label}
-            </button>
-          ))}
-          <p class="hint">Painting sets the piece of a cell (its terrain stays). Pieces are drawn with diagonal sides and can't be walked on (§5.9).</p>
-        </div>
-      )}
-      {brush.board === "lintel" && (
+      <div class="row brush-height">
+        <span class="dim">Height</span>
+        <b>{brush.height === null ? "keep the cell's" : brush.height}</b>
+        <span class="dim">(W / S)</span>
+        {brush.height !== null && (
+          <button onClick={() => setBrush({ ...brush, height: null })} title="Paint without changing heights">
+            keep
+          </button>
+        )}
+      </div>
+      <input class="search" placeholder="Search terrain…" value={filter} onInput={(e) => setFilter(e.currentTarget.value)} />
+      <div class="palette">
+        {terrains.map(([id, t]) => (
+          <button key={id} class={!lintel && brush.terrain === id ? "on" : ""} onClick={() => setBrush({ ...brush, board: "terrain", terrain: id })} title={`${t.name} (${id})${t.walkable ? "" : " – blocks"}`}>
+            <span class="swatch" style={frameStyle(chip.image, chip.frameWidth, chip.frameHeight, 8, t.frame, 1, chip.frameHeight)} />
+            {id}
+          </button>
+        ))}
+      </div>
+      <details class="lintel" open={lintel}>
+        <summary>Door lintels</summary>
         <div class="stack">
+          <button class={lintel ? "on" : ""} onClick={() => setBrush({ ...brush, board: lintel ? "terrain" : "lintel" })}>
+            {lintel ? "Painting lintels – back to terrain" : "Paint lintels"}
+          </button>
           <label>Lintel block</label>
-          <select value={brush.lintel} onChange={(e) => setBrush({ ...brush, lintel: e.currentTarget.value })}>
+          <select value={brush.lintel} onChange={(e) => setBrush({ ...brush, board: "lintel", lintel: e.currentTarget.value })}>
             {Object.entries(chip.terrains).map(([id, t]) => (
               <option key={id} value={id}>
                 {t.name} ({id})
@@ -92,18 +94,25 @@ export function BoardPalette({ chip, brush, setBrush }: { chip: ChipsetDef; brus
             ))}
           </select>
           <label>Top at level</label>
-          <input type="number" min={0} max={MAX_HEIGHT} value={brush.lintelTop} onInput={(e) => setBrush({ ...brush, lintelTop: Number(e.currentTarget.value) })} />
+          <input type="number" min={0} max={MAX_HEIGHT} value={brush.lintelTop} onInput={(e) => setBrush({ ...brush, board: "lintel", lintelTop: Number(e.currentTarget.value) })} />
           <p class="hint">The wall continues over a doorway: the block starts 4 levels above the doorway's floor (a character's height) and ends at this level – usually the wall's own height.</p>
         </div>
-      )}
+      </details>
       <KeyHints
-        items={[
-          ["Left", brush.board === "terrain" ? "paint terrain" : brush.board === "piece" ? "set the piece" : "add a lintel"],
-          ["Right", brush.board === "terrain" ? "holes (no cell)" : brush.board === "piece" ? "back to a full block" : "remove the lintel"],
-          ["W / S", "raise / lower the cell (or the selected area)"],
-          ["A / D", "turn a piece"],
-          ["B R G I M", "pencil, rectangle, fill, pick, select"],
-        ]}
+        items={
+          lintel
+            ? [
+                ["Left", "add a lintel"],
+                ["Right", "remove the lintel"],
+              ]
+            : [
+                ["Left", "paint terrain (and the piece)"],
+                ["Right", "holes (no cell)"],
+                ["W / S", "the height the next click paints (select tool: the cells)"],
+                ["A / D", "turn the piece (select tool: the pieces on the map)"],
+                ["B R G I M", "pencil, rectangle, fill, pick, select"],
+              ]
+        }
       />
     </>
   );
