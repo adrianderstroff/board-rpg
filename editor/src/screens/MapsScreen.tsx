@@ -208,6 +208,9 @@ function ResizeForm(props: { project: Project; id: string; size: { w: number; h:
         >
           Resize
         </button>
+        <button disabled={!d.x && !d.y} onClick={() => setD({ x: 0, y: 0 })} title="Forget the changes not applied yet">
+          Reset
+        </button>
       </div>
       <div class="row">
         <div class="segmented">

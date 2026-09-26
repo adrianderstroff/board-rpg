@@ -167,7 +167,7 @@ current tool. Resize (columns on the right, rows at the bottom) is on the Info t
 
 ### 5.4 Map properties
 The Info tab is a table – labels left, values right: name, size (−x / +x and −y / +y buttons take away or
-add a column on the right or a row at the bottom; until Resize applies it the new size previews –
+add a column on the right or a row at the bottom; until Resize applies it (Reset forgets it) the new size previews –
 the part that grows in green, the part that shrinks in red – and the canvas marks the cells it adds
 green and the ones it drops red; new cells are empty, painted afterwards), kind (Peace / Wild
 switch = `peaceful` / `wild`), chipset, **music** (picker with a ▶ button to listen), battle
