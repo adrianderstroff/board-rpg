@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { getGrid } from "../../../src/core/board/grid";
 import type { Database } from "../../../src/core/data/database";
-import type { Pos } from "../../../src/core/util/grid";
+import type { Dir, Pos } from "../../../src/core/util/grid";
 import { AxisGizmo, isoAxes } from "./Gizmo";
 import { isMarker, markerCanvas, markerIcon } from "../entities/icons";
 import { loadSheet } from "../../../src/engine/assets";
@@ -72,6 +72,8 @@ interface Props {
   ghost: Ghost | null;
   /** Thin grid lines on every cell's top (empty cells at ground level). */
   showGrid: boolean;
+  /** Wall signs about to be placed (Decor mode), drawn see-through on their side. */
+  wallPreview?: { x: number; y: number; sign: string; face: Dir; level?: number }[] | null;
   /** A pending resize: the new size – added cells are marked green, dropped ones red. */
   resizeTo?: { w: number; h: number } | null;
   handlers: CanvasHandlers;
@@ -228,7 +230,7 @@ class MapScene extends Phaser.Scene {
     if (props.hideDecor) src.cells = src.cells.map((c) => ({ ...c, decor: undefined, decorViews: undefined }));
     this.view?.destroy();
     this.view = new IsoMapView(this, src, (x, y) => rotateContinuous(x, y, props.rotation));
-    if (!props.hideDecor) this.view.setWallDecor(wallDecorSources(props.db, props.db.map(props.mapId), grid));
+    this.drawWalls();
     if (this.shownMap !== props.mapId) {
       this.shownMap = props.mapId;
       const b = this.view.bounds;
@@ -248,6 +250,19 @@ class MapScene extends Phaser.Scene {
     this.drawGhost();
     this.buildGrid();
     this.onAngle?.(props.rotation);
+  }
+
+  /** The map's wall signs (hidden with the decor) and the ones about to be placed, see-through. */
+  drawWalls() {
+    const view = this.view;
+    if (!view || this.spin) return;
+    const { db, mapId } = this.props;
+    const grid = getGrid(db, mapId);
+    const map = db.map(mapId);
+    const preview = (this.props.wallPreview ?? []).map((w) => ({ ...wallDecorSources(db, { ...map, wallDecor: [w] }, grid)[0], alpha: 0.7 }));
+    // a preview replaces a sign on the same side
+    const kept = this.props.hideDecor ? [] : wallDecorSources(db, map, grid).filter((s) => !preview.some((p) => p.x === s.x && p.y === s.y && p.face.x === s.face.x && p.face.y === s.face.y));
+    view.setWallDecor([...kept, ...preview]);
   }
 
   /** (Re)creates the grid lines for the current map. */
@@ -540,6 +555,14 @@ export function IsoCanvas(props: Props) {
       s.buildGrid();
     }
   }, [props.resizeTo?.w, props.resizeTo?.h]);
+
+  useEffect(() => {
+    const s = scene.current;
+    if (s?.view) {
+      s.props = latest.current;
+      s.drawWalls();
+    }
+  }, [JSON.stringify(props.wallPreview ?? null)]);
 
   // handlers change every render – keep the scene's copy fresh without redrawing
   if (scene.current) scene.current.props = { ...scene.current.props, handlers: props.handlers };

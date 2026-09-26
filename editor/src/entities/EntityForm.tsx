@@ -185,21 +185,6 @@ export function EntityForm({ project, mapId, entity, onSelect }: { project: Proj
             </Field>
           </>
         );
-      case "sign":
-        return (
-          <>
-            {position}
-            <Field label="Sign">
-              <Select value={data.sign as string} options={Object.keys(db.graphics.wallSigns?.frames ?? {})} onChange={(v) => set("sign", v)} />
-            </Field>
-            <Field label="Wall side" hint="The side of the block it is painted on.">
-              <Select value={data.face as string} options={DIRS} onChange={(v) => set("face", v ?? "S")} />
-            </Field>
-            <Field label="Block level">
-              <Num value={data.level as number} placeholder="top" min={0} onChange={(v) => set("level", v)} />
-            </Field>
-          </>
-        );
       case "event":
         return <EventForm project={project} mapId={mapId} index={entity.key as number} db={db} />;
     }

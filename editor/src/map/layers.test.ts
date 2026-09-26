@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseDocument } from "yaml";
+import { readFileSync } from "node:fs";
 import type { MapDef } from "../../../src/core/data/types";
 import { floodArea, heightAt, paint, rectCells, resize, rowsOf, setFacing, setHeights } from "./layers";
 
@@ -87,6 +88,22 @@ describe("map layers (editor-design §5.2)", () => {
     resize(doc, map(), { left: 0, right: 1, top: 0, bottom: 0 });
     expect(rowsOf(map(), "terrain").every((r) => r[r.length - 1] === " ")).toBe(true);
     expect(rowsOf(map(), "height").every((r) => r[r.length - 1] === "0")).toBe(true);
+  });
+});
+
+describe("wall signs (Decor mode)", () => {
+  it("paints a sign on one side of a block, replacing that side's sign; right click removes the cell's signs", async () => {
+    const { setWallSigns } = await import("./layers");
+    const doc = parseDocument(readFileSync("data/maps/sandhollow.yaml", "utf8"));
+    const map = () => doc.toJS() as MapDef;
+    const before = map().wallDecor!.length;
+    setWallSigns(doc, map(), [{ x: 4, y: 4 }], "magic", "E", 3);
+    expect(map().wallDecor!.length).toBe(before + 1);
+    expect(map().wallDecor!.at(-1)).toEqual({ x: 4, y: 4, sign: "magic", face: "E", level: 3 });
+    setWallSigns(doc, map(), [{ x: 4, y: 4 }], "inn", "E");
+    expect(map().wallDecor!.filter((w) => w.x === 4 && w.y === 4)).toEqual([{ x: 4, y: 4, sign: "inn", face: "E" }]);
+    setWallSigns(doc, map(), [{ x: 4, y: 4 }], null, "E");
+    expect(map().wallDecor!.length).toBe(before);
   });
 });
 

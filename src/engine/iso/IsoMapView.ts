@@ -67,6 +67,8 @@ export interface WallDecorSource {
   level: number;
   texture: string;
   frame: number;
+  /** See-through (e.g. an editor preview); default opaque. */
+  alpha?: number;
 }
 
 /** Maps source grid coordinates to view grid coordinates (e.g. a rotation, possibly fractional). */
@@ -285,6 +287,7 @@ export class IsoMapView {
     for (const src of list) {
       const mesh = this.scene.add.mesh2d(0, 0, src.texture, [], []);
       mesh.setRenderAsTriangles(true);
+      if (src.alpha !== undefined) mesh.setAlpha(src.alpha);
       const w = { src, mesh };
       this.wallDecor.push(w);
       this.positionWall(w);

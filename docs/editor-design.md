@@ -148,7 +148,7 @@ layers it doesn't edit – of board, decor and entities – are greyed out.
 | Mode | Paints | Left / right mouse | W / S | A / D |
 |---|---|---|---|---|
 | **Board** | terrain (`layers.terrain`), pieces (`layers.shape`, §5.9), door lintels (`layers.overhead`) | paint / holes (no cell), full block, remove lintel | raise / lower | turn a piece |
-| **Decor** | objects (`layers.decor`; facing in `layers.decorDir`) – the object to place follows the cursor see-through | place / remove | raise / lower | turn a directional object (or the brush) |
+| **Decor** | objects (`layers.decor`; facing in `layers.decorDir`) – the object to place follows the cursor see-through; **wall signs** (`wallDecor`: switch the brush to *Wall signs*) on a block's side | place / remove (signs: paint on the side / remove the cell's signs) | raise / lower (signs: which block) | turn a directional object or the brush (signs: which side – one facing away from the view isn't drawn, the status bar says so) |
 | **Entity** | events, exits, spawns, enemies, gates, switches, traps, signs, the Quick Play start (§6) | select, drag / delete | – | turn the selected one |
 
 **Preview:** with the pencil, the rectangle or the fill, what the next click places follows the cursor
@@ -199,11 +199,10 @@ Like RPG Maker's events, but every kind maps onto a list the game already has.
 | **Gate** | `gates[]` | bars + its condition / linked switches | bars while closed |
 | **Floor switch** | `switches[]` | plate + lines to the gates it opens | the plate |
 | **Hidden trap** | `traps[]` | trap icon | hidden until found |
-| **Wall sign** | `wallDecor[]` | the sign on its wall face | the painted sign |
 | **Game start** / **Quick Play start** | an arrival with that role (§6.3) | start / play icon | the game start; Quick Play is editor only |
 
-Gates, floor switches and hidden traps become presets of the event (entity) with R6, wall signs move
-to Decor mode with R2 (game-design §10.3).
+Gates, floor switches and hidden traps become presets of the event (entity) with R6 (game-design
+§10.3); wall signs are painted in Decor mode (§5.2).
 
 A **marker tile** is a flat tile on the cell with the kind's icon (the same icons in the top view).
 **Entity panel** (Edit tab in Entity mode): the kinds as buttons (three rows; the tooltip explains

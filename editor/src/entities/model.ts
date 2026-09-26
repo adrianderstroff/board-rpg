@@ -7,10 +7,10 @@ import type { Dir, Pos } from "../../../src/core/util/grid";
  * stays in its own list in the map file.
  */
 
-export type EntityKind = "event" | "exit" | "spawn" | "enemy" | "gate" | "switch" | "trap" | "sign";
+export type EntityKind = "event" | "exit" | "spawn" | "enemy" | "gate" | "switch" | "trap";
 
 /** What the Add buttons place: entity kinds, a teleport (exit + arrival) and the starts (arrivals with a role). */
-export type AddKind = "event" | "teleport" | "enemy" | "gate" | "switch" | "trap" | "sign" | "start" | "quickplay";
+export type AddKind = "event" | "teleport" | "enemy" | "gate" | "switch" | "trap" | "start" | "quickplay";
 
 export const ADD_INFO: Record<AddKind, { label: string; icon: string; hint: string }> = {
   event: { label: "Event", icon: "event", hint: "An NPC, an object or an invisible trigger – with pages of conditions and actions." },
@@ -19,7 +19,6 @@ export const ADD_INFO: Record<AddKind, { label: string; icon: string; hint: stri
   gate: { label: "Gate", icon: "gate", hint: "Bars across a cell: open while a linked switch is pressed or its condition holds." },
   switch: { label: "Floor switch", icon: "switch", hint: "A plate held down by standing heroes; opens gates." },
   trap: { label: "Hidden trap", icon: "trap", hint: "Stops heroes walking over it until found with Discover." },
-  sign: { label: "Wall sign", icon: "sign", hint: "Lettering painted on one side of a block (shop signs)." },
   start: { label: "Game start", icon: "start", hint: "Where a new game begins (one for the whole game – placing it again moves it)." },
   quickplay: { label: "Quick Play start", icon: "quickplay", hint: "Where ▶ Quick Play starts on this map, with its party and items (editor only)." },
 };
@@ -45,7 +44,6 @@ export const KIND_INFO: Record<EntityKind, { label: string; list: string; editor
   gate: { label: "Gate", list: "gates", hint: "Bars across a cell: open while a linked switch is pressed or its condition holds." },
   switch: { label: "Floor switch", list: "switches", hint: "A plate held down by standing heroes; opens gates." },
   trap: { label: "Hidden trap", list: "traps", editorOnly: true, hint: "Stops heroes walking over it until found with Discover." },
-  sign: { label: "Wall sign", list: "wallDecor", hint: "Lettering painted on one side of a block (shop signs)." },
 };
 
 /** Every entity on the map, in a stable order. */
@@ -58,7 +56,6 @@ export function listEntities(map: MapDef): Entity[] {
   (map.gates ?? []).forEach((g, i) => out.push({ kind: "gate", key: i, x: g.x, y: g.y, label: g.id }));
   (map.switches ?? []).forEach((s, i) => out.push({ kind: "switch", key: i, x: s.x, y: s.y, label: s.id }));
   (map.traps ?? []).forEach((t, i) => out.push({ kind: "trap", key: i, x: t.x, y: t.y, label: t.id }));
-  (map.wallDecor ?? []).forEach((w, i) => out.push({ kind: "sign", key: i, x: w.x, y: w.y, label: `${w.sign} (${w.face})` }));
   return out;
 }
 
@@ -91,7 +88,7 @@ export function freeId(base: string, taken: Iterable<string>): string {
 }
 
 /** Adds a new entity of `kind` at `at` with sensible defaults; returns its reference. */
-export function addEntity(doc: Document, map: MapDef, kind: EntityKind, at: Pos, defaults: { enemy?: string; map?: string; spawn?: string; sign?: string }): EntityRef {
+export function addEntity(doc: Document, map: MapDef, kind: EntityKind, at: Pos, defaults: { enemy?: string; map?: string; spawn?: string }): EntityRef {
   const { x, y } = at;
   /** Appends to a list of the map (created if missing); the new entry's index is the old length. */
   const push = (list: string, value: object, flow = true): EntityRef => {
@@ -113,8 +110,6 @@ export function addEntity(doc: Document, map: MapDef, kind: EntityKind, at: Pos,
       return push("switches", { id: freeId("plate", (map.switches ?? []).map((s) => s.id)), x, y, opens: [] });
     case "trap":
       return push("traps", { id: freeId("trap", (map.traps ?? []).map((t) => t.id)), x, y, damage: 10 });
-    case "sign":
-      return push("wallDecor", { x, y, sign: defaults.sign ?? "inn", face: "S" as Dir });
     case "spawn": {
       const id = freeId("spawn", Object.keys(map.spawns ?? {}));
       doc.setIn(["spawns", id], doc.createNode({ x, y, dir: "S" }, { flow: true }));

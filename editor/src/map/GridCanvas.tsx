@@ -21,7 +21,6 @@ const KIND_MARK: Record<string, [string, string]> = {
   gate: ["G", "#c0cbdc"],
   switch: ["P", "#c0cbdc"],
   trap: ["T", "#2ce8f5"],
-  sign: ["S", "#c0cbdc"],
 };
 
 interface Props {

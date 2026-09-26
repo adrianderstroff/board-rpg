@@ -81,9 +81,6 @@ export function entitySprites(db: Database, map: MapDef, rotation: number, selec
       case "trap":
         out.push({ ...base, texture: K.fieldEffects, frame: 32, flat: true, label: `trap ${e.label}`, editorOnly: true });
         break;
-      case "sign":
-        if (labels) out.push({ ...base, label: `sign: ${e.label}` });
-        break;
       case "spawn": {
         // arrivals, the game start and the Quick Play start each have their own icon
         const role = db.config.start.map === map.id && db.config.start.spawn === e.key ? "start" : map.editor?.quickPlay?.spawn === e.key ? "quickplay" : "arrival";

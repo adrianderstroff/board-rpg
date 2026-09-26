@@ -12,7 +12,7 @@ import { placeStart } from "../entities/teleports";
 import type { Project } from "../project";
 import { GridCanvas } from "./GridCanvas";
 import { IsoCanvas, type CanvasHandlers, type Ghost, type Marker } from "./IsoCanvas";
-import { copyArea, floodArea, inRect, moveArea, paint, pasteArea, rectCells, rectOf, setFacing, setHeights, setOverhead, writeCells, type Clip, type Rect } from "./layers";
+import { copyArea, floodArea, inRect, moveArea, paint, pasteArea, rectCells, rectOf, setFacing, setHeights, setOverhead, setWallSigns, writeCells, type Clip, type Rect } from "./layers";
 
 /**
  * Map canvas (editor-design §5): three modes – Board (terrain, pieces, lintels), Decor (objects)
@@ -58,6 +58,13 @@ export interface Brush {
   decor: string;
   /** Facing of directional decor being placed. */
   decorFacing: Dir;
+  /** What Decor mode places: objects on cells, or wall signs on a block's side. */
+  decorKind: "object" | "sign";
+  sign: string;
+  /** The side of the block a sign goes on (world direction). */
+  signFace: Dir;
+  /** The block (level) whose side it is painted on; null = the top block. */
+  signLevel: number | null;
 }
 
 export interface EntitySelection {
@@ -132,13 +139,14 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
   const apply = (cells: Pos[], erase: boolean, group?: string) => {
     if (!cells.length) return;
     const brush = brushRef.current; // the latest brush, even right after a key press
-    const what = mode === "decor" ? "decor" : brush.board;
+    const what = mode === "decor" ? (brush.decorKind === "sign" ? "wall sign" : "decor") : brush.board;
     project.edit(
       path,
       `${erase ? "Erase" : "Paint"} ${what}`,
       (doc) => {
         const map = doc.toJS() as MapDef;
-        if (mode === "decor") {
+        if (mode === "decor" && brush.decorKind === "sign") setWallSigns(doc, map, cells, erase ? null : brush.sign, brush.signFace, brush.signLevel ?? undefined);
+        else if (mode === "decor") {
           paint(doc, map, "decor", cells, erase ? null : brush.decor);
           // directional decor is placed facing the brush's way
           if (!erase && chip?.decor[brush.decor]?.views) for (const c of cells) setFacing(doc, doc.toJS() as MapDef, c, brush.decorFacing);
@@ -156,7 +164,10 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
   const pick = (c: Pos) => {
     const cell = db ? getGrid(db, mapId).cell(c) : undefined;
     if (!cell) return;
-    if (mode === "decor") {
+    if (mode === "decor" && brush.decorKind === "sign") {
+      const w = project.data<MapDef>(path).wallDecor?.find((s) => s.x === c.x && s.y === c.y);
+      if (w) setBrush({ ...brush, sign: w.sign, signFace: w.face, signLevel: w.level ?? null });
+    } else if (mode === "decor") {
       if (cell.decor) setBrush({ ...brush, decor: cell.decor, decorFacing: cell.decorDir ?? "S" });
     } else if (cell.overhead && brush.board === "lintel") setBrush({ ...brush, lintel: cell.overhead.terrain, lintelTop: cell.overhead.top });
     else setBrush({ ...brush, board: "terrain", terrain: cell.terrain, piece: cell.cut ?? [], height: cell.height });
@@ -192,7 +203,7 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
           });
         else if (kind)
           project.edit(path, `Add ${kind}`, (doc) => {
-            ref = addEntity(doc, doc.toJS() as MapDef, kind as EntityKind, c, { map: mapId, enemy: [...(db?.enemies.keys() ?? [])][0], sign: Object.keys(db?.graphics.wallSigns?.frames ?? { inn: 0 })[0] });
+            ref = addEntity(doc, doc.toJS() as MapDef, kind as EntityKind, c, { map: mapId, enemy: [...(db?.enemies.keys() ?? [])][0] });
           });
         entities.setPlacing(null);
         entities.setCopying(null);
@@ -313,7 +324,7 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
           map.events?.[sel.key as number]?.pages.forEach((p, i) => {
             if (p.npc) doc.setIn([...base, "pages", i, "dir"], turnDir(p.dir ?? "S", by));
           });
-        } else if (sel.kind === "sign") doc.setIn([...base, "face"], turnDir((doc.getIn([...base, "face"]) as Dir) ?? "S", by));
+        }
         else if (sel.kind === "spawn" || sel.kind === "exit" || sel.kind === "enemy") doc.setIn([...base, "dir"], turnDir((doc.getIn([...base, "dir"]) as Dir) ?? "S", by));
       },
       `turn${sel.kind}${sel.key}`,
@@ -350,6 +361,16 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
       // while a preview shows under the cursor, W/S and A/D change what the next click places
       const painting = tool === "pencil" || tool === "rect" || tool === "fill";
       const previewing = painting && ((mode === "board" && brush.board === "terrain") || mode === "decor");
+      if (previewing && mode === "decor" && brush.decorKind === "sign" && (k === "w" || k === "s")) {
+        // the sign's block: from the top block of the hovered cell up or down
+        const g = db ? getGrid(db, mapId) : null;
+        const h = hoverRef.current;
+        updateBrush((b) => {
+          const from = b.signLevel ?? (h ? (g?.cell(h)?.height ?? 0) : 0);
+          return { ...b, signLevel: Math.max(0, Math.min(35, from + (k === "w" ? 1 : -1))) };
+        });
+        return;
+      }
       if (previewing && mode === "board" && (k === "w" || k === "s")) {
         const g = db ? getGrid(db, mapId) : null;
         const h = hoverRef.current;
@@ -362,6 +383,7 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
       if (previewing && (k === "a" || k === "d")) {
         const by = k === "d" ? 1 : -1;
         if (mode === "board") updateBrush((b) => (b.piece.length ? { ...b, piece: turnCut(b.piece, by) } : b));
+        else if (brush.decorKind === "sign") updateBrush((b) => ({ ...b, signFace: turnDir(b.signFace, by) }));
         else updateBrush((b) => ({ ...b, decorFacing: turnDir(b.decorFacing, by) }));
         return;
       }
@@ -461,10 +483,16 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
       return { texture: K.chipset(chip.id), frame: t.frame, originY: chip.tileHeight / 2 / chip.frameHeight, kind: "block", level: brush.height ?? undefined, cut: brush.piece, fill: t.fill ?? t.frame, cells: ghostCells };
     }
     const d = chip.decor[brush.decor];
-    if (mode !== "decor" || !d) return null;
+    if (mode !== "decor" || !d || brush.decorKind === "sign") return null;
     const turns = d.views ? (["S", "W", "N", "E"].indexOf(brush.decorFacing) + rotation) % 4 : 0;
     return { texture: K.decor(chip.id), frame: d.frame + (d.views ? turns : 0), originY: chip.decorAnchorY / chip.decorFrameHeight, cells: ghostCells };
-  }, [mode, brush.decor, brush.decorFacing, brush.terrain, brush.board, brush.height, brush.piece, chip, tool, rotation, ghostCells]);
+  }, [mode, brush.decor, brush.decorFacing, brush.decorKind, brush.terrain, brush.board, brush.height, brush.piece, chip, tool, rotation, ghostCells]);
+  // a wall sign to place: see-through on its side of the hovered (or dragged) cells
+  const wallPreview = useMemo(() => {
+    if (mode !== "decor" || brush.decorKind !== "sign" || tool === "select" || tool === "pick") return null;
+    const cells = ghostCells ?? (hover ? [hover] : []);
+    return cells.map((c) => ({ x: c.x, y: c.y, sign: brush.sign, face: brush.signFace, level: brush.signLevel ?? undefined }));
+  }, [mode, brush.decorKind, brush.sign, brush.signFace, brush.signLevel, tool, ghostCells, hover?.x, hover?.y]);
 
   if (!db) return <div class="placeholder">The content has errors – fix them to see the map (see the problems badge).</div>;
   const grid = getGrid(db, mapId);
@@ -488,7 +516,10 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
           : `Drag: select${area ? ` (${area.w}×${area.h})` : ""} · drag inside: move · Ctrl+C / Ctrl+V · Del: clear · W/S raise/lower · A/D turn`
         : mode === "board"
           ? "Left: paint · right: holes · W/S: raise / lower · A/D: turn a piece · middle drag / Space: pan · Q/E: turn the view"
-          : "Left: place · right: remove · A/D: turn · W/S: raise / lower · middle drag / Space: pan · Q/E: turn the view";
+          : brush.decorKind === "sign"
+            ? // a sign on a side facing away from the camera isn't drawn: say so
+              `Left: paint the sign · right: remove the cell's signs · A/D: side · W/S: block${wallPreview?.length && !["S", "E"].includes(turnDir(brush.signFace, rotation)) ? " · this side faces away – Q/E turns the view" : ""}`
+            : "Left: place · right: remove · A/D: turn · W/S: raise / lower · middle drag / Space: pan · Q/E: turn the view";
 
   return (
     <div class="map-editor">
@@ -559,7 +590,7 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
           </button>
         </div>
       </div>
-      <div class="canvas-area">{view === "iso" ? <IsoCanvas {...canvasProps} rotation={rotation} /> : <GridCanvas {...gridProps} />}</div>
+      <div class="canvas-area">{view === "iso" ? <IsoCanvas {...canvasProps} rotation={rotation} wallPreview={wallPreview} /> : <GridCanvas {...gridProps} />}</div>
       <div class="status">
         {hover ? (
           <>
@@ -578,6 +609,8 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
             ) : (
               " · hole (no cell)"
             )}
+            {/* a wall sign on a side facing away from the camera isn't drawn */}
+            {wallPreview?.length && !["S", "E"].includes(turnDir(brush.signFace, rotation)) ? <span class="no"> · the {brush.signFace} side faces away – Q / E turns the view</span> : null}
           </>
         ) : (
           <span class="dim">{hint}</span>

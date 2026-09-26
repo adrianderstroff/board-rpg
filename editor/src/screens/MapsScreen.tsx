@@ -17,7 +17,7 @@ import type { Project } from "../project";
 
 const mapPath = (id: string) => `data/maps/${id}.yaml`;
 
-const DEFAULT_BRUSH: Brush = { board: "terrain", terrain: "grass", piece: [], height: null, lintel: "adobe", lintelTop: 5, decor: "palm", decorFacing: "S" };
+const DEFAULT_BRUSH: Brush = { board: "terrain", terrain: "grass", piece: [], height: null, lintel: "adobe", lintelTop: 5, decor: "palm", decorFacing: "S", decorKind: "object", sign: "inn", signFace: "S", signLevel: null };
 
 /**
  * Maps (editor-design §5): the map list, the canvas with its three modes, and the inspector with
@@ -107,7 +107,7 @@ export function MapsScreen({ project, selected: mapSel, onSelect }: { project: P
               </button>
             </div>
             {tab === "edit" && chip && mode === "board" && <BoardPalette chip={chip} brush={brush} setBrush={setBrush} />}
-            {tab === "edit" && chip && mode === "decor" && <DecorPalette chip={chip} brush={brush} setBrush={setBrush} />}
+            {tab === "edit" && chip && mode === "decor" && <DecorPalette chip={chip} signs={db?.graphics.wallSigns} brush={brush} setBrush={setBrush} />}
             {tab === "edit" && mode === "entity" && <EntitiesPanel project={project} mapId={mapSel} entities={entities} />}
             {tab === "info" && <MapProperties project={project} id={mapSel} resizeBy={resizeBy} setResizeBy={setResizeBy} />}
           </>

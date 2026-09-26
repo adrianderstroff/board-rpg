@@ -1,4 +1,4 @@
-import { isMap, isScalar, Scalar, type Document } from "yaml";
+import { isMap, isScalar, Scalar, type Document, type YAMLSeq } from "yaml";
 import type { Corner, MapDef } from "../../../src/core/data/types";
 import type { Dir, Pos } from "../../../src/core/util/grid";
 
@@ -357,4 +357,22 @@ export function moveArea(doc: Document, map: MapDef, r: Rect, to: Pos, fill: str
     const qp = map.editor?.quickPlay;
     if (qp?.x !== undefined && qp.y !== undefined && inside({ x: qp.x, y: qp.y })) move(["editor", "quickPlay"]);
   }
+}
+
+/**
+ * Wall signs (game-design §5.3) on the given cells: `sign` on side `face` of the block at `level`
+ * (default: the top one) – replacing a sign on that side; `sign` null removes every sign of the cells.
+ */
+export function setWallSigns(doc: Document, map: MapDef, cells: Pos[], sign: string | null, face: Dir, level?: number) {
+  const at = new Set(cells.map((c) => `${c.x},${c.y}`));
+  const kept = (map.wallDecor ?? []).filter((w) => !at.has(`${w.x},${w.y}`) || (sign !== null && w.face !== face));
+  const added = sign === null ? [] : cells.map((c) => ({ x: c.x, y: c.y, sign, face, ...(level === undefined ? {} : { level }) }));
+  const next = [...kept, ...added];
+  if (!next.length) {
+    doc.delete("wallDecor");
+    return;
+  }
+  const node = doc.createNode([], { flow: false }) as YAMLSeq;
+  for (const w of next) node.add(doc.createNode(w, { flow: true }));
+  doc.set("wallDecor", node);
 }

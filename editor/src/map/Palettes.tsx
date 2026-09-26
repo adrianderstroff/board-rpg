@@ -1,5 +1,5 @@
 import { useState } from "preact/hooks";
-import type { ChipsetDef, Corner } from "../../../src/core/data/types";
+import type { ChipsetDef, Corner, SheetDef } from "../../../src/core/data/types";
 import type { Dir } from "../../../src/core/util/grid";
 import { MAX_HEIGHT } from "./layers";
 import type { Brush } from "./MapEditor";
@@ -118,13 +118,62 @@ export function BoardPalette({ chip, brush, setBrush }: { chip: ChipsetDef; brus
   );
 }
 
-export function DecorPalette({ chip, brush, setBrush }: { chip: ChipsetDef; brush: Brush; setBrush: (b: Brush) => void }) {
+export function DecorPalette({ chip, signs, brush, setBrush }: { chip: ChipsetDef; signs?: SheetDef & { frames: Record<string, number> }; brush: Brush; setBrush: (b: Brush) => void }) {
   const [filter, setFilter] = useState("");
   const f = filter.toLowerCase();
   const list = Object.entries(chip.decor).filter(([id, d]) => !f || id.includes(f) || d.name.toLowerCase().includes(f));
   const directional = !!chip.decor[brush.decor]?.views;
+  const kinds = (
+    <div class="segmented wide">
+      <button class={brush.decorKind !== "sign" ? "on" : ""} title="Objects standing on cells: trees, rocks, furniture…" onClick={() => setBrush({ ...brush, decorKind: "object" })}>
+        Objects
+      </button>
+      <button class={brush.decorKind === "sign" ? "on" : ""} title="Lettering painted on the side of a block (shop signs)" onClick={() => setBrush({ ...brush, decorKind: "sign" })}>
+        Wall signs
+      </button>
+    </div>
+  );
+  if (brush.decorKind === "sign") {
+    const cols = signs ? Math.max(1, Math.round(96 / signs.frameWidth)) : 1;
+    return (
+      <>
+        {kinds}
+        <div class="palette">
+          {Object.entries(signs?.frames ?? {}).map(([id, frame]) => (
+            <button key={id} class={brush.sign === id ? "on" : ""} onClick={() => setBrush({ ...brush, sign: id })} title={id}>
+              {signs && <span class="swatch" style={frameStyle(signs.image, signs.frameWidth, signs.frameHeight, cols, frame, 1)} />}
+              {id}
+            </button>
+          ))}
+        </div>
+        <div class="row brush-height">
+          <span class="dim">Side</span>
+          <div class="segmented">
+            {(["N", "E", "S", "W"] as Dir[]).map((d) => (
+              <button key={d} class={brush.signFace === d ? "on" : ""} onClick={() => setBrush({ ...brush, signFace: d })}>
+                {d}
+              </button>
+            ))}
+          </div>
+          <span class="dim">Block</span>
+          <b>{brush.signLevel ?? "top"}</b>
+          {brush.signLevel !== null && <button onClick={() => setBrush({ ...brush, signLevel: null })}>top</button>}
+        </div>
+        <KeyHints
+          items={[
+            ["Left", "paint the sign on that side"],
+            ["Right", "remove the cell's signs"],
+            ["A / D", "which side"],
+            ["W / S", "which block (from the top one)"],
+            ["Q / E", "turn the view – a side facing away isn't drawn"],
+          ]}
+        />
+      </>
+    );
+  }
   return (
     <>
+      {kinds}
       <input class="search" placeholder="Search decor…" value={filter} onInput={(e) => setFilter(e.currentTarget.value)} />
       <div class="palette">
         {list.map(([id, d]) => (

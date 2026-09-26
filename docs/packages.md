@@ -291,8 +291,9 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ Rename updates references; deleting cascades (exits to a deleted arrival, unused arrivals) as one undo step over several files; unknown teleport targets are problems
 - ☑ Project transactions: edits on several files as one undo step (also kept across reloads)
 
-## R2 · Wall signs in Decor mode ☐
-- ☐ Signs placed on a block face in Decor mode (face with A / D, block with W / S); no Wall sign entity
+## R2 · Wall signs in Decor mode ☑
+- ☑ Signs placed on a block face in Decor mode (face with A / D, block with W / S); no Wall sign entity
+- ☑ See-through preview on the chosen side (replacing a sign there); pick takes a sign; "faces away" note
 
 ## R3 · Script runner ☐
 - ☐ Sequential scripts with if / elif / else, choice (icons), wait, call, stop; pausable and saved (save games, undo); dialogs run as scripts
