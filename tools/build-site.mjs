@@ -4,7 +4,8 @@
 //   /play/     the demo, playable in the browser
 // Usage: node tools/build-site.mjs   (npm run build:site)
 import { execSync } from "node:child_process";
-import { cpSync, existsSync, rmSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { cpSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 
 const OUT = "site-dist";
 const run = (cmd, env = {}) => execSync(cmd, { stdio: "inherit", env: { ...process.env, ...env } });
@@ -20,6 +21,9 @@ rmSync(`${OUT}-editor`, { recursive: true, force: true });
 cpSync("site", OUT, { recursive: true });
 cpSync("docs/images", `${OUT}/images`, { recursive: true });
 if (!existsSync(`${OUT}/icon-192.png`)) cpSync("public/icon-192.png", `${OUT}/icon-192.png`);
+// the stylesheet's link carries a hash of it: browsers fetch the new one after a deploy
+const cssHash = createHash("sha256").update(readFileSync(`${OUT}/site.css`)).digest("hex").slice(0, 10);
+for (const page of [`${OUT}/index.html`, `${OUT}/download/index.html`]) writeFileSync(page, readFileSync(page, "utf8").replace(/site\.css"/g, `site.css?v=${cssHash}"`));
 // GitHub Pages: serve the files as they are (no Jekyll)
 cpSync("site/.nojekyll", `${OUT}/.nojekyll`);
 console.log(`site built into ${OUT}/`);
