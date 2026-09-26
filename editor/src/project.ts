@@ -2,6 +2,7 @@ import { parseDocument, type Document } from "yaml";
 import { assembleRaw } from "../../src/content/raw";
 import { Database, type RawContent } from "../../src/core/data/database";
 import { validateContent } from "../../src/core/data/validate";
+import { browserStorage, SESSION_KEY } from "./persist";
 import { formatYaml } from "./yamlFormat";
 
 /**
@@ -26,6 +27,24 @@ interface Change {
   label: string;
   group?: string;
 }
+
+/** Where unsaved work is kept between reloads (localStorage in the browser). */
+export type SessionStore = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+
+/**
+ * Unsaved work as stored: the changed files' texts, the undo / redo history, and the disk text of
+ * every file they touch – restored only while the disk still has exactly that.
+ */
+interface Session {
+  v: 1;
+  files: Record<string, string>;
+  bases: Record<string, string>;
+  undo: Change[];
+  redo: Change[];
+}
+
+/** Undo steps kept across reloads (the most recent ones). */
+const SESSION_HISTORY = 100;
 
 export interface FileApi {
   load(): Promise<{ files: Record<string, string>; music: string[] }>;
@@ -54,9 +73,16 @@ export class Project {
   music: string[] = [];
   /** Bumped on every change; UI re-renders when it changes. */
   version = 0;
+  /** Unsaved edits dropped at load because their file changed on disk meanwhile. */
+  dropped: string[] = [];
+  private persistTimer?: ReturnType<typeof setTimeout>;
 
-  constructor(private readonly api: FileApi = httpFileApi) {}
+  constructor(
+    private readonly api: FileApi = httpFileApi,
+    private readonly store: SessionStore | null = browserStorage(),
+  ) {}
 
+  /** Loads the files from disk, then brings back unsaved work from before a reload. */
   async load() {
     const { files, music } = await this.api.load();
     this.files.clear();
@@ -64,7 +90,67 @@ export class Project {
     this.music = music.sort();
     this.undoStack = [];
     this.redoStack = [];
+    this.restoreSession();
     this.changed();
+  }
+
+  // ---------- unsaved work across reloads ----------
+
+  private restoreSession() {
+    this.dropped = [];
+    let s: Session | null = null;
+    try {
+      s = JSON.parse(this.store?.getItem(SESSION_KEY) ?? "null") as Session | null;
+    } catch {
+      s = null;
+    }
+    if (!s || s.v !== 1) return;
+    // a file that changed on disk since wins: its unsaved edits (and the history) are dropped
+    const disk = (path: string) => this.files.get(path)?.saved ?? "";
+    const changed = new Set(Object.keys(s.bases).filter((path) => disk(path) !== s.bases[path]));
+    for (const [path, text] of Object.entries(s.files)) {
+      if (changed.has(path)) {
+        this.dropped.push(path);
+        continue;
+      }
+      if (this.files.has(path)) this.setText(path, text);
+      else this.files.set(path, this.entry(text, "")); // created, never saved
+    }
+    if (!changed.size) {
+      this.undoStack = s.undo;
+      this.redoStack = s.redo;
+    }
+  }
+
+  /** Stores the unsaved work right away (normally done shortly after each change). */
+  persistNow() {
+    clearTimeout(this.persistTimer);
+    this.persistTimer = undefined;
+    if (!this.store) return;
+    const files: Record<string, string> = {};
+    for (const path of this.dirtyPaths()) files[path] = this.files.get(path)!.text;
+    const undo = this.undoStack.slice(-SESSION_HISTORY);
+    const redo = this.redoStack.slice(-SESSION_HISTORY);
+    const bases: Record<string, string> = {};
+    for (const path of new Set([...Object.keys(files), ...undo.map((c) => c.path), ...redo.map((c) => c.path)])) bases[path] = this.files.get(path)?.saved ?? "";
+    const write = (session: Session) => this.store!.setItem(SESSION_KEY, JSON.stringify(session));
+    try {
+      if (!Object.keys(bases).length) this.store.removeItem(SESSION_KEY);
+      else write({ v: 1, files, bases, undo, redo });
+    } catch {
+      // too big for the storage: keep the files at least, without the history
+      try {
+        const fileBases = Object.fromEntries(Object.keys(files).map((p) => [p, bases[p]]));
+        write({ v: 1, files, bases: fileBases, undo: [], redo: [] });
+      } catch {
+        // nothing more to do – the work is still in this tab
+      }
+    }
+  }
+
+  private schedulePersist() {
+    if (!this.store || this.persistTimer) return;
+    this.persistTimer = setTimeout(() => this.persistNow(), 250);
   }
 
   private entry(text: string, saved: string): FileEntry {
@@ -207,6 +293,7 @@ export class Project {
 
   private changed() {
     this.version++;
+    this.schedulePersist();
     for (const fn of this.listeners) fn();
   }
 }

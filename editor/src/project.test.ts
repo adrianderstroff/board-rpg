@@ -19,6 +19,12 @@ function memoryApi(): FileApi & { written: Record<string, string> } {
 
 const lines = (text: string) => text.split(/\r?\n/);
 
+/** A stand-in for localStorage. */
+function memoryStore() {
+  const items = new Map<string, string>();
+  return { getItem: (k: string) => items.get(k) ?? null, setItem: (k: string, v: string) => void items.set(k, v), removeItem: (k: string) => void items.delete(k), items };
+}
+
 describe("editor project (editor-design §2)", () => {
   it("loads the data files into the game's content and validates it", async () => {
     const p = new Project(memoryApi());
@@ -82,5 +88,42 @@ describe("editor project (editor-design §2)", () => {
     await p.load();
     p.edit("data/maps/sandhollow.yaml", "Battleback", (d) => d.set("battleback", "nowhere"));
     expect(p.content.problems.some((x) => x.includes("nowhere"))).toBe(true);
+  });
+
+  it("unsaved edits and their undo history survive a reload (a new Project on the same storage)", async () => {
+    const api = memoryApi();
+    const store = memoryStore();
+    const a = new Project(api, store);
+    await a.load();
+    a.edit("data/maps/sandhollow.yaml", "Music", (d) => d.set("music", "boss"));
+    a.persistNow();
+    const b = new Project(api, store);
+    await b.load();
+    expect(b.dirtyPaths()).toEqual(["data/maps/sandhollow.yaml"]);
+    expect(b.content.db?.map("sandhollow").music).toBe("boss");
+    expect(b.undoLabel).toBe("Music");
+    b.undo();
+    expect(b.dirtyPaths()).toEqual([]);
+    // saved and nothing left to undo: nothing is kept
+    b.revert();
+    b.persistNow();
+    expect(store.items.size).toBe(0);
+  });
+
+  it("a file changed on disk since wins over the stored unsaved edits", async () => {
+    const api = memoryApi();
+    const store = memoryStore();
+    const a = new Project(api, store);
+    await a.load();
+    a.edit("data/maps/sandhollow.yaml", "Music", (d) => d.set("music", "boss"));
+    a.persistNow();
+    // someone edits the file outside the editor
+    const { files } = await api.load();
+    files["data/maps/sandhollow.yaml"] = files["data/maps/sandhollow.yaml"].replace("name: Sandhollow", "name: Sandhollow Town");
+    const b = new Project(api, store);
+    await b.load();
+    expect(b.dirtyPaths()).toEqual([]);
+    expect(b.dropped).toEqual(["data/maps/sandhollow.yaml"]);
+    expect(b.canUndo).toBe(false);
   });
 });

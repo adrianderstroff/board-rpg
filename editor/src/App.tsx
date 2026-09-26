@@ -5,6 +5,7 @@ import type { Project } from "./project";
 import { MapsScreen } from "./screens/MapsScreen";
 import { knownFlags } from "./forms/ConditionEditor";
 import { Icon } from "./icons";
+import { usePersistentState } from "./persist";
 
 /** Navigation entries; the ones without a screen yet are shown greyed out (editor-design §12). */
 const SCREENS = [
@@ -24,12 +25,17 @@ type ScreenId = (typeof SCREENS)[number]["id"];
 
 export function App({ project }: { project: Project }) {
   useProject(project);
-  const [screen, setScreen] = useState<ScreenId>("maps");
-  // the first map is open right away (if there is one)
-  const [map, setMap] = useState<string | null>(() => project.paths("data/maps/")[0]?.replace(/^data\/maps\//, "").replace(/\.yaml$/, "") ?? null);
+  // where the user was is remembered across reloads (a hot reload while working on the editor)
+  const [screen, setScreen] = usePersistentState<ScreenId>("screen", "maps");
+  const maps = project.paths("data/maps/").map((p) => p.replace(/^data\/maps\//, "").replace(/\.yaml$/, ""));
+  const [storedMap, setMap] = usePersistentState<string | null>("map", null);
+  // the first map is open right away (if there is one, and the remembered one is gone)
+  const map = storedMap && maps.includes(storedMap) ? storedMap : (maps[0] ?? null);
   const [showProblems, setShowProblems] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() =>
+    project.dropped.length ? `Unsaved changes to ${project.dropped.join(", ")} were dropped: the file changed on disk` : null,
+  );
   const dirty = project.dirtyPaths();
   const { problems } = project.content;
 
@@ -69,13 +75,11 @@ export function App({ project }: { project: Project }) {
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  // don't lose unsaved work by closing the tab
+  // unsaved work is kept in the browser (Project's session): store the latest before the page goes
   useEffect(() => {
-    const onUnload = (e: BeforeUnloadEvent) => {
-      if (project.dirtyPaths().length) e.preventDefault();
-    };
-    window.addEventListener("beforeunload", onUnload);
-    return () => window.removeEventListener("beforeunload", onUnload);
+    const onHide = () => project.persistNow();
+    window.addEventListener("pagehide", onHide);
+    return () => window.removeEventListener("pagehide", onHide);
   }, [project]);
 
 

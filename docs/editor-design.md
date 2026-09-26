@@ -57,6 +57,11 @@ src/…                   the game – the editor imports src/core, src/engine a
   (for saving with comments intact) and (b) the same `RawContent` the game builds. Edits change the
   document; the raw content and a `Database` are rebuilt from it (cheap – it's a few hundred KB).
   Each file tracks whether it is dirty. **Save** writes the dirty files; **Revert** reloads them.
+- **Reloads keep the work:** unsaved edits and the undo history are kept in the browser
+  (localStorage) and come back after a reload – a hot reload while working on the editor, or
+  reopening the tab – as long as the files on disk are unchanged; a file changed on disk since wins
+  (its unsaved edits are dropped, and the toolbar says so). Where the user was – section, map, mode,
+  tool, brush, view, tab, pending resize – is remembered the same way.
 - **Undo/redo** works on the whole project (snapshots of the changed documents), so painting a map
   and editing an item share one history.
 

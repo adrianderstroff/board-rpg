@@ -17,6 +17,14 @@
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, sans-serif; }
 #app { height: 100%; }
 button, input, select, textarea { font: inherit; color: inherit; }
+/* scrollbars in the app's colours: thin, a dark track, the thumb lighter on hover */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: var(--panel); }
+::-webkit-scrollbar-thumb { background: var(--line); border: 2px solid var(--panel); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: var(--dim); }
+@supports not selector(::-webkit-scrollbar) {
+  * { scrollbar-width: thin; scrollbar-color: var(--line) var(--panel); }
+}
 button {
   background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius);
   padding: 4px 10px; cursor: pointer;
@@ -107,7 +115,7 @@ button.on { background: #124e89; border-color: var(--accent-2); color: #fff; }
 .check { display: inline-flex; gap: 5px; align-items: center; color: var(--dim); }
 
 /* folder tabs across the whole inspector: the active one opens into the panel below (no bottom line) */
-.tabs { display: flex; margin: -10px -10px 10px; padding: 0; border-bottom: 1px solid var(--line); background: var(--bg); }
+.tabs { display: flex; margin: -10px -10px 10px; padding: 0; border-bottom: 1px solid var(--line); background: var(--bg); position: sticky; top: -10px; z-index: 2; }
 .tabs button { flex: 1; margin-bottom: -1px; background: none; border: 1px solid transparent; border-top: 0; border-radius: 0; padding: 7px 10px; color: var(--dim); }
 .tabs button:hover:not(:disabled) { border-color: transparent; color: #fff; }
 .tabs button.on, .tabs button.on:hover:not(:disabled) { background: var(--panel); border-color: var(--line) var(--line) var(--panel); color: var(--text); }

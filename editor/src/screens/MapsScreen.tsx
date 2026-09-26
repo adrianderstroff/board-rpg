@@ -8,26 +8,33 @@ import { EntityForm } from "../entities/EntityForm";
 import { deleteEntity, KIND_INFO, listEntities, sameRef, type EntityKind, type EntityRef } from "../entities/model";
 import { ActionEditor } from "../forms/ActionEditor";
 import { fileSetter } from "../forms/fields";
+import { usePersistentState } from "../persist";
 import type { Project } from "../project";
 
 const mapPath = (id: string) => `data/maps/${id}.yaml`;
+
+const DEFAULT_BRUSH: Brush = { board: "terrain", terrain: "grass", piece: [], height: null, lintel: "adobe", lintelTop: 5, decor: "palm", decorFacing: "S" };
 
 /**
  * Maps (editor-design §5): the map list, the canvas with its three modes, and the inspector with
  * an Edit tab (brushes, or the selected entity) and an Info tab (the map's properties).
  */
 export function MapsScreen({ project, selected: mapSel, onSelect }: { project: Project; selected: string | null; onSelect: (id: string) => void }) {
-  const [filter, setFilter] = useState("");
-  const [tab, setTab] = useState<"edit" | "info">("edit");
-  const [mode, setMode] = useState<Mode>("board");
-  const [selected, select] = useState<EntityRef | null>(null);
+  // remembered across reloads (persist.ts)
+  const [filter, setFilter] = usePersistentState("maps.filter", "");
+  const [tab, setTab] = usePersistentState<"edit" | "info">("maps.tab", "edit");
+  const [mode, setMode] = usePersistentState<Mode>("maps.mode", "board");
+  const [selected, select] = usePersistentState<EntityRef | null>("maps.selected", null);
   const [placing, setPlacing] = useState<EntityKind | null>(null);
-  const [brush, setBrush] = useState<Brush>({ board: "terrain", terrain: "grass", piece: [], height: null, lintel: "adobe", lintelTop: 5, decor: "palm", decorFacing: "S" });
+  const [brush, setBrush] = usePersistentState<Brush>("maps.brush", DEFAULT_BRUSH, (b) => ({ ...DEFAULT_BRUSH, ...b }));
   // a resize being prepared on the Info tab (columns / rows added or removed), previewed on the canvas
-  const [resizeBy, setResizeBy] = useState({ x: 0, y: 0 });
+  const [resizeBy, setResizeBy] = usePersistentState("maps.resizeBy", { x: 0, y: 0 });
   const entities = { selected, select, placing, setPlacing };
-  // another map: nothing selected, no resize pending
+  // another map: nothing selected, no resize pending (not on the first render: that's a reload)
+  const shownMap = useRef(mapSel);
   useEffect(() => {
+    if (shownMap.current === mapSel) return;
+    shownMap.current = mapSel;
     select(null);
     setPlacing(null);
     setResizeBy({ x: 0, y: 0 });

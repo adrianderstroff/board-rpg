@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { Icon } from "../icons";
+import { usePersistentState } from "../persist";
 import { getGrid } from "../../../src/core/board/grid";
 import type { Corner, MapDef } from "../../../src/core/data/types";
 import type { Dir, Pos } from "../../../src/core/util/grid";
@@ -68,11 +69,11 @@ export interface EntitySelection {
 const typing = (e: KeyboardEvent) => e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement;
 
 export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, entities, resizeBy }: { project: Project; mapId: string; mode: Mode; setMode: (m: Mode) => void; brush: Brush; setBrush: (b: Brush) => void; entities: EntitySelection; resizeBy: { x: number; y: number } }) {
-  const [tool, setTool] = useState<Tool>("pencil");
-  const [view, setView] = useState<"iso" | "grid">("iso");
-  const [rotation, setRotation] = useState(0);
-  const [hideDecor, setHideDecor] = useState(false);
-  const [showGrid, setShowGrid] = useState(true);
+  const [tool, setTool] = usePersistentState<Tool>("map.tool", "pencil");
+  const [view, setView] = usePersistentState<"iso" | "grid">("map.view", "iso");
+  const [rotation, setRotation] = usePersistentState("map.rotation", 0);
+  const [hideDecor, setHideDecor] = usePersistentState("map.hideDecor", false);
+  const [showGrid, setShowGrid] = usePersistentState("map.grid", true);
   const [hover, setHoverState] = useState<Pos | null>(null);
   const hoverRef = useRef<Pos | null>(null);
   const setHover = (p: Pos | null) => {
