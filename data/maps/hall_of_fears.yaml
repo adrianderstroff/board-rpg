@@ -71,25 +71,36 @@ events:
   - id: fears_intro
     x: 4
     y: 10
-    pages:
-      - { trigger: auto, dialog: fears_enter }
+    states:
+      idle: {}
+    on:
+      - { on: becomes, when: { always: true }, do: [{ dialog: fears_enter }], once: true, onceKey: fears_intro#0 }
   - id: fears_beaten
     x: 4
     y: 9
-    pages:
-      - { trigger: none }
-      - { when: { defeatedAllOn: hall_of_fears }, trigger: auto, dialog: fears_gone }
+    states:
+      idle: {}
+    on:
+      - on: becomes
+        when: { defeatedAllOn: hall_of_fears }
+        do: [{ dialog: fears_gone }]
+        once: true
+        onceKey: fears_beaten#1
   - id: holy_orb
     x: 4
     y: 1
-    pages:
-      - decor: pedestal
-        interactions:
+    states:
+      idle: { decor: pedestal }
+    on:
+      - on: interact
+        when: { flag: orb_claimed }
+        options: [{ type: examine, label: Look, dialog: orb_empty }]
+      - on: interact
+        options:
           - type: examine
             label: Take the orb
             dialog: orb_claim
             actions: [{ giveItem: holy_orb }, { setFlag: orb_claimed }]
-      - { when: { flag: orb_claimed }, decor: pedestal, interactions: [{ type: examine, label: Look, dialog: orb_empty }] }
   - id: orb_gate
     x: 4
     y: 3

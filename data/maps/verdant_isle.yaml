@@ -90,10 +90,14 @@ events:
   - id: isle_intro
     x: 3
     y: 12
-    pages:
-      - { trigger: auto, dialog: isle_enter }
+    states:
+      idle: {}
+    on:
+      - { on: becomes, when: { always: true }, do: [{ dialog: isle_enter }], once: true, onceKey: isle_intro#0 }
   - id: captain_isle
     x: 3
     y: 14
-    pages:
-      - { npc: captain, dir: N, dialog: captain_isle }
+    states:
+      idle: { npc: captain, dir: N }
+    on:
+      - { on: interact, options: [{ type: talk, dialog: captain_isle }] }

@@ -94,9 +94,12 @@ const key = (ev: MapEventDef, i: number) => `${ev.id}#${i}`;
 /** Runs a handler's script (unless it is `once` and has run). */
 function run(ctx: Ctx, ev: MapEventDef, i: number, h: EntityHandler, out: ScriptResult): boolean {
   const mem = mapMemory(ctx, board(ctx).mapId);
-  if (h.once && (mem.ranOnce ?? []).includes(key(ev, i))) return false;
-  if (h.once) (mem.ranOnce ??= []).push(key(ev, i));
-  merge(out, runActions(ctx, h.do));
+  const k = h.onceKey ?? key(ev, i);
+  if (h.once && ((mem.ranOnce ?? []).includes(k) || mem.triggered.includes(k))) return false;
+  if (h.once) (mem.ranOnce ??= []).push(k);
+  // its dialogs are spoken by whoever it shows (a villager, a keeper)
+  const st = ev.states?.[currentState(ctx, board(ctx).mapId, ev) ?? ""];
+  merge(out, runActions(ctx, h.do, st?.npc ?? st?.keeper));
   return true;
 }
 
@@ -111,6 +114,8 @@ export function loadTriggers(ctx: Ctx): ScriptResult {
     .filter((ev) => heroWeightOn(ctx, ev) > 0)
     .map((ev) => ev.id);
   for (const ev of eventsOf(ctx)) (ev.on ?? []).forEach((h, i) => h.on === "load" && check(ctx, h.when) && run(ctx, ev, i, h, out));
+  // "becomes true" counts from the arrival: what holds as the party arrives fires now
+  mem.became = {};
   merge(out, entityTriggers(ctx));
   return out;
 }

@@ -67,14 +67,21 @@ events:
   - id: tower_intro
     x: 6
     y: 9
-    pages:
-      - { trigger: auto, dialog: tower_enter }
+    states:
+      idle: {}
+    on:
+      - { on: becomes, when: { always: true }, do: [{ dialog: tower_enter }], once: true, onceKey: tower_intro#0 }
   - id: split_up
     x: 6
     y: 8
-    pages:
-      - { trigger: none }
-      - { when: { flag: tower_split }, trigger: auto, dialog: tower_split_up }
+    states:
+      idle: {}
+    on:
+      - on: becomes
+        when: { flag: tower_split }
+        do: [{ dialog: tower_split_up }]
+        once: true
+        onceKey: split_up#1
   - id: east_gate
     x: 9
     y: 6

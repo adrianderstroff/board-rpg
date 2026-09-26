@@ -127,7 +127,11 @@ export class ScriptRunner {
     const quests = evaluateQuests(this.ctx);
     events.push(...quests.events);
     if (events.length) this.queued.push({ type: "events", events });
-    for (const req of [...r.requests, ...quests.requests]) this.queued.push({ type: "request", request: req });
+    for (const req of [...r.requests, ...quests.requests]) {
+      // a dialog the script shows is spoken by the script's speaker unless it says otherwise
+      if (req.type === "dialog" && !req.speaker && this.defaultSpeaker) req.speaker = this.defaultSpeaker;
+      this.queued.push({ type: "request", request: req });
+    }
     return null;
   }
 }

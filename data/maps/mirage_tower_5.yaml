@@ -100,21 +100,34 @@ events:
   - id: f5_intro
     x: 2
     y: 10
-    pages:
-      - { trigger: auto, dialog: tower_f5 }
+    states:
+      idle: {}
+    on:
+      - { on: becomes, when: { always: true }, do: [{ dialog: tower_f5 }], once: true, onceKey: f5_intro#0 }
   - id: foresight_chest
     x: 4
     y: 1
-    pages:
-      - { trigger: none }
-      - when: { defeated: { enemy: mirage_djinn } }
-        decor: chest_closed
-        interactions:
+    states:
+      nothing: {}
+      chest_closed: { decor: chest_closed }
+      chest_open: { decor: chest_open }
+    on:
+      - on: becomes
+        when: { not: { any: [{ defeated: { enemy: mirage_djinn } }, { flag: tower_token_found }] } }
+        do: [{ setState: { event: foresight_chest, state: nothing } }]
+      - on: becomes
+        when: { all: [{ defeated: { enemy: mirage_djinn } }, { not: { flag: tower_token_found } }] }
+        do: [{ setState: { event: foresight_chest, state: chest_closed } }]
+      - on: becomes
+        when: { flag: tower_token_found }
+        do: [{ setState: { event: foresight_chest, state: chest_open } }]
+      - on: interact
+        when: { all: [{ defeated: { enemy: mirage_djinn } }, { not: { flag: tower_token_found } }] }
+        options:
           - type: examine
             label: Open
             dialog: tower_chest
             actions: [{ giveItem: token_foresight }, { setFlag: tower_token_found }]
-      - { when: { flag: tower_token_found }, decor: chest_open, trigger: none }
   - id: way_out
     x: 6
     y: 0

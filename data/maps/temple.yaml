@@ -82,24 +82,32 @@ events:
   - id: abbot
     x: 5
     y: 3
-    pages:
-      - { npc: monk_old, dir: S, dialog: abbot_talk }
+    states:
+      idle: { npc: monk_old, dir: S }
+    on:
+      - { on: interact, options: [{ type: talk, dialog: abbot_talk }] }
   - id: monk_left
     x: 3
     y: 3
-    pages:
-      - { npc: monk_a, dir: S, dialog: monk_a_talk }
+    states:
+      idle: { npc: monk_a, dir: S }
+    on:
+      - { on: interact, options: [{ type: talk, dialog: monk_a_talk }] }
   - id: monk_right
     x: 7
     y: 3
-    pages:
-      - { npc: monk_b, dir: S, dialog: monk_b_talk }
+    states:
+      idle: { npc: monk_b, dir: S }
+    on:
+      - { on: interact, options: [{ type: talk, dialog: monk_b_talk }] }
   # the free cushion facing the monks
   - id: free_cushion
     x: 5
     y: 5
-    pages:
-      - { trigger: step, once: false, dialog: monks_talk }
+    states:
+      idle: {}
+    on:
+      - { on: enter, do: [{ dialog: monks_talk }] }
   - id: hidden_door
     x: 8
     y: 0

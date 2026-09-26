@@ -49,8 +49,8 @@ export class Game {
   enter(mapId: string, spawn: string, facing?: Dir): EnterResult {
     const out: EnterResult = { ...emptyResult(), dialogs: [] };
     out.events.push(...enterMap(this.ctx, mapId, spawn, undefined, facing));
-    merge(out, loadTriggers(this.ctx));
     merge(out, runActions(this.ctx, this.db.map(mapId).onEnter));
+    merge(out, loadTriggers(this.ctx));
     for (const r of autoTriggers(this.ctx)) collect(out, r);
     merge(out, evaluateQuests(this.ctx));
     return out;
@@ -60,8 +60,8 @@ export class Game {
   enterGroups(mapId: string, groups: { members: string[]; spawn: string }[]): EnterResult {
     const out: EnterResult = { ...emptyResult(), dialogs: [] };
     out.events.push(...enterMap(this.ctx, mapId, groups[0].spawn, groups));
-    merge(out, loadTriggers(this.ctx));
     merge(out, runActions(this.ctx, this.db.map(mapId).onEnter));
+    merge(out, loadTriggers(this.ctx));
     for (const r of autoTriggers(this.ctx)) collect(out, r);
     merge(out, evaluateQuests(this.ctx));
     return out;

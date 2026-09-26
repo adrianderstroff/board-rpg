@@ -53,16 +53,22 @@ events:
   - id: elder
     x: 3
     y: 2
-    pages:
-      - { npc: elder, dir: S, dialog: elder_intro }
-      - { when: { questStep: { quest: road_to_oasis, step: clear } }, npc: elder, dir: S, dialog: elder_waiting }
-      - { when: { questStep: { quest: road_to_oasis, step: report } }, npc: elder, dir: S, dialog: elder_report }
-      - { when: { questDone: road_to_oasis }, npc: elder, dir: S, dialog: elder_after }
+    states:
+      idle: { npc: elder, dir: S }
+    on:
+      - { on: interact, when: { questDone: road_to_oasis }, options: [{ type: talk, dialog: elder_after }] }
+      - on: interact
+        when: { questStep: { quest: road_to_oasis, step: report } }
+        options: [{ type: talk, dialog: elder_report }]
+      - on: interact
+        when: { questStep: { quest: road_to_oasis, step: clear } }
+        options: [{ type: talk, dialog: elder_waiting }]
+      - { on: interact, options: [{ type: talk, dialog: elder_intro }] }
 
   - id: elder_jar
     x: 5
     y: 1
-    pages:
-      - decor: pot
-        interactions:
-          - { type: examine, label: Search, dialog: search_elder_jar }
+    states:
+      idle: { decor: pot }
+    on:
+      - { on: interact, options: [{ type: examine, label: Search, dialog: search_elder_jar }] }

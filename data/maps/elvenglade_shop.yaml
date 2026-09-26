@@ -53,16 +53,14 @@ events:
   - id: faelar
     x: 3
     y: 1
-    pages:
-      - { npc: elf_mage, dir: S }
+    states:
+      idle: { npc: elf_mage, dir: S }
 
   - id: shop_counter
     x: 3
     y: 2
-    pages:
-      - decor: counter
-        keeper: elf_mage
-        sign: sign_magic
-        interactions:
-          - { type: shop, shop: elvenglade_magic, label: Buy/Sell }
-          - { type: talk, dialog: faelar_talk }
+    states:
+      idle: { keeper: elf_mage, decor: counter, sign: sign_magic }
+    on:
+      - on: interact
+        options: [{ type: shop, shop: elvenglade_magic, label: Buy/Sell }, { type: talk, dialog: faelar_talk }]

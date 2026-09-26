@@ -66,8 +66,10 @@ events:
   - id: f2_intro
     x: 3
     y: 9
-    pages:
-      - { trigger: auto, dialog: tower_f2 }
+    states:
+      idle: {}
+    on:
+      - { on: becomes, when: { always: true }, do: [{ dialog: tower_f2 }], once: true, onceKey: f2_intro#0 }
   - id: west_gate
     x: 3
     y: 4

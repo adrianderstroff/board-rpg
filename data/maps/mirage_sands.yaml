@@ -98,5 +98,11 @@ events:
   - id: sands_intro
     x: 6
     y: 10
-    pages:
-      - { trigger: auto, dialog: mirage_sands_enter }
+    states:
+      idle: {}
+    on:
+      - on: becomes
+        when: { always: true }
+        do: [{ dialog: mirage_sands_enter }]
+        once: true
+        onceKey: sands_intro#0

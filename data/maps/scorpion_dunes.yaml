@@ -95,24 +95,37 @@ events:
   - id: charm_chest
     x: 11
     y: 11
-    pages:
-      - decor: chest_closed
-        interactions:
+    states:
+      chest_closed: { decor: chest_closed }
+      chest_open: { decor: chest_open }
+    on:
+      - on: becomes
+        when: { not: { flag: charm_chest_open } }
+        do: [{ setState: { event: charm_chest, state: chest_closed } }]
+      - on: becomes
+        when: { flag: charm_chest_open }
+        do: [{ setState: { event: charm_chest, state: chest_open } }]
+      - on: interact
+        when: { not: { flag: charm_chest_open } }
+        options:
           - type: examine
             label: Open
             dialog: chest_charm
             actions: [{ giveItem: village_charm }, { setFlag: charm_chest_open }]
-      - { when: { flag: charm_chest_open }, decor: chest_open, trigger: none }
 
   - id: trader
     x: 9
     y: 11
-    pages:
-      - { npc: trader, dir: E, dialog: trader_help }
-      - { when: { flag: trader_thanked }, npc: trader, dir: E, dialog: trader_after }
+    states:
+      idle: { npc: trader, dir: E }
+    on:
+      - { on: interact, when: { flag: trader_thanked }, options: [{ type: talk, dialog: trader_after }] }
+      - { on: interact, options: [{ type: talk, dialog: trader_help }] }
 
   - id: enter_hint
     x: 1
     y: 7
-    pages:
-      - { trigger: auto, dialog: dunes_enter }
+    states:
+      idle: {}
+    on:
+      - { on: becomes, when: { always: true }, do: [{ dialog: dunes_enter }], once: true, onceKey: enter_hint#0 }

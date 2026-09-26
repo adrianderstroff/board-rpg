@@ -84,16 +84,27 @@ events:
   - id: pond_intro
     x: 1
     y: 6
-    pages:
-      - { trigger: auto, dialog: pond_enter }
+    states:
+      idle: {}
+    on:
+      - { on: becomes, when: { always: true }, do: [{ dialog: pond_enter }], once: true, onceKey: pond_intro#0 }
   - id: serenity_chest
     x: 7
     y: 6
-    pages:
-      - decor: chest_closed
-        interactions:
+    states:
+      chest_closed: { decor: chest_closed }
+      chest_open: { decor: chest_open }
+    on:
+      - on: becomes
+        when: { not: { flag: pond_token_found } }
+        do: [{ setState: { event: serenity_chest, state: chest_closed } }]
+      - on: becomes
+        when: { flag: pond_token_found }
+        do: [{ setState: { event: serenity_chest, state: chest_open } }]
+      - on: interact
+        when: { not: { flag: pond_token_found } }
+        options:
           - type: examine
             label: Open
             dialog: pond_chest
             actions: [{ giveItem: token_serenity }, { setFlag: pond_token_found }]
-      - { when: { flag: pond_token_found }, decor: chest_open, trigger: none }

@@ -313,7 +313,8 @@ Layering (see also [architecture](../CLAUDE.md)):
 ## R6 · Presets & migration (◐)
 - ☑ Gate and floor switch: entity presets on the Add buttons; content migrated (13 gates, 6 plates); the gate / switch rules and lists removed; tests and e2e read entity states
 - ☑ Editor: conditions "entity is in state" / "heroes stand on", action "set an entity's state"
-- ☐ Hidden traps as entities (Discover, Defuse and Snare work with them); paged events converted to states and handlers
+- ☑ Paged events converted to states and handlers (81 events; saves keep what has run)
+- ☐ Hidden traps as entities (Discover, Defuse and Snare work with them)
 
 ## R7 · State and handler editor ☑
 - ☑ Appearance: states as folder tabs (★ starting state, rename – handlers follow, duplicate, delete), each with its look (sprite picker), facing, movement, passability; hidden

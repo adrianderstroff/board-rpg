@@ -363,8 +363,11 @@ happen as each step is reached; text, shops, teleports are shown in order. A que
 script until it is answered, then the chosen option's steps run, then the rest. Scripts run to their
 end within the scene – the game is saved before or after one, never in the middle (like dialogs).
 
-### 10.3 Map events (RPG-Maker style)
-An event is an object on a cell with **pages**. The last page whose condition holds is active and defines graphic, facing, movement behavior, trigger (`interact`, `step`, `auto` on map enter) and the interaction list. Used for NPCs, shopkeepers, chests, signs, hidden items and triggers.
+### 10.3 Map events
+All map events are **entities with states and handlers** (below) – NPCs, shopkeepers, chests, signs,
+hidden items, triggers, gates and floor plates. (The engine still reads RPG-Maker style **pages** –
+the last page whose condition holds is active and defines graphic, trigger and interactions – for
+hand-written content; the editor makes entities, and the demo's events were converted.)
 
 **Entities with states and handlers** (packages R3–R7; decided with the user). Gates, floor switches
 and hidden traps were special kinds only because events couldn't express what they do. An event can
@@ -387,10 +390,12 @@ instead have states and handlers (the engine supports both; content moves over w
   nothing), a **passability** (solid / stop here to interact / walk through) and hidden (found with
   Discover). The current state is saved per map; actions change it. It replaces pages: what depends
   on flags is set up by a *map loaded* handler.
-- A **handler** is a trigger, an optional condition and a script. Triggers: **interact**, **enter**
-  (a piece stops on it; heroes or anyone), **leave**, **pass over** (a hero moving across it – the
-  move stops there; flying pieces are not caught), **map loaded**, **condition becomes true**, and for
-  enemies **defeated**.
+- A **handler** is a trigger, an optional condition and a script. Triggers: **interact** (the first
+  interact handler whose condition holds is the one used – list the more specific ones first),
+  **enter** (a hero stops on it), **leave**, **pass over** (a hero moving across it – the move stops
+  there; flying pieces are not caught), **map loaded**, **condition becomes true** (also when it
+  already holds as the party arrives on the map), and for enemies **defeated** (planned). `once`
+  handlers run a single time.
 - A **script** is a sequence of actions with blocks: **if / elif / else**, **choice** (options with
   optional icons, each with its own actions), **wait** (a time, or until moves end), **call** a shared
   script, **stop**. Actions: today's (§10.2) plus **set state** (of this or another entity), **move** an
@@ -721,3 +726,4 @@ Where the rough ideas were incomplete or conflicting, these rules were chosen:
 41. **One script language** (R3): actions and dialog nodes are steps of one kind of script, with if / else, questions (with icons), text and pauses; existing dialogs and action lists stay valid as they are. Scripts aren't saved half-way – a save waits until one has ended (§10.2).
 42. **Clicks pick what is drawn** (user request, made for the editor – the game shares the renderer): the cell under the pointer is the front-most column drawn there, so a wall in front hides the cells behind it instead of passing the click through.
 43. **Gates and floor switches are entities** (R6): the maps' `gates` / `switches` lists were migrated once (`tools/migrate-gates.mjs`) into events with states and handlers; a gate's cell is a wall while it is solid; plates don't stop ice slides; old saves keep latched plates down.
+44. **Every event is an entity** (R6): the 81 paged events were converted once (`editor/src/entities/convertPages.ts`): a look per state (switched by "becomes" handlers where pages changed it), interact pages as interact handlers (the most recent first), step pages as enter handlers, auto pages as "becomes" handlers; run-once handlers keep the pages' old keys (`onceKey`) so saves don't replay scenes. Map-load handlers run after the map's `onEnter` script.

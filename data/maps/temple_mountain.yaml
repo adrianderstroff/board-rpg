@@ -188,42 +188,59 @@ events:
   - id: mountain_intro
     x: 1
     y: 24
-    pages:
-      - { trigger: auto, dialog: mountain_enter }
+    states:
+      idle: {}
+    on:
+      - on: becomes
+        when: { always: true }
+        do: [{ dialog: mountain_enter }]
+        once: true
+        onceKey: mountain_intro#0
 
   - id: mountain_sign
     x: 3
     y: 23
-    pages:
-      - decor: sign_post
-        interactions:
-          - { type: examine, label: Read, dialog: sign_mountain }
+    states:
+      idle: { decor: sign_post }
+    on:
+      - { on: interact, options: [{ type: examine, label: Read, dialog: sign_mountain }] }
 
   - id: pilgrim_1
     x: 6
     y: 19
-    pages:
-      - { npc: pilgrim, dir: S, move: wander, wanderRadius: 2, dialog: pilgrim_1 }
+    states:
+      idle: { npc: pilgrim, dir: S, move: wander, wanderRadius: 2 }
+    on:
+      - { on: interact, options: [{ type: talk, dialog: pilgrim_1 }] }
 
   - id: pilgrim_2
     x: 9
     y: 15
-    pages:
-      - { npc: pilgrim_b, dir: W, dialog: pilgrim_2 }
-      - { when: { flag: orb_claimed }, npc: pilgrim_b, dir: W, dialog: pilgrim_2_after }
+    states:
+      idle: { npc: pilgrim_b, dir: W }
+    on:
+      - { on: interact, when: { flag: orb_claimed }, options: [{ type: talk, dialog: pilgrim_2_after }] }
+      - { on: interact, options: [{ type: talk, dialog: pilgrim_2 }] }
 
   - id: novice
     x: 9
     y: 6
-    pages:
-      - { npc: monk_novice, dir: S, move: wander, wanderRadius: 2, dialog: novice_talk }
+    states:
+      idle: { npc: monk_novice, dir: S, move: wander, wanderRadius: 2 }
+    on:
+      - { on: interact, options: [{ type: talk, dialog: novice_talk }] }
 
   - id: cave_hint
     x: 6
     y: 14
-    pages:
-      - { trigger: none }
-      - { when: { flag: orb_claimed }, trigger: auto, dialog: cave_opened }
+    states:
+      idle: {}
+    on:
+      - on: becomes
+        when: { flag: orb_claimed }
+        do: [{ dialog: cave_opened }]
+        once: true
+        onceKey: cave_hint#1
   # An iron grate seals the cave until the Holy Orb is claimed.
   - id: cave_seal
     x: 6

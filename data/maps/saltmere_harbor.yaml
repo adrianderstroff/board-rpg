@@ -92,151 +92,185 @@ events:
   - id: harbor_intro
     x: 3
     y: 6
-    pages:
-      - { trigger: auto, dialog: harbor_intro }
+    states:
+      idle: {}
+    on:
+      - on: becomes
+        when: { always: true }
+        do: [{ dialog: harbor_intro }]
+        once: true
+        onceKey: harbor_intro#0
 
   - id: captain
     x: 2
     y: 6
-    pages:
-      - { npc: captain, dir: E, dialog: captain_talk }
-      - { when: { flag: monks_trial }, npc: captain, dir: E, dialog: captain_isle_offer }
+    states:
+      idle: { npc: captain, dir: E }
+    on:
+      - { on: interact, when: { flag: monks_trial }, options: [{ type: talk, dialog: captain_isle_offer }] }
+      - { on: interact, options: [{ type: talk, dialog: captain_talk }] }
 
   - id: sailor
     x: 6
     y: 7
-    pages:
-      - { npc: sailor, dir: W, move: wander, wanderRadius: 2, dialog: sailor_talk }
+    states:
+      idle: { npc: sailor, dir: W, move: wander, wanderRadius: 2 }
+    on:
+      - { on: interact, options: [{ type: talk, dialog: sailor_talk }] }
 
   - id: dockhand
     x: 10
     y: 6
-    pages:
-      - { npc: sailor_b, dir: S, dialog: dockhand_talk }
+    states:
+      idle: { npc: sailor_b, dir: S }
+    on:
+      - { on: interact, options: [{ type: talk, dialog: dockhand_talk }] }
 
   - id: fishwife
     x: 14
     y: 7
-    pages:
-      - { npc: fishwife, dir: W, move: wander, wanderRadius: 2, dialog: fishwife_talk }
+    states:
+      idle: { npc: fishwife, dir: W, move: wander, wanderRadius: 2 }
+    on:
+      - { on: interact, options: [{ type: talk, dialog: fishwife_talk }] }
 
   # Barrels, jars and crates can be searched once (§18); some are empty.
   - id: barrel_herring
     x: 8
     y: 3
-    pages:
-      - decor: barrel
-        interactions:
-          - { type: examine, label: Search, dialog: search_potion, actions: [{ giveItem: potion }, { setFlag: searched_barrel_herring }] }
-      - when: { flag: searched_barrel_herring }
-        decor: barrel
-        interactions:
-          - { type: examine, label: Search, dialog: after_herring }
+    states:
+      idle: { decor: barrel }
+    on:
+      - on: interact
+        when: { flag: searched_barrel_herring }
+        options: [{ type: examine, label: Search, dialog: after_herring }]
+      - on: interact
+        options:
+          - type: examine
+            label: Search
+            dialog: search_potion
+            actions: [{ giveItem: potion }, { setFlag: searched_barrel_herring }]
 
   - id: barrel_fish
     x: 14
     y: 8
-    pages:
-      - decor: barrel
-        interactions:
-          - { type: examine, label: Search, dialog: search_fish, actions: [{ setFlag: searched_barrel_fish }] }
-      - when: { flag: searched_barrel_fish }
-        decor: barrel
-        interactions:
-          - { type: examine, label: Search, dialog: search_fish }
+    states:
+      idle: { decor: barrel }
+    on:
+      - on: interact
+        when: { flag: searched_barrel_fish }
+        options: [{ type: examine, label: Search, dialog: search_fish }]
+      - on: interact
+        options: [{ type: examine, label: Search, dialog: search_fish, actions: [{ setFlag: searched_barrel_fish }] }]
 
   - id: jar_coins
     x: 16
     y: 4
-    pages:
-      - decor: pot
-        interactions:
-          - { type: examine, label: Search, dialog: search_gold, actions: [{ giveGold: 40 }, { setFlag: searched_jar_coins }] }
-      - when: { flag: searched_jar_coins }
-        decor: pot
-        interactions:
-          - { type: examine, label: Search, dialog: after_rum }
+    states:
+      idle: { decor: pot }
+    on:
+      - on: interact
+        when: { flag: searched_jar_coins }
+        options: [{ type: examine, label: Search, dialog: after_rum }]
+      - on: interact
+        options:
+          - type: examine
+            label: Search
+            dialog: search_gold
+            actions: [{ giveGold: 40 }, { setFlag: searched_jar_coins }]
 
   - id: jar_vial
     x: 9
     y: 9
-    pages:
-      - decor: pot
-        interactions:
-          - { type: examine, label: Search, dialog: search_ether, actions: [{ giveItem: ether }, { setFlag: searched_jar_vial }] }
-      - when: { flag: searched_jar_vial }
-        decor: pot
-        interactions:
-          - { type: examine, label: Search, dialog: after_wine }
+    states:
+      idle: { decor: pot }
+    on:
+      - on: interact
+        when: { flag: searched_jar_vial }
+        options: [{ type: examine, label: Search, dialog: after_wine }]
+      - on: interact
+        options:
+          - type: examine
+            label: Search
+            dialog: search_ether
+            actions: [{ giveItem: ether }, { setFlag: searched_jar_vial }]
 
   - id: jar_empty
     x: 12
     y: 3
-    pages:
-      - decor: pot
-        interactions:
-          - { type: examine, label: Search, dialog: search_sand, actions: [{ setFlag: searched_jar_empty }] }
-      - when: { flag: searched_jar_empty }
-        decor: pot
-        interactions:
-          - { type: examine, label: Search, dialog: search_sand }
+    states:
+      idle: { decor: pot }
+    on:
+      - on: interact
+        when: { flag: searched_jar_empty }
+        options: [{ type: examine, label: Search, dialog: search_sand }]
+      - on: interact
+        options: [{ type: examine, label: Search, dialog: search_sand, actions: [{ setFlag: searched_jar_empty }] }]
 
   - id: crate_dock
     x: 6
     y: 10
-    pages:
-      - decor: crate
-        interactions:
-          - { type: examine, label: Search, dialog: search_antidote, actions: [{ giveItem: antidote }, { setFlag: searched_crate_dock }] }
-      - when: { flag: searched_crate_dock }
-        decor: crate
-        interactions:
-          - { type: examine, label: Search, dialog: after_rope }
+    states:
+      idle: { decor: crate }
+    on:
+      - on: interact
+        when: { flag: searched_crate_dock }
+        options: [{ type: examine, label: Search, dialog: after_rope }]
+      - on: interact
+        options:
+          - type: examine
+            label: Search
+            dialog: search_antidote
+            actions: [{ giveItem: antidote }, { setFlag: searched_crate_dock }]
 
   - id: crate_ship
     x: 3
     y: 5
-    pages:
-      - decor: crate
-        interactions:
-          - { type: examine, label: Search, dialog: search_biscuits, actions: [{ setFlag: searched_crate_ship }] }
-      - when: { flag: searched_crate_ship }
-        decor: crate
-        interactions:
-          - { type: examine, label: Search, dialog: search_biscuits }
+    states:
+      idle: { decor: crate }
+    on:
+      - on: interact
+        when: { flag: searched_crate_ship }
+        options: [{ type: examine, label: Search, dialog: search_biscuits }]
+      - on: interact
+        options: [{ type: examine, label: Search, dialog: search_biscuits, actions: [{ setFlag: searched_crate_ship }] }]
 
   - id: barrel_tar
     x: 12
     y: 2
-    pages:
-      - decor: barrel
-        interactions:
-          - { type: examine, label: Search, dialog: search_tar, actions: [{ setFlag: searched_barrel_tar }] }
-      - when: { flag: searched_barrel_tar }
-        decor: barrel
-        interactions:
-          - { type: examine, label: Search, dialog: search_tar }
+    states:
+      idle: { decor: barrel }
+    on:
+      - on: interact
+        when: { flag: searched_barrel_tar }
+        options: [{ type: examine, label: Search, dialog: search_tar }]
+      - on: interact
+        options: [{ type: examine, label: Search, dialog: search_tar, actions: [{ setFlag: searched_barrel_tar }] }]
 
   - id: crate_nails
     x: 15
     y: 2
-    pages:
-      - decor: crate
-        interactions:
-          - { type: examine, label: Search, dialog: search_nails, actions: [{ setFlag: searched_crate_nails }] }
-      - when: { flag: searched_crate_nails }
-        decor: crate
-        interactions:
-          - { type: examine, label: Search, dialog: search_nails }
+    states:
+      idle: { decor: crate }
+    on:
+      - on: interact
+        when: { flag: searched_crate_nails }
+        options: [{ type: examine, label: Search, dialog: search_nails }]
+      - on: interact
+        options: [{ type: examine, label: Search, dialog: search_nails, actions: [{ setFlag: searched_crate_nails }] }]
 
   - id: crate_empty
     x: 16
     y: 2
-    pages:
-      - decor: crate
-        interactions:
-          - { type: examine, label: Search, dialog: search_empty_crate, actions: [{ setFlag: searched_crate_empty }] }
-      - when: { flag: searched_crate_empty }
-        decor: crate
-        interactions:
-          - { type: examine, label: Search, dialog: search_empty_crate }
+    states:
+      idle: { decor: crate }
+    on:
+      - on: interact
+        when: { flag: searched_crate_empty }
+        options: [{ type: examine, label: Search, dialog: search_empty_crate }]
+      - on: interact
+        options:
+          - type: examine
+            label: Search
+            dialog: search_empty_crate
+            actions: [{ setFlag: searched_crate_empty }]

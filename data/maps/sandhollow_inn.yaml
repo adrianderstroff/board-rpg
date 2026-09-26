@@ -58,16 +58,16 @@ events:
   - id: innkeeper
     x: 1
     y: 1
-    pages:
-      - { npc: innkeeper, dir: S }
+    states:
+      idle: { npc: innkeeper, dir: S }
 
   - id: inn_counter
     x: 3
     y: 2
-    pages:
-      - decor: counter
-        keeper: innkeeper
-        sign: sign_inn
-        interactions:
+    states:
+      idle: { keeper: innkeeper, decor: counter, sign: sign_inn }
+    on:
+      - on: interact
+        options:
           - { type: inn, label: Rest, wakeAt: { map: sandhollow_inn_upper, spawn: bed } }
           - { type: talk, dialog: inn_talk }

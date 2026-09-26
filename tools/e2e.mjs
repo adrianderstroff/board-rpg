@@ -277,13 +277,14 @@ const scenarios = {
     await page.keyboard.press("3"); // entity mode (the toolbar shrinks, the canvas moves)
     await sleep(300);
     const inn = "data/maps/sandhollow_inn.yaml";
-    const keeper = await page.evaluate((f) => window.__editor.project.data(f).events.find((e) => e.pages.some((p) => p.interactions?.some((i) => i.type === "inn"))), inn);
+    // (events are entities: the keeper's inn option is on an interact handler)
+    const keeper = await page.evaluate((f) => window.__editor.project.data(f).events.find((e) => (e.on ?? []).some((h) => h.options?.some((i) => i.type === "inn"))), inn);
     const k = await at(keeper.x, keeper.y);
     await page.mouse.click(k.x, k.y);
     await sleep(300);
     const facing = page.locator(".list-row select").filter({ hasText: "(the spawn's)" }).first();
     await facing.selectOption("E");
-    const wake = await page.evaluate((f) => window.__editor.project.data(f).events.flatMap((e) => e.pages.flatMap((p) => p.interactions ?? [])).find((i) => i.type === "inn").wakeAt, inn);
+    const wake = await page.evaluate((f) => window.__editor.project.data(f).events.flatMap((e) => (e.on ?? []).flatMap((h) => h.options ?? [])).find((i) => i.type === "inn").wakeAt, inn);
     d.expect(wake.dir === "E" && wake.map === "sandhollow_inn_upper", `wake-up facing set (${JSON.stringify(wake)})`);
     await d.shot("inn");
     await page.locator(".status").click();
@@ -339,11 +340,11 @@ const scenarios = {
     m = await data();
     const cushion = m.events.find((e) => e.id === "free_cushion");
     d.expect(cushion.x === 6 && cushion.y === 5, `dragged the cushion (${cushion.x},${cushion.y})`);
-    // its page is only active once a flag is set
+    // its handler only runs once a flag is set
     await page.locator(".page-form .condition select").first().selectOption("flag");
     await page.locator(".page-form .condition input").first().fill("monks_awake");
     m = await data();
-    d.expect(m.events.find((e) => e.id === "free_cushion").pages[0].when?.flag === "monks_awake", "page condition set");
+    d.expect(m.events.find((e) => e.id === "free_cushion").on[0].when?.flag === "monks_awake", "handler condition set");
     d.expect((await page.evaluate(() => window.__editor.project.content.problems)).length === 0, "still no problems");
     await d.shot("page");
     // select the new exit again and delete it with the Delete key
@@ -558,7 +559,12 @@ const scenarios = {
     await d.dbg(`(d.travel("temple", "from_mountain"), true)`);
     await d.waitFor(`d.state().board && d.state().board.mapId === "temple"`);
     await d.waitReady();
-    await d.dbg(`(d.cursorTo(5, 5), true)`);
+    // (right after a debug travel the new scene may still put the cursor on the party: set it until it stays)
+    for (let i = 0; i < 10; i++) {
+      await d.dbg(`(d.cursorTo(5, 5), true)`);
+      await sleep(250);
+      if (await d.dbg(`d.cursor().x === 5 && d.cursor().y === 5`)) break;
+    }
     await d.key("Enter", 1, 1500); // onto the cushion
     await d.shot("cushion");
     const speakers = [];
@@ -764,7 +770,7 @@ const scenarios = {
     d.expect((await d.dbg(`d.state().heroes["${inside}"].hp`)) === hpIn, "released hero kept its HP");
     await sleep(1500);
     await d.shot("demo-end");
-    d.expect(await d.dbg(`d.state().maps.grave_cave.triggered.includes("toad_defeated#1")`), "the end-of-demo scene ran");
+    d.expect(await d.dbg(`(m => (m.ranOnce ?? []).includes("toad_defeated#1") || m.triggered.includes("toad_defeated#1"))(d.state().maps.grave_cave)`), "the end-of-demo scene ran");
     await d.pressUntil(`!!d.explorer()`, "Enter", 30, 400);
     await d.shot("after");
   },

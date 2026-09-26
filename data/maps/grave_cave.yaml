@@ -83,11 +83,18 @@ events:
   - id: cave_intro
     x: 5
     y: 14
-    pages:
-      - { trigger: auto, dialog: cave_enter }
+    states:
+      idle: {}
+    on:
+      - { on: becomes, when: { always: true }, do: [{ dialog: cave_enter }], once: true, onceKey: cave_intro#0 }
   - id: toad_defeated
     x: 5
     y: 5
-    pages:
-      - { trigger: none }
-      - { when: { defeated: { enemy: grave_toad } }, trigger: auto, dialog: demo_end }
+    states:
+      idle: {}
+    on:
+      - on: becomes
+        when: { defeated: { enemy: grave_toad } }
+        do: [{ dialog: demo_end }]
+        once: true
+        onceKey: toad_defeated#1

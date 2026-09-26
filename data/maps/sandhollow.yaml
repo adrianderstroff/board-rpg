@@ -105,123 +105,131 @@ events:
   - id: smith
     x: 6
     y: 8
-    pages:
-      - npc: smith
-        dir: S
-        sign: sign_weapon
-        interactions:
-          - { type: shop, shop: sandhollow_smith, label: Buy/Sell }
-          - { type: talk, dialog: smith_talk }
+    states:
+      idle: { npc: smith, dir: S, sign: sign_weapon }
+    on:
+      - on: interact
+        options: [{ type: shop, shop: sandhollow_smith, label: Buy/Sell }, { type: talk, dialog: smith_talk }]
 
   - id: merchant
     x: 8
     y: 8
-    pages:
-      - npc: merchant
-        dir: S
-        sign: sign_item
-        interactions:
-          - { type: shop, shop: sandhollow_items, label: Buy/Sell }
-          - { type: talk, dialog: merchant_talk }
+    states:
+      idle: { npc: merchant, dir: S, sign: sign_item }
+    on:
+      - on: interact
+        options: [{ type: shop, shop: sandhollow_items, label: Buy/Sell }, { type: talk, dialog: merchant_talk }]
 
   - id: mage
     x: 10
     y: 8
-    pages:
-      - npc: mage
-        dir: S
-        sign: sign_magic
-        interactions:
-          - { type: shop, shop: sandhollow_magic, label: Buy/Sell }
-          - { type: talk, dialog: mage_talk }
+    states:
+      idle: { npc: mage, dir: S, sign: sign_magic }
+    on:
+      - on: interact
+        options: [{ type: shop, shop: sandhollow_magic, label: Buy/Sell }, { type: talk, dialog: mage_talk }]
 
   - id: nia
     x: 7
     y: 9
-    pages:
-      - { npc: child, dir: S, move: wander, wanderRadius: 2, dialog: nia_ask }
-      - { when: { questStep: { quest: nias_charm, step: find } }, npc: child, dir: S, move: wander, wanderRadius: 2, dialog: nia_waiting }
-      - { when: { item: village_charm }, npc: child, dir: S, move: wander, wanderRadius: 2, dialog: nia_thanks }
-      - { when: { questDone: nias_charm }, npc: child, dir: S, move: wander, wanderRadius: 2, dialog: nia_happy }
+    states:
+      idle: { npc: child, dir: S, move: wander, wanderRadius: 2 }
+    on:
+      - { on: interact, when: { questDone: nias_charm }, options: [{ type: talk, dialog: nia_happy }] }
+      - { on: interact, when: { item: village_charm }, options: [{ type: talk, dialog: nia_thanks }] }
+      - on: interact
+        when: { questStep: { quest: nias_charm, step: find } }
+        options: [{ type: talk, dialog: nia_waiting }]
+      - { on: interact, options: [{ type: talk, dialog: nia_ask }] }
 
   - id: villager_1
     x: 3
     y: 6
-    pages:
-      - { npc: villager_m, dir: E, move: wander, wanderRadius: 3, dialog: villager_1 }
+    states:
+      idle: { npc: villager_m, dir: E, move: wander, wanderRadius: 3 }
+    on:
+      - { on: interact, options: [{ type: talk, dialog: villager_1 }] }
 
   - id: villager_2
     x: 9
     y: 4
-    pages:
-      - { npc: villager_f, dir: S, move: wander, wanderRadius: 3, dialog: villager_2 }
-      - { when: { questDone: clear_dunes }, npc: villager_f, dir: S, move: wander, wanderRadius: 3, dialog: villager_2_after }
+    states:
+      idle: { npc: villager_f, dir: S, move: wander, wanderRadius: 3 }
+    on:
+      - { on: interact, when: { questDone: clear_dunes }, options: [{ type: talk, dialog: villager_2_after }] }
+      - { on: interact, options: [{ type: talk, dialog: villager_2 }] }
 
   - id: guard
     x: 12
     y: 6
-    pages:
-      - { npc: guard, dir: W, dialog: guard_closed }
-      - { when: { flag: gate_open }, npc: guard, dir: W, dialog: guard_open }
+    states:
+      idle: { npc: guard, dir: W }
+    on:
+      - { on: interact, when: { flag: gate_open }, options: [{ type: talk, dialog: guard_open }] }
+      - { on: interact, options: [{ type: talk, dialog: guard_closed }] }
 
   - id: sign_east
     x: 12
     y: 4
-    pages:
-      - decor: sign_post
-        interactions:
-          - { type: examine, label: Read, dialog: sign_east }
+    states:
+      idle: { decor: sign_post }
+    on:
+      - { on: interact, options: [{ type: examine, label: Read, dialog: sign_east }] }
 
   # Searchable jars and barrels (§18)
   - id: jar_dates
     x: 12
     y: 8
-    pages:
-      - decor: pot
-        interactions:
-          - { type: examine, label: Search, dialog: search_dates }
+    states:
+      idle: { decor: pot }
+    on:
+      - { on: interact, options: [{ type: examine, label: Search, dialog: search_dates }] }
 
   - id: barrel_water
     x: 2
     y: 4
-    pages:
-      - decor: barrel
-        interactions:
-          - { type: examine, label: Search, dialog: search_water, actions: [{ giveItem: antidote }, { setFlag: searched_barrel_water }] }
-      - when: { flag: searched_barrel_water }
-        decor: barrel
-        interactions:
-          - { type: examine, label: Search, dialog: after_water }
+    states:
+      idle: { decor: barrel }
+    on:
+      - on: interact
+        when: { flag: searched_barrel_water }
+        options: [{ type: examine, label: Search, dialog: after_water }]
+      - on: interact
+        options:
+          - type: examine
+            label: Search
+            dialog: search_water
+            actions: [{ giveItem: antidote }, { setFlag: searched_barrel_water }]
 
   # Jars, barrels and crates along the houses: nothing (useful) inside, but they can be searched.
   - id: barrel_rain
     x: 3
     y: 1
-    pages:
-      - decor: barrel
-        interactions:
-          - { type: examine, label: Search, dialog: search_rainwater }
+    states:
+      idle: { decor: barrel }
+    on:
+      - { on: interact, options: [{ type: examine, label: Search, dialog: search_rainwater }] }
 
   - id: jar_empty_west
     x: 4
     y: 2
-    pages:
-      - decor: pot
-        interactions:
-          - { type: examine, label: Search, dialog: search_empty_jar }
+    states:
+      idle: { decor: pot }
+    on:
+      - { on: interact, options: [{ type: examine, label: Search, dialog: search_empty_jar }] }
 
   - id: crate_spice
     x: 12
     y: 1
-    pages:
-      - decor: crate
-        interactions:
-          - { type: examine, label: Search, dialog: search_spice_crate }
+    states:
+      idle: { decor: crate }
+    on:
+      - { on: interact, options: [{ type: examine, label: Search, dialog: search_spice_crate }] }
 
   - id: jar_oil
     x: 12
     y: 2
-    pages:
-      - decor: pot
-        interactions:
-          - { type: examine, label: Search, dialog: search_lamp_oil }
+    states:
+      idle: { decor: pot }
+    on:
+      - { on: interact, options: [{ type: examine, label: Search, dialog: search_lamp_oil }] }

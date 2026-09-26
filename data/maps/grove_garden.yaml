@@ -105,20 +105,41 @@ events:
   - id: garden_intro
     x: 6
     y: 10
-    pages:
-      - { trigger: auto, dialog: garden_enter }
+    states:
+      idle: {}
+    on:
+      - on: becomes
+        when: { always: true }
+        do: [{ dialog: garden_enter }]
+        once: true
+        onceKey: garden_intro#0
   - id: mora_hostage
     x: 9
     y: 3
-    pages:
-      - { npc: islander, dir: S, dialog: mora_help }
-      - { when: { defeatedAllOn: grove_garden }, trigger: none }
+    states:
+      islander: { npc: islander, dir: S }
+      nothing: {}
+    on:
+      - on: becomes
+        when: { not: { defeatedAllOn: grove_garden } }
+        do: [{ setState: { event: mora_hostage, state: islander } }]
+      - on: becomes
+        when: { defeatedAllOn: grove_garden }
+        do: [{ setState: { event: mora_hostage, state: nothing } }]
+      - on: interact
+        when: { not: { defeatedAllOn: grove_garden } }
+        options: [{ type: talk, dialog: mora_help }]
   - id: garden_won
     x: 6
     y: 9
-    pages:
-      - { trigger: none }
-      - { when: { defeatedAllOn: grove_garden }, trigger: auto, dialog: garden_won }
+    states:
+      idle: {}
+    on:
+      - on: becomes
+        when: { defeatedAllOn: grove_garden }
+        do: [{ dialog: garden_won }]
+        once: true
+        onceKey: garden_won#1
   - id: mora_door
     x: 6
     y: 3

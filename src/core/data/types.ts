@@ -602,6 +602,8 @@ export interface EntityHandler {
   label?: string;
   /** Runs only the first time. */
   once?: boolean;
+  /** What "has run" is remembered under (converted pages keep their old key, so saves stay right). */
+  onceKey?: string;
 }
 
 export interface MapEventDef {

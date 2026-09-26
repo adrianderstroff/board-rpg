@@ -51,7 +51,7 @@ events:
   - id: inn_window_jar
     x: 5
     y: 1
-    pages:
-      - decor: pot
-        interactions:
-          - { type: examine, label: Search, dialog: search_inn_jar }
+    states:
+      idle: { decor: pot }
+    on:
+      - { on: interact, options: [{ type: examine, label: Search, dialog: search_inn_jar }] }

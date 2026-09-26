@@ -105,31 +105,44 @@ events:
   - id: elvenglade_enter
     x: 7
     y: 10
-    pages:
-      - { trigger: auto, dialog: elvenglade_enter }
+    states:
+      idle: {}
+    on:
+      - on: becomes
+        when: { always: true }
+        do: [{ dialog: elvenglade_enter }]
+        once: true
+        onceKey: elvenglade_enter#0
 
   - id: sylwen
     x: 8
     y: 3
-    pages:
-      - { npc: elf_elder, dir: S, dialog: sylwen_talk }
+    states:
+      idle: { npc: elf_elder, dir: S }
+    on:
+      - { on: interact, options: [{ type: talk, dialog: sylwen_talk }] }
 
   - id: lio
     x: 10
     y: 6
-    pages:
-      - { npc: elf, dir: W, move: wander, wanderRadius: 3, dialog: lio_talk }
+    states:
+      idle: { npc: elf, dir: W, move: wander, wanderRadius: 3 }
+    on:
+      - { on: interact, options: [{ type: talk, dialog: lio_talk }] }
 
   - id: mirelle
     x: 5
     y: 8
-    pages:
-      - { npc: elf_b, dir: E, move: wander, wanderRadius: 2, dialog: mirelle_talk }
+    states:
+      idle: { npc: elf_b, dir: E, move: wander, wanderRadius: 2 }
+    on:
+      - { on: interact, options: [{ type: talk, dialog: mirelle_talk }] }
 
   - id: moonwell
     x: 7
     y: 4
-    pages:
-      - decor: well
-        interactions:
-          - { type: examine, label: Drink, dialog: moonwell_drink, actions: [{ healParty: true }] }
+    states:
+      idle: { decor: well }
+    on:
+      - on: interact
+        options: [{ type: examine, label: Drink, dialog: moonwell_drink, actions: [{ healParty: true }] }]

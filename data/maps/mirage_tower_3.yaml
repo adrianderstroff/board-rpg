@@ -67,8 +67,10 @@ events:
   - id: f3_intro
     x: 3
     y: 9
-    pages:
-      - { trigger: auto, dialog: tower_f3 }
+    states:
+      idle: {}
+    on:
+      - { on: becomes, when: { always: true }, do: [{ dialog: tower_f3 }], once: true, onceKey: f3_intro#0 }
   - id: west_stairs
     x: 1
     y: 2

@@ -49,6 +49,8 @@ events:
   - id: mora
     x: 3
     y: 2
-    pages:
-      - { npc: islander, dir: S, dialog: mora_thanks }
-      - { when: { flag: mora_token }, npc: islander, dir: S, dialog: mora_after }
+    states:
+      idle: { npc: islander, dir: S }
+    on:
+      - { on: interact, when: { flag: mora_token }, options: [{ type: talk, dialog: mora_after }] }
+      - { on: interact, options: [{ type: talk, dialog: mora_thanks }] }

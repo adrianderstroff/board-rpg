@@ -92,18 +92,29 @@ events:
   - id: ruins_enter
     x: 1
     y: 6
-    pages:
-      - { trigger: auto, dialog: ruins_enter }
+    states:
+      idle: {}
+    on:
+      - { on: becomes, when: { always: true }, do: [{ dialog: ruins_enter }], once: true, onceKey: ruins_enter#0 }
 
   - id: hidden_chest
     x: 10
     y: 11
     hidden: true
-    pages:
-      - decor: chest_closed
-        interactions:
+    states:
+      chest_closed: { decor: chest_closed }
+      chest_open: { decor: chest_open }
+    on:
+      - on: becomes
+        when: { not: { flag: ruins_chest_open } }
+        do: [{ setState: { event: hidden_chest, state: chest_closed } }]
+      - on: becomes
+        when: { flag: ruins_chest_open }
+        do: [{ setState: { event: hidden_chest, state: chest_open } }]
+      - on: interact
+        when: { not: { flag: ruins_chest_open } }
+        options:
           - type: examine
             label: Open
             dialog: ruins_chest
             actions: [{ giveItem: speed_anklet }, { setFlag: ruins_chest_open }]
-      - { when: { flag: ruins_chest_open }, decor: chest_open, trigger: none }

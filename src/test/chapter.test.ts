@@ -5,7 +5,7 @@ import { executeMove } from "../core/board/moves";
 import { entityTriggers, stateOf } from "../core/board/entities";
 import type { Ctx } from "../core/context";
 import { DialogRunner } from "../core/script/dialog";
-import { autoTriggers, interactionsFor, performInteraction, stepTriggers } from "../core/script/interact";
+import { interactionsFor, performInteraction } from "../core/script/interact";
 import { runActions } from "../core/script/actions";
 import { currentObjective, evaluateQuests } from "../core/script/quests";
 import { villageGame } from "./helpers";
@@ -26,11 +26,14 @@ function runDialog(ctx: Ctx, id: string, choices: number[] = []) {
   return out;
 }
 
-function place(ctx: Ctx, charId: string, x: number, y: number) {
+/** Puts a hero piece on a cell and settles what that triggers; returns the dialogs it starts. */
+function place(ctx: Ctx, charId: string, x: number, y: number): string[] {
   Object.assign(mustPieceOf(ctx, charId), { x, y });
   reconcile(ctx);
-  entityTriggers(ctx); // plates and gates (entities, §10.3)
+  return dialogsOf(entityTriggers(ctx)); // plates, gates, cushions… (entities, §10.3)
 }
+
+const dialogsOf = (r: { requests: { type: string; id?: string }[] }) => r.requests.filter((q) => q.type === "dialog").map((q) => q.id!);
 
 const tokens = ["token_serenity", "token_foresight", "token_life"];
 
@@ -64,15 +67,15 @@ describe("the Mountain Temple chapter (§18.7-12)", () => {
     game.enter("temple", "from_mountain");
     const ctx = game.ctx;
     expect(grid(ctx).cell({ x: 8, y: 0 })?.walkable).toBe(false);
-    const sat = stepTriggers(ctx, { x: 5, y: 5 });
-    expect(sat[0].dialog?.id).toBe("monks_talk");
+    expect(place(ctx, "aldric", 5, 5)).toEqual(["monks_talk"]); // sitting on the cushion
     const talk = runDialog(ctx, "monks_talk");
     const monks = talk.speakers.filter((s) => s?.startsWith("monk"));
     expect(new Set(monks)).toEqual(new Set(["monk_old", "monk_a", "monk_b"]));
     expect(monks.every((s, i) => i === 0 || s !== monks[i - 1])).toBe(true); // they take turns
     expect(ctx.state.flags.monks_trial).toBe(true);
     // sitting again repeats the task; with all three tokens they are returned
-    expect(stepTriggers(ctx, { x: 5, y: 5 })[0].dialog?.id).toBe("monks_talk");
+    place(ctx, "aldric", 5, 6);
+    expect(place(ctx, "aldric", 5, 5)).toEqual(["monks_talk"]);
     for (const t of tokens) runActions(ctx, [{ giveItem: t }]);
     runDialog(ctx, "monks_talk");
     expect(tokens.every((t) => !ctx.state.inventory[t])).toBe(true);
@@ -85,7 +88,10 @@ describe("the Mountain Temple chapter (§18.7-12)", () => {
   it("the Endless Dunes loop until the third crossing shows the Mirage Tower", () => {
     const game = villageGame();
     const dialogs: string[] = [];
-    for (let i = 0; i < 4; i++) dialogs.push(...game.enter("endless_dunes", i ? "west" : "north").dialogs.map((d) => d.id));
+    for (let i = 0; i < 4; i++) {
+      const res = game.enter("endless_dunes", i ? "west" : "north");
+      dialogs.push(...res.dialogs.map((d) => d.id), ...dialogsOf(res));
+    }
     expect(dialogs.filter((d) => d === "mirage_appears")).toHaveLength(1);
     const res = runDialog(game.ctx, "mirage_appears");
     expect(res.requests).toContainEqual({ type: "teleport", map: "mirage_sands", spawn: "from_dunes" });
@@ -97,12 +103,10 @@ describe("the Mountain Temple chapter (§18.7-12)", () => {
     const game = villageGame();
     game.enter("mirage_tower_1", "start");
     const ctx = game.ctx;
-    place(ctx, "aldric", 3, 8);
+    expect(place(ctx, "aldric", 3, 8)).not.toContain("tower_split_up");
     expect(stateOf(ctx, "east_gate")).toBe("open");
-    expect(autoTriggers(ctx).some((a) => a.dialog?.id === "tower_split_up")).toBe(false);
-    place(ctx, "aldric", 6, 8);
+    expect(place(ctx, "aldric", 6, 8)).toContain("tower_split_up"); // the gate slams shut: the scene starts
     expect(ctx.state.flags.tower_split).toBe(true);
-    expect(autoTriggers(ctx).some((a) => a.dialog?.id === "tower_split_up")).toBe(true);
     // one team holds the plate, the other passes; the inner plate opens the west gate
     for (const id of ["kit", "tarek"]) leaveParty(ctx, id);
     place(ctx, "kit", 3, 8);
