@@ -18,6 +18,8 @@ export interface IsoCellSource {
   decor?: number;
   /** A directional object: one decor frame per view (quarter turns 0..3), chosen by the board's rotation. */
   decorViews?: number[];
+  /** Clicking the decor's picture picks this cell (stairs rising over the wall behind them). */
+  pickDecor?: boolean;
   /** Blocks floating above the cell (a door lintel): levels `from`…`to`, `top` frame on the last. */
   overhead?: { from: number; to: number; top: number; fill: number };
   /** Shaped block: the top is this convex polygon inside the unit square (see shapes.ts). */
@@ -124,6 +126,8 @@ interface Placed {
   sub: number;
   /** Frames per view of a directional object (see IsoCellSource.decorViews). */
   views?: number[];
+  /** Its picture picks the cell (see IsoCellSource.pickDecor). */
+  pick?: boolean;
 }
 
 /**
@@ -188,7 +192,7 @@ export class IsoMapView {
       if (c.decor !== undefined) {
         const img = scene.add.image(0, 0, source.decorTexture, c.decor).setOrigin(0.5, source.decorAnchorY / source.decorFrameHeight);
         // on a door with a lintel, decor (a shop sign) sits on top of the lintel
-        this.placed.push({ obj: img, x: c.x, y: c.y, level: c.overhead ? c.overhead.to : c.height, dy: 0, layer: LAYER.decor, sub: 0, views: c.decorViews });
+        this.placed.push({ obj: img, x: c.x, y: c.y, level: c.overhead ? c.overhead.to : c.height, dy: 0, layer: LAYER.decor, sub: 0, views: c.decorViews, pick: c.pickDecor });
       }
     }
     this.relayout();
@@ -211,7 +215,7 @@ export class IsoMapView {
 
   /** Removes a cell's decor (burnt away). */
   /** Sets (frame) or removes (undefined) a cell's decor – burnt, cut or grown plants, gates, switches. */
-  setDecor(x: number, y: number, frame: number | undefined) {
+  setDecor(x: number, y: number, frame: number | undefined, opts: { ground?: boolean } = {}) {
     const i = this.placed.findIndex((p) => p.layer === LAYER.decor && p.x === x && p.y === y);
     if (frame === undefined) {
       if (i < 0) return;
@@ -225,7 +229,9 @@ export class IsoMapView {
     }
     const src = this.source.cells.find((c) => c.x === x && c.y === y);
     const img = this.scene.add.image(0, 0, this.source.decorTexture, frame).setOrigin(0.5, this.source.decorAnchorY / this.source.decorFrameHeight);
-    const p: Placed = { obj: img, x, y, level: src?.overhead ? src.overhead.to : (src?.height ?? this.heightAt(x, y)), dy: 0, layer: LAYER.decor, sub: 0 };
+    // on a door with a lintel, decor sits on top of the lintel (a sign) – unless it belongs on the floor (a gate)
+    const level = src?.overhead && !opts.ground ? src.overhead.to : (src?.height ?? this.heightAt(x, y));
+    const p: Placed = { obj: img, x, y, level, dy: 0, layer: LAYER.decor, sub: 0 };
     this.placed.push(p);
     this.position(p);
   }
@@ -360,6 +366,18 @@ export class IsoMapView {
   cellAt(wx: number, wy: number): { x: number; y: number } | null {
     const m = this.source.metrics;
     let best: { x: number; y: number; d: number } | null = null;
+    // walk-over decor that rises above its cell (stairs): its opaque pixels pick the cell
+    for (const p of this.placed) {
+      if (!p.pick || p.layer !== LAYER.decor) continue;
+      const img = p.obj as Phaser.GameObjects.Image;
+      const lx = Math.floor(wx - img.x + img.displayOriginX);
+      const ly = Math.floor(wy - img.y + img.displayOriginY);
+      if (lx < 0 || ly < 0 || lx >= img.width || ly >= img.height) continue;
+      if (this.scene.textures.getPixelAlpha(lx, ly, img.texture.key, img.frame.name) <= 0) continue;
+      const v = this.transform(p.x, p.y);
+      const d = v.x + v.y;
+      if (!best || d > best.d) best = { x: p.x, y: p.y, d };
+    }
     for (const key of this.heights.keys()) {
       const [x, y] = key.split(",").map(Number);
       const p = this.cellTop(x, y);

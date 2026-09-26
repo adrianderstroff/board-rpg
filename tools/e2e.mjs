@@ -472,6 +472,23 @@ const scenarios = {
     await d.shot("after");
   },
 
+  /** The inn's stairs lead up to the beds (and back down). */
+  async innStairs(d) {
+    await d.newGame();
+    await d.dbg(`(d.travel("sandhollow_inn", "from_town"), true)`);
+    await d.waitFor(`d.state().board.mapId === "sandhollow_inn"`);
+    await d.waitReady();
+    // click the middle of the staircase picture (it rises over the wall behind its cell)
+    const st = await d.dbg(`d.cellScreen(6, 1)`);
+    await d.click(st.x, st.y - 16);
+    await sleep(300);
+    await d.shot("stairs");
+    await d.click(st.x, st.y - 16); // tap again to go
+    await d.waitFor(`d.state().board.mapId === "sandhollow_inn_upper"`, 10000, "upstairs");
+    await sleep(1200);
+    await d.shot("upstairs");
+  },
+
   async inn(d) {
     await d.newGame();
     const actor = await d.waitReady();

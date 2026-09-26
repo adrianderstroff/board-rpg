@@ -28,10 +28,11 @@ export function windowSkin() {
       else if (!inside(x, y, 3)) col = P.tan;
       else if (!inside(x, y, 4)) col = P.ink;
       else {
-        // body: vertical gradient blueDark -> navy with ordered dither
+        // body: a calm vertical gradient in even horizontal bands (no dither – the 9-slice centre
+        // is stretched, which turned a dither pattern into noise); a lighter band under the rim
         const t = (y - 4) / (S - 9);
-        col = dither(x, y, t) ? bot : top;
-        if (t < 0.18) col = dither(x, y, t / 0.18) ? top : mix(top, P.blue, 0.35);
+        const band = Math.min(5, Math.floor(t * 6));
+        col = y <= 5 ? mix(top, P.blue, 0.3) : mix(top, bot, band / 5);
       }
       c.set(x, y, col);
     }

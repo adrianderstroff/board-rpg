@@ -54,8 +54,10 @@ export class CloseUp {
       const chip = grid(ctx).chipset;
       // a keeper stands behind the object (shop counter)
       const keeper = page?.keeper ? ctx.db.npc(page.keeper) : undefined;
-      if (keeper) this.panel.add(scene.add.image(w / 2, feetY - 6, K.charset(keeper.charset), FRONT).setOrigin(0.5, 1).setScale(2));
-      if (page?.decor) this.panel.add(scene.add.image(w / 2, feetY + 4, K.decor(chip.id), chip.decor[page.decor].frame).setOrigin(0.5, chip.decorAnchorY / chip.decorFrameHeight).setScale(2));
+      if (keeper) this.panel.add(scene.add.image(w / 2, feetY - 4, K.charset(keeper.charset), FRONT).setOrigin(0.5, 1).setScale(2));
+      // the object at a smaller scale and a little in front: a counter covers the keeper's legs only
+      const objScale = keeper ? 1.4 : 2;
+      if (page?.decor) this.panel.add(scene.add.image(w / 2, feetY + (keeper ? 16 : 4), K.decor(chip.id), chip.decor[page.decor].frame).setOrigin(0.5, chip.decorAnchorY / chip.decorFrameHeight).setScale(objScale));
     }
     // Heroes below, seen from behind
     const members = heroes.members.filter((m) => ctx.state.heroes[m]);

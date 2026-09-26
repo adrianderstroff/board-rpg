@@ -8,6 +8,7 @@ import { DIR_VEC, dirFromStep, type Dir, type Pos } from "../../core/util/grid";
 import { LAYER } from "../../engine/iso";
 import { IsoMapView, type IsoCellSource, type OverlayCell } from "../../engine/iso/IsoMapView";
 import { cutSquare, viewFrames } from "../../engine/iso/shapes";
+import { isFrozen } from "../../core/board/moves";
 import type { Corner, TerrainDef } from "../../core/data/types";
 import { CharSprite } from "../../engine/sprites/CharSprite";
 import { CURSOR_KEY, ICONS_KEY, UI_DEPTH } from "../../engine/ui/widgets";
@@ -76,6 +77,10 @@ function gangways(g: ReturnType<typeof grid>, cell: Pos): number[] {
   });
 }
 
+/** Pixels of a character hidden below the surface in deep / shallow water. */
+const SUBMERGED_DEEP = 13;
+const SUBMERGED_SHALLOW = 3;
+
 /** Quarter turns from the default facing S (the board turns S → W → N → E). */
 const FACING_TURNS: Record<Dir, number> = { S: 0, W: 1, N: 2, E: 3 };
 
@@ -142,8 +147,9 @@ export class BoardView {
     const map = c.db.map(b.mapId);
     const chip = grid(c).chipset;
     const frame = (d: string) => chip.decor[d]?.frame;
-    for (const g of map.gates ?? []) this.map.setDecor(g.x, g.y, b.gates?.[g.id] ? undefined : frame("gate_bars"));
-    for (const s of map.switches ?? []) this.map.setDecor(s.x, s.y, frame(b.switches?.[s.id] ? "switch_down" : "switch_up"));
+    // gates stand in the doorway, on the floor – not on a lintel above it
+    for (const g of map.gates ?? []) this.map.setDecor(g.x, g.y, b.gates?.[g.id] ? undefined : frame("gate_bars"), { ground: true });
+    for (const s of map.switches ?? []) this.map.setDecor(s.x, s.y, frame(b.switches?.[s.id] ? "switch_down" : "switch_up"), { ground: true });
   }
 
   // ---------- rotation ----------
@@ -236,6 +242,7 @@ export class BoardView {
         sink: t.sink ?? (t.frames ? 2 : 0),
         decor: cell.decor ? chip.decor[cell.decor].frame : undefined,
         ...(cell.decor && chip.decor[cell.decor].views ? { decorViews: decorViews(chip.decor[cell.decor], cell.decorDir) } : {}),
+        ...(cell.decor && !chip.decor[cell.decor].blocks ? { pickDecor: true } : {}),
         ...(cell.overhead ? { overhead: overheadSource(chip, cell) } : {}),
         ...(cell.cut ? { outline: cutSquare(cell.cut.map((k) => CORNERS[k])) } : {}),
         ...(t.flare ? { flare: t.flare } : {}),
@@ -487,12 +494,16 @@ export class BoardView {
     // Flying pieces hover above their cell and bob gently; the shadow stays on the ground.
     const flying = !piece.fallen && piece.members.length > 0 && isFlyingPiece(this.ctx(), piece);
     const lift = flying ? FLY_HEIGHT : 0;
+    const sunk = flying || piece.fallen ? 0 : this.immersion(cell);
     const sprites = [...v.sprites.entries()];
     const offsets = CLUSTER[Math.min(sprites.length, 4) - 1] ?? CLUSTER[0];
     sprites.forEach(([, s], i) => {
       const o = offsets[i] ?? { x: 0, y: 0 };
-      const y = base.y + 3 + o.y - lift;
+      const y = base.y + 3 + o.y - lift + sunk;
       s.setPosition(base.x + o.x, y).setDepth(this.depth(cell, LAYER.char, (o.y + shift.y + 3) * 0.1));
+      // in water the lower body is hidden below the surface
+      if (sunk) s.setCrop(0, 0, s.width, s.height - sunk);
+      else if (s.isCropped) s.setCrop();
       s.setData("baseY", y).setData("bob", flying ? 2 : 0).setData("phase", i * 0.9);
       if (s instanceof CharSprite) s.face(DIR_ROW[this.viewDir(piece.facing)]);
     });
@@ -500,7 +511,7 @@ export class BoardView {
       .setPosition(base.x, base.y + 2)
       .setDepth(this.depth(cell, LAYER.char - 1))
       .setScale(flying ? 1.1 : 1, flying ? 1.1 : 1)
-      .setAlpha(flying ? 0.35 : 0.6);
+      .setAlpha(sunk > 4 ? 0 : flying ? 0.35 : 0.6);
     v.sign?.setPosition(base.x, base.y - 30).setDepth(this.depth(cell, LAYER.marker));
     const n = v.statusIcons.length;
     v.statusIcons.forEach((img, i) => {
@@ -509,6 +520,14 @@ export class BoardView {
       img.setPosition(base.x + (i - (n - 1) / 2) * 11, y).setDepth(UI_DEPTH - 20 + this.depth(cell, 0) / 1e5);
       img.setData("baseY", y).setData("bob", 1).setData("phase", i * 1.3);
     });
+  }
+
+  /** How many pixels of a standing character are under water on a cell (deep: the lower body, shallow: the feet). */
+  private immersion(p: Pos): number {
+    const c = this.ctx();
+    const water = grid(c).terrain(p)?.water;
+    if (!water || isFrozen(c, p)) return 0;
+    return water === "deep" ? SUBMERGED_DEEP : SUBMERGED_SHALLOW;
   }
 
   /** Per-frame gentle up/down motion of flying sprites and status icons. */
