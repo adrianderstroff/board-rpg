@@ -192,10 +192,10 @@ party, the heroes and the map's entities, cells as x / y.
 
 ## 6. Entities
 
-In the game, a map keeps its interactive things in several lists (`events`, `exits`, `spawns`,
-`enemies`, `gates`, `switches`, `traps`, `wallDecor`). The editor shows all of them as
-**entities**: markers on the entity layer that can be selected, moved and edited in the inspector.
-Like RPG Maker's events, but every kind maps onto a list the game already has.
+In the game, a map keeps its interactive things in a few lists (`events`, `exits`, `spawns`,
+`enemies`). The editor shows all of them as **entities**: markers on the entity layer that can be
+selected, moved and edited in the inspector. Like RPG Maker's events, but every kind maps onto a
+list the game already has.
 
 ### 6.1 Entity kinds
 
@@ -205,22 +205,20 @@ Like RPG Maker's events, but every kind maps onto a list the game already has.
 | **Teleport** (exit) | `exits[]` + its arrival on the target map | the game's arrow; a door marker for doors | exit arrow (none for doors) |
 | **Arrival** (not added by itself, §6.4) | `spawns{}` | marker tile: arrival icon – start icon for the game start, play icon for the Quick Play start | invisible |
 | **Enemy** | `enemies[]` | the enemy's charset (+ party size) | the enemy piece |
-| **Gate** | `gates[]` | bars + its condition / linked switches | bars while closed |
-| **Floor switch** | `switches[]` | plate + lines to the gates it opens | the plate |
-| **Hidden trap** | `traps[]` | trap icon | hidden until found |
 | **Game start** / **Quick Play start** | an arrival with that role (§6.3) | start / play icon | the game start; Quick Play is editor only |
 
-*Gate* and *Floor switch* place ready-made entities (game-design §5.8): a gate opens on a flag
-named after it until its condition is pointed at a plate ("entity is in state"); hidden traps
-become presets later (R6). Wall signs are painted in Decor mode (§5.2).
+Gates, floor switches and traps are events made from **prefabs** (§6.5). Wall signs are painted in
+Decor mode (§5.2).
 
 A **marker tile** is a flat tile on the cell with the kind's icon (the same icons in the top view).
-**Entity panel** (Edit tab in Entity mode): the kinds as buttons (three rows; the tooltip explains
-each), and below them the map's entities as a table – ID, type, position; a row click selects one
+**Entity panel** (Edit tab in Entity mode), while no entity is selected: under the heading **Add
+entity** one row of buttons – **Event**, **Enemy**, **Teleport ▾** (the teleport, *Game start*,
+*Quick Play start*) and the **Prefab** icon button (§6.5) – and under **Entities** the map's
+entities as a table (a selected entity's form replaces both) – ID, type, position; a row click selects one
 and opens its form. An event made of **states and handlers** (all new events, game-design §10.3) has the same two parts:
 - **Appearance** – its states as folder tabs (★ marks the one it starts in; rename, duplicate,
   delete), each with its look (click the preview), facing and movement, and **passability**
-  (Solid / Stop / Walk); hidden.
+  (Solid / Stop / Walk / Avoid); *Hidden* and *Trap mark* side by side.
 - **Events** – its handlers as tabs named after their trigger (Interact, Enter, Pass over, Leave, Map
   loaded, Becomes true): a condition, for Interact the close-up options and the script's label, else
   "once", and the script.
@@ -316,6 +314,17 @@ An exit and its arrival are one **Teleport** in the editor. Arrivals are never p
   Play start.
 
 ---
+
+### 6.5 Prefabs
+Ready-made groups of entities (game-design §10.5), the library's and the project's own.
+- The **Prefab** icon button opens a picker (a floating window): search, the prefabs by category
+  with icon, name and description; the library's marked. Picking one starts placing: its whole
+  **footprint** follows the cursor (red where a cell is taken or off the map); a click places it –
+  fresh ids for its `$` placeholders, references rewired, one undo step. Esc cancels.
+- **Save as prefab**: the selected entity (its form's bottom bar), or every entity in the area the
+  Select tool marked (Board / Decor mode) – a name and a category; positions become relative to the
+  area's top-left cell, ids become placeholders and the references among them follow. It goes into
+  the project's `data/prefabs.yaml`.
 
 ## 7. Characters
 

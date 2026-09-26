@@ -1,0 +1,93 @@
+# Prefabs (game-design §10.5): ready-made entities (and enemies, exits) that belong together, at
+# cells relative to where they are placed (x 0, y 0 = the clicked cell). Ids starting with $ get
+# fresh ids when placed; every string naming them follows ($gate_open → gate_2_open).
+
+gate:
+  name: Gate
+  category: mechanisms
+  icon: gate
+  description: Bars that open while the flag <gate>_open is set – or point its conditions at a plate.
+  events:
+    - id: $gate
+      x: 0
+      y: 0
+      states:
+        closed: { decor: gate_bars, pass: solid }
+        open: { pass: walk }
+      on:
+        - { on: becomes, when: { flag: $gate_open }, do: [{ setState: { event: $gate, state: open } }] }
+        - { on: becomes, when: { all: [{ not: { flag: $gate_open } }, { state: { event: $gate, is: open } }] }, do: [{ setState: { event: $gate, state: closed } }] }
+
+floor_switch:
+  name: Floor switch
+  category: mechanisms
+  icon: switch
+  description: A plate that is down while a hero stands on it – other entities react to its state.
+  events:
+    - id: $plate
+      x: 0
+      y: 0
+      states:
+        up: { decor: switch_up, pass: walk }
+        down: { decor: switch_down, pass: walk }
+      on:
+        - { on: becomes, when: { heroesOn: { event: $plate } }, do: [{ setState: { event: $plate, state: down } }] }
+        - { on: becomes, when: { not: { heroesOn: { event: $plate } } }, do: [{ setState: { event: $plate, state: up } }] }
+
+plate_gate:
+  name: Plate and gate
+  category: mechanisms
+  icon: switch
+  description: Standing on the plate opens the gate two cells north of it; stepping off closes it again.
+  events:
+    - id: $plate
+      x: 0
+      y: 0
+      states:
+        up: { decor: switch_up, pass: walk }
+        down: { decor: switch_down, pass: walk }
+      on:
+        - { on: becomes, when: { heroesOn: { event: $plate } }, do: [{ setState: { event: $plate, state: down } }] }
+        - { on: becomes, when: { not: { heroesOn: { event: $plate } } }, do: [{ setState: { event: $plate, state: up } }] }
+    - id: $gate
+      x: 0
+      y: -2
+      states:
+        closed: { decor: gate_bars, pass: solid }
+        open: { pass: walk }
+      on:
+        - { on: becomes, when: { state: { event: $plate, is: down } }, do: [{ setState: { event: $gate, state: open } }] }
+        - { on: becomes, when: { state: { event: $plate, is: up } }, do: [{ setState: { event: $gate, state: closed } }] }
+
+hidden_trap:
+  name: Hidden trap
+  category: traps
+  icon: trap
+  description: Armed and hidden – a hero walking onto or across it is stopped, hurt and Stuck. Discover reveals it (heroes go around it then), Defuse takes it apart.
+  events:
+    - id: $trap
+      x: 0
+      y: 0
+      states:
+        armed: { hidden: true, pass: walk }
+        revealed: { mark: trap, pass: avoid }
+        sprung: { pass: walk }
+      on:
+        - { on: pass, when: { not: { state: { event: $trap, is: sprung } } }, do: [{ damage: { amount: 10, status: lib:stuck, cue: trap } }, { setState: { event: $trap, state: sprung } }] }
+        - { on: ability, ability: lib:discover, when: { state: { event: $trap, is: armed } }, do: [{ setState: { event: $trap, state: revealed } }] }
+        - { on: ability, ability: lib:defuse, when: { state: { event: $trap, is: revealed } }, do: [{ setState: { event: $trap, state: sprung } }] }
+
+snare_trap:
+  name: Snare
+  category: traps
+  icon: trap
+  description: The heroes' own trap (the Thief's Trap skill, a Snare item) – the first enemy landing on or walking through it is hurt and Stuck. Defuse takes it back.
+  events:
+    - id: $snare
+      x: 0
+      y: 0
+      states:
+        set: { mark: trap, pass: walk }
+      on:
+        - { on: pass, by: enemies, do: [{ damage: { amount: 15, status: lib:stuck, cue: trap } }, { removeEvent: $snare }] }
+        - { on: ability, ability: lib:defuse, do: [{ removeEvent: $snare }] }

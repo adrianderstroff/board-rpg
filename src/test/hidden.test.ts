@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { useBoardAbility } from "../core/board/actions";
-import { board, isExploring, mustPieceOf, piecesAt } from "../core/board/board";
+import { board, isExploring, mapMemory, mustPieceOf, piecesAt } from "../core/board/board";
 import { hiddenThings } from "../core/board/hidden";
 import { entityTriggers, stateOf } from "../core/board/entities";
 import type { MapEventDef } from "../core/data/types";
-import { executeMove, moveOptions, occupancyFor } from "../core/board/moves";
+import { executeMove, moveOptions, movePiece, occupancyFor } from "../core/board/moves";
 import { turnQueue } from "../core/board/turns";
 import { getChar, type Ctx } from "../core/context";
 import { hasStatus } from "../core/chars/character";
@@ -126,7 +126,39 @@ describe("hidden things (§7.5)", () => {
     const t = itemTargeting(wild, "lib:kit", "lib:snare")!;
     expect(t.valid.length).toBeGreaterThan(0);
     useBoardItem(wild, "lib:kit", "lib:snare", t.valid[0]);
-    expect(board(wild).traps).toHaveLength(1);
+    expect(mapMemory(wild, "arena").spawned).toHaveLength(1); // the snare prefab
     expect(wild.state.inventory["lib:snare"] ?? 0).toBe(0);
+  });
+
+  it("a Snare is a prefab placed during play: enemies walking across are stopped, hurt and Stuck – heroes aren't", async () => {
+    const { useBoardItem } = await import("../core/board/actions");
+    const ctx = arenaCtx({ ...arena(), enemies: [{ id: "sc", enemy: "lib:sand_scorpion", x: 0, y: 0 }] });
+    ctx.state.inventory["lib:snare"] = 2;
+    place(ctx, "lib:kit", 0, 5); // the whole party
+    useBoardItem(ctx, "lib:kit", "lib:snare", { x: 0, y: 3 });
+    const mem = mapMemory(ctx, "arena");
+    expect(mem.spawned!.map((e) => e.id)).toEqual(["snare~1"]);
+    expect(board(ctx).pieces["e:sc"]).toBeDefined();
+
+    // the enemy walks south across it: stopped there, hurt and Stuck, the snare is spent
+    const enemy = board(ctx).pieces["e:sc"];
+    const hp = getChar(ctx, "sc#0").hp;
+    const res = movePiece(ctx, enemy, [{ x: 0, y: 1 }, { x: 0, y: 2 }, { x: 0, y: 3 }, { x: 0, y: 4 }], "walk");
+    expect(res.interrupted).toBe(true);
+    expect([enemy.x, enemy.y]).toEqual([0, 3]);
+    const out = entityTriggers(ctx);
+    expect(out.events.some((e) => e.type === "trap")).toBe(true);
+    expect(getChar(ctx, "sc#0").hp).toBeLessThan(hp);
+    expect(hasStatus(getChar(ctx, "sc#0"), "lib:stuck")).toBe(true);
+    expect(mem.spawned).toEqual([]);
+
+    // a second one: heroes walk over their own snare, it stays
+    useBoardItem(ctx, "lib:kit", "lib:snare", { x: 1, y: 4 });
+    board(ctx).turn.moved = [];
+    const hero = mustPieceOf(ctx, "lib:kit");
+    const walk = movePiece(ctx, hero, [{ x: 1, y: 5 }, { x: 1, y: 4 }, { x: 1, y: 3 }], "walk");
+    expect(walk.interrupted).toBeFalsy();
+    entityTriggers(ctx);
+    expect(mem.spawned!.map((e) => e.id)).toEqual(["snare~2"]);
   });
 });

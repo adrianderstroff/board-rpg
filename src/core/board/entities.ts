@@ -4,7 +4,8 @@ import type { GameEvent } from "../events";
 import { check } from "../script/conditions";
 import { emptyResult, merge, runActions, type ScriptResult } from "../script/actions";
 import type { Pos } from "../util/grid";
-import { aliveMembers, board, mapMemory, piecesAt } from "./board";
+import { aliveMembers, board, mapEvents, mapMemory, piecesAt, syncEvents } from "./board";
+import { placeholders, rewire } from "../data/prefab";
 
 /**
  * Entities with states and handlers (§10.3): an event without pages has named states – a look and
@@ -38,7 +39,23 @@ export function pageFromState(ctx: Ctx, mapId: string, ev: MapEventDef): EventPa
 }
 
 function eventsOf(ctx: Ctx): MapEventDef[] {
-  return (ctx.db.map(board(ctx).mapId).events ?? []).filter(isEntity);
+  return mapEvents(ctx).filter(isEntity);
+}
+
+/**
+ * Places a prefab's entities on `at` during play (§10.5: the Thief's traps …): kept in the map's
+ * memory, with ids of their own (`trap~3`), and from then on entities like the map's.
+ */
+export function spawnPrefab(ctx: Ctx, prefabId: string, at: Pos): GameEvent[] {
+  const prefab = ctx.db.prefabs.get(prefabId);
+  if (!prefab) throw new Error(`Unknown prefab "${prefabId}"`);
+  const mem = mapMemory(ctx, board(ctx).mapId);
+  const n = (mem.spawnNo = (mem.spawnNo ?? 0) + 1);
+  // made during play: numbered ids of their own, so they never meet the map's
+  const ids = Object.fromEntries(placeholders(prefab).map((name) => [name, `${name}~${n}`]));
+  const spawned = rewire(prefab.events ?? [], ids).map((ev) => ({ ...ev, x: ev.x + at.x, y: ev.y + at.y }));
+  (mem.spawned ??= []).push(...spawned);
+  return [...spawned.map((ev) => ({ type: "state" as const, event: ev.id, state: currentState(ctx, board(ctx).mapId, ev) ?? "" })), ...syncEvents(ctx), { type: "pieces" as const }];
 }
 
 function entity(ctx: Ctx, id: string): MapEventDef {
@@ -50,7 +67,7 @@ function entity(ctx: Ctx, id: string): MapEventDef {
 /** The state of an entity of the current map. */
 export function stateOf(ctx: Ctx, id: string): string | undefined {
   if (!ctx.state.board) return undefined;
-  const ev = (ctx.db.map(board(ctx).mapId).events ?? []).find((e) => e.id === id);
+  const ev = mapEvents(ctx).find((e) => e.id === id);
   return ev ? currentState(ctx, board(ctx).mapId, ev) : undefined;
 }
 
@@ -60,6 +77,18 @@ export function heroWeightOn(ctx: Ctx, p: Pos): number {
     .filter((pc) => pc.faction === "hero")
     .reduce((n, pc) => n + aliveMembers(ctx, pc).length, 0);
 }
+
+/** Living enemies standing on a cell. */
+export function enemyWeightOn(ctx: Ctx, p: Pos): number {
+  return piecesAt(ctx, p)
+    .filter((pc) => pc.faction === "enemy")
+    .reduce((n, pc) => n + aliveMembers(ctx, pc).length, 0);
+}
+
+type Side = "heroes" | "enemies";
+
+/** Whose pieces set off an enter / leave / pass handler (the heroes' unless it says `by`). */
+const reactsTo = (h: EntityHandler, side: Side) => (h.by ?? "heroes") === side || h.by === "anyone";
 
 const someoneOn = (ctx: Ctx, p: Pos) => piecesAt(ctx, p, { includeFallen: true }).some((pc) => pc.faction !== "npc");
 
@@ -86,11 +115,12 @@ export function solidCells(ctx: Ctx): Pos[] {
     .map((ev) => entityPos(ctx, ev));
 }
 
-/** Cells where a hero's move stops: entities with a `pass` handler that applies right now. */
-export function passCells(ctx: Ctx): Pos[] {
+/** Cells where a move of `side` stops: entities with a `pass` handler for it that applies right now. */
+export function passCells(ctx: Ctx, side: Side = "heroes"): Pos[] {
   if (!ctx.state.board) return [];
   return eventsOf(ctx)
-    .filter((ev) => (ev.on ?? []).some((h) => h.on === "pass" && check(ctx, h.when)))
+    .filter((ev) => !mapMemory(ctx, board(ctx).mapId).removedEvents.includes(ev.id))
+    .filter((ev) => (ev.on ?? []).some((h) => h.on === "pass" && reactsTo(h, side) && check(ctx, h.when)))
     .map((ev) => entityPos(ctx, ev));
 }
 
@@ -178,6 +208,9 @@ export function loadTriggers(ctx: Ctx): ScriptResult {
   mem.occupied = eventsOf(ctx)
     .filter((ev) => heroWeightOn(ctx, entityPos(ctx, ev)) > 0)
     .map((ev) => ev.id);
+  mem.enemyOn = eventsOf(ctx)
+    .filter((ev) => enemyWeightOn(ctx, entityPos(ctx, ev)) > 0)
+    .map((ev) => ev.id);
   // the map's own first (what used to be its onEnter), then the entities'
   for (const { ev, on } of holders(ctx)) on.forEach((h, i) => h.on === "load" && check(ctx, h.when) && run(ctx, ev, i, h, out));
   // "becomes true" counts from the arrival: what holds as the party arrives fires now
@@ -213,12 +246,17 @@ export function entityTriggers(ctx: Ctx): ScriptResult {
         (mem.states ??= {})[ev.id] = pending;
         out.events.push({ type: "state", event: ev.id, state: pending }, { type: "pieces" });
       }
-      const here = heroWeightOn(ctx, entityPos(ctx, ev)) > 0;
-      const was = (mem.occupied ?? []).includes(ev.id);
-      if (here !== was) {
-        mem.occupied = here ? [...(mem.occupied ?? []), ev.id] : (mem.occupied ?? []).filter((id) => id !== ev.id);
+      // heroes and enemies arriving on it or leaving it (each handler reacts to its side)
+      for (const side of ["heroes", "enemies"] as const) {
+        if (!eventsOf(ctx).includes(ev)) break; // a handler removed it (a sprung snare)
+        const list = side === "heroes" ? (mem.occupied ??= []) : (mem.enemyOn ??= []);
+        const here = (side === "heroes" ? heroWeightOn : enemyWeightOn)(ctx, entityPos(ctx, ev)) > 0;
+        const was = list.includes(ev.id);
+        if (here === was) continue;
+        if (side === "heroes") mem.occupied = here ? [...list, ev.id] : list.filter((id) => id !== ev.id);
+        else mem.enemyOn = here ? [...list, ev.id] : list.filter((id) => id !== ev.id);
         (ev.on ?? []).forEach((h, i) => {
-          const fits = here ? h.on === "enter" || h.on === "pass" : h.on === "leave";
+          const fits = (here ? h.on === "enter" || h.on === "pass" : h.on === "leave") && reactsTo(h, side);
           if (fits && check(ctx, h.when) && run(ctx, ev, i, h, out)) ran = true;
         });
       }

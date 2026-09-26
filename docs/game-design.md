@@ -254,7 +254,7 @@ Some maps hide things from the heroes. **Discover** (Thief) finds them.
 - **Dormant enemies** (e.g. skeletons, `boardAi.dormant`) lie on their cell looking exactly like the `skeleton` decor used for harmless remains. They block movement, take no turns and don't count as enemies (the board stays in free exploration). As soon as a hero piece's path reaches a cell the skeleton could attack with its own move pattern, the move stops there, the skeleton **rises** ("!") and attacks at once as an **ambush**; the board switches to turn-based tactics.
 - **Discover** (Thief, board only, MP 1, cast on the thief's own cell): the 3-cell reach around the thief lights up briefly, then everything hidden in it shows itself – traps become visible, hidden objects appear (and can be used), dormant enemies rise. Nothing found → "Nothing hidden nearby." An enemy uncovered this way is caught unprepared: it takes no turn in the current round (when this starts the tactics, round 1) and acts from the next round on – only enemies *provoked* by a party walking into their reach ambush at once.
 - **Defuse** (Thief, board only, MP 0, adjacent cell with a visible trap – revealed ancient trap or one the heroes set): takes the trap apart; it goes into the inventory as a **Snare**.
-- **Snare** (item): on **wild boards only**, hide it on an empty cell within 2 – like the Trap skill, the first enemy landing on or walking through it is hurt and stuck; enemies can't see it.
+- **Snare** (item): on **wild boards only**, hide it on an empty cell within 2 – like the Trap skill, the first enemy landing on or walking through it is hurt and stuck; enemies can't see it. Both place the `lib:snare_trap` prefab (§10.5).
 
 ---
 
@@ -407,14 +407,15 @@ instead have states and handlers (the engine supports both; content moves over w
   there; flying pieces are not caught), **map loaded**, **condition becomes true** (also when it
   already holds as the party arrives on the map), and for placed enemies **defeated** (the enemy's
   `on` list; runs once when its whole party is beaten). `once`
-  handlers run a single time.
+  handlers run a single time. Enter, leave and pass over are the heroes' by default; `by: enemies`
+  (or `anyone`) makes them react to enemy pieces instead – a trap the heroes set.
 - **Abilities and entities:** a board ability (or item) used on cells sets off the *ability used*
   handlers (`on: ability`, `ability: <id>`) of the entities there – Discover reaches the hidden ones
   within its 3 cells, Defuse (which gives the Snare) an adjacent revealed trap; spells can later burn
   or freeze entities the same way. A state can be `hidden` (not on the board, unseen by the heroes)
   and carry a trap `mark`; passability `avoid` = heroes' paths go around it, others walk through.
-  Scripts can `damage` / `heal` the heroes on the entity's cell (or the whole party; on the board
-  they keep 1 HP) – with a trap snapping as the cue.
+  Scripts can `damage` / `heal` whoever stands on the entity's cell (or the whole party; heroes
+  keep 1 HP on the board) – with a trap snapping as the cue.
 - **The map has handlers too** (`on` in the map file; *map loaded* and *becomes true*): what happens
   on the map as a whole – arriving (formerly `onEnter`), intro scenes, "all enemies defeated".
 - A **script** is a sequence of actions with blocks: **if / elif / else**, **choice** (options with
@@ -427,12 +428,42 @@ instead have states and handlers (the engine supports both; content moves over w
 - New conditions: an entity **is in state**, **heroes stand on** a cell (with a weight).
 - **Dialogs become scripts** (a line of text is an action), so events, dialogs, quests and map entry
   share one script language and one editor.
-- **Presets** replace the special kinds: a **gate** (closed: bars, solid / open: nothing, walk through;
-  a change to solid waits until nobody stands there), a **floor switch** (up / down: *enter* with
-  enough heroes → down and open its gates, *leave* with no hero left → up; latching = no leave
-  handler), a **trap** (armed and hidden / sprung: *pass over* → damage, *Stuck*, sprung).
-- Traps set during play (Snare, the Thief's Trap) stay a runtime list; **wall signs** become decor on
-  a block face (Decor mode). **Exits**, **arrivals** and **enemies** stay their own kinds.
+- **Prefabs** replace the special kinds (§10.5). **Wall signs** are decor on a block face (Decor
+  mode). **Exits**, **arrivals** and **enemies** stay their own kinds.
+
+### 10.5 Prefabs
+A **prefab** is ready-made content to place: one or more entities, enemies and exits that belong
+together, at positions relative to where it is placed. Prefabs are content like items – the
+library's (`lib:gate` …) and a project's own (`data/prefabs.yaml`):
+
+```yaml
+plate_gate:                     # a floor plate that holds a gate open
+  name: Plate and gate
+  category: mechanisms
+  icon: switch
+  description: Standing on the plate opens the gate; stepping off closes it.
+  events:
+    - { id: $plate, x: 0, y: 0, states: { up: {…}, down: {…} }, on: [ … setState $gate … ] }
+    - { id: $gate,  x: 0, y: -3, states: { closed: {…}, open: {…} }, on: [ … ] }
+```
+
+- **Placeholders:** ids starting with `$` get fresh ids when placed (`$gate` → `gate`, `gate_2` …),
+  and every string naming a placeholder (a `setState`, a `state` condition) is rewired to them –
+  ten plate-and-gates on one map don't clash.
+- **Placing is a copy**: changing a prefab later doesn't change what was placed.
+- **In the editor** (editor-design §6.5): a picker to place one (its footprint follows the cursor),
+  and *Save as prefab* from an entity or the entities in a selected area.
+- **During play:** the effect `placePrefab` (an ability's or item's board effect) places a prefab's
+  entities on the target cell. Such entities are kept in the map's memory (and so in saves) and are
+  entities like any other – states, handlers, Discover, Defuse. The Thief's **Trap** and the
+  **Snare** item place `lib:snare_trap`: visible to the heroes (a trap mark), its *enter* / *pass
+  over* handlers are the enemies' (`by: enemies`): damage and Stuck for whoever is caught, then it
+  is gone; Defuse takes it back (a Snare). Summons, bombs or dropped items can work the same way.
+- The library's prefabs: **gate** (closed: bars, solid / open: nothing; a change to solid waits
+  until nobody stands there), **floor switch** (up / down: *enter* → down, *leave* with no hero left
+  → up), **plate and gate** (both, wired), **hidden trap** (armed and hidden / revealed / sprung:
+  *pass over* → damage, *Stuck*, sprung; Discover reveals, Defuse takes apart), **snare trap** (the
+  heroes' own, above).
 
 ### 10.4 Quest engine
 - A **quest** has a title, description, optional parent (**hierarchical**: a quest step can require sub-quests to be done), a `lockSwitch` flag and ordered **steps**.
@@ -750,5 +781,6 @@ Where the rough ideas were incomplete or conflicting, these rules were chosen:
 44. **Every event is an entity** (R6): the 81 paged events were converted once (`editor/src/entities/convertPages.ts`): a look per state (switched by "becomes" handlers where pages changed it), interact pages as interact handlers (the most recent first), step pages as enter handlers, auto pages as "becomes" handlers; run-once handlers keep the pages' old keys (`onceKey`) so saves don't replay scenes. Map-load handlers run after the map's `onEnter` script.
 45. **Map-level handlers** (user decision): `onEnter` and the 23 invisible "controller" entities that only held map-wide scripts were moved into the map's own `on` list (run-once keys kept); the map's load handlers run before the entities'.
 46. **Traps are entities; abilities reach entities** (user decision): the three ancient traps were migrated to the Hidden trap preset; Discover and Defuse work through a generic "ability used" handler; hidden states, trap marks and *avoid* passability were added; old saves keep found / spent traps. Traps the Thief sets during play (Snare, Trap) stay a runtime list for now (todo.md).
-48. **Projects and the library** (user decisions, [projects.md](projects.md)): the demo is a project on a versioned library; library ids are `lib:`-prefixed; exports and builds bundle the library content they use. The rules' own library needs are in `builtins.ts`; saves from before (version 1) are dropped.
 47. **Staging actions** (R5): move / face / hide / show / emote / camera / sound / music / screen effects / party members / exits, and enemies' *defeated* handlers. Scripted moves don't set off traps or field effects; moved entities keep their cell per map.
+48. **Projects and the library** (user decisions, [projects.md](projects.md)): the demo is a project on a versioned library; library ids are `lib:`-prefixed; exports and builds bundle the library content they use. The rules' own library needs are in `builtins.ts`; saves from before (version 1) are dropped.
+49. **Prefabs** (user decisions): ready-made groups of entities / enemies / exits with `$` placeholders, content of the library and of projects; the editor's Gate / Floor switch / Hidden trap buttons became prefabs behind one Prefab button; *Save as prefab*; the runtime trap list is gone – the Snare and the Trap skill place the `lib:snare_trap` prefab (entities made during play live in the map's memory); enter / leave / pass handlers can be the enemies' (`by`).

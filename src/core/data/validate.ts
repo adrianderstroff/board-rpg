@@ -25,7 +25,11 @@ export function validateContent(db: Database): string[] {
       if (e.type === "cureStatus") for (const s of e.statuses ?? []) has(db.statuses, s, where, "status");
       if (e.type === "defuse") has(db.items, e.item, where, "item");
       if (e.type === "fieldEffect" || e.type === "freezeArea") has(db.fieldEffects, e.effect, where, "field effect");
-      if (e.type === "placeTrap" && e.status) has(db.statuses, e.status, where, "status");
+      if (e.type === "placePrefab") {
+        const p = db.prefabs.get(e.prefab);
+        if (!p) err(where, `unknown prefab "${e.prefab}"`);
+        else if (p.enemies?.length || p.exits?.length) err(where, `prefab ${e.prefab}: only entities can be placed during play`);
+      }
       if (e.type === "learnAbility") has(db.abilities, e.ability, where, "ability");
     }
   };
@@ -194,6 +198,44 @@ export function validateContent(db: Database): string[] {
       condition(e.when, `${w}/ending ${e.id}`);
       actions(e.onComplete, `${w}/ending ${e.id}`);
     }
+  }
+  // prefabs (§10.5): their entities like a map's, and references among their placeholders
+  for (const p of db.prefabs.values()) {
+    const w = `prefab ${p.id}`;
+    if (![...(p.events ?? []), ...(p.enemies ?? []), ...(p.exits ?? [])].length) err(w, "is empty");
+    const states = new Map((p.events ?? []).filter((e) => e.states).map((e) => [e.id, new Set(Object.keys(e.states!))]));
+    const decorKnown = (d: string) => [...db.chipsets.values()].some((c) => c.decor[d]);
+    const refs = (v: unknown, where: string): void => {
+      if (Array.isArray(v)) return v.forEach((x) => refs(x, where));
+      if (!v || typeof v !== "object") return;
+      const o = v as Record<string, unknown>;
+      const ref = (o.setState ?? o.state) as { event?: string; state?: string; is?: string } | undefined;
+      if (ref && typeof ref === "object" && ref.event?.startsWith("$")) {
+        const s = states.get(ref.event);
+        const name = ref.state ?? ref.is;
+        if (!s) err(where, `no entity "${ref.event}" with states in this prefab`);
+        else if (name !== undefined && !s.has(name)) err(where, `entity ${ref.event} has no state "${name}"`);
+      }
+      Object.values(o).forEach((x) => refs(x, where));
+    };
+    for (const ev of p.events ?? []) {
+      const ew = `${w} event ${ev.id}`;
+      if (!ev.pages && !ev.states) err(ew, "needs pages or states");
+      for (const [name, st] of Object.entries(ev.states ?? {})) {
+        has(db.npcs, st.npc, `${ew} state ${name}`, "npc");
+        has(db.npcs, st.keeper, `${ew} state ${name}`, "npc");
+        if (st.decor && !decorKnown(st.decor)) err(`${ew} state ${name}`, `unknown decor "${st.decor}"`);
+      }
+      for (const h of ev.on ?? []) {
+        const hw = `${ew} on ${h.on}`;
+        if (h.on === "ability" && (!h.ability || (!db.abilities.has(h.ability) && !db.items.has(h.ability)))) err(hw, `reacts to unknown ability "${h.ability ?? ""}"`);
+        condition(h.when, hw);
+        actions(h.do, hw);
+      }
+      refs(ev.on, ew);
+    }
+    for (const e of p.enemies ?? []) for (const id of [e.enemy, ...(e.party ?? [])]) has(db.enemies, id, w, "enemy");
+    for (const e of p.exits ?? []) if (!db.maps.has(e.to)) err(w, `exit to unknown map "${e.to}"`);
   }
   // chipsets: terrain that burns must burn into a known terrain
   for (const chip of db.chipsets.values()) {

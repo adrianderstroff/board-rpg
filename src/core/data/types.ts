@@ -115,7 +115,8 @@ export type EffectDef =
   | { type: "shock"; power: number; reach?: number }
   /** Cut down a cuttable plant on the target cell (§5.7). */
   | { type: "cut" }
-  | { type: "placeTrap"; damage: number; status?: string }
+  /** Places a prefab's entities on the target cell during play (§10.5) – the Thief's traps. */
+  | { type: "placePrefab"; prefab: string }
   | { type: "steal" }
   | { type: "reveal" }
   | { type: "discover"; radius: number }
@@ -634,6 +635,25 @@ export interface EntityHandler {
   once?: boolean;
   /** What "has run" is remembered under (converted pages keep their old key, so saves stay right). */
   onceKey?: string;
+  /** enter / leave / pass: whose pieces set it off – the heroes' (default), the enemies' (a trap the heroes set) or anyone's. */
+  by?: "heroes" | "enemies" | "anyone";
+}
+
+/**
+ * A prefab (§10.5): entities, enemies and exits that belong together, at cells relative to where
+ * it is placed. Ids starting with `$` are placeholders – placing gives them fresh ids and rewires
+ * every string naming them.
+ */
+export interface PrefabDef {
+  id: string;
+  name: string;
+  /** Groups the editor's picker (mechanisms, traps …). */
+  category?: string;
+  icon?: string;
+  description?: string;
+  events?: MapEventDef[];
+  enemies?: MapEnemyDef[];
+  exits?: ExitDef[];
 }
 
 export interface MapEventDef {

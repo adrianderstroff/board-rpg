@@ -123,8 +123,14 @@ export function activePage(ctx: Ctx, mapId: string, ev: MapEventDef): EventPageD
   return page;
 }
 
+/** A map's events: its own and the entities made on it during play (prefabs placed by abilities, §10.5). */
+export function mapEvents(ctx: Ctx, mapId = board(ctx).mapId): MapEventDef[] {
+  const spawned = ctx.state.maps[mapId]?.spawned;
+  return spawned?.length ? [...(ctx.db.map(mapId).events ?? []), ...spawned] : (ctx.db.map(mapId).events ?? []);
+}
+
 export function eventDef(ctx: Ctx, eventId: string): MapEventDef | undefined {
-  return (ctx.db.map(board(ctx).mapId).events ?? []).find((e) => e.id === eventId);
+  return mapEvents(ctx).find((e) => e.id === eventId);
 }
 
 export function pageOfPiece(ctx: Ctx, piece: Piece): EventPageDef | undefined {
@@ -136,9 +142,8 @@ export function pageOfPiece(ctx: Ctx, piece: Piece): EventPageDef | undefined {
 /** Re-evaluates event pages and adds/removes/updates NPC & object pieces accordingly. */
 export function syncEvents(ctx: Ctx): GameEvent[] {
   const b = board(ctx);
-  const map = ctx.db.map(b.mapId);
   let changed = false;
-  for (const ev of map.events ?? []) {
+  for (const ev of mapEvents(ctx, b.mapId)) {
     const pid = `n:${ev.id}`;
     const page = activePage(ctx, b.mapId, ev);
     const uncovered = !ev.hidden || (mapMemory(ctx, b.mapId).discovered ?? []).includes(ev.id);
@@ -190,7 +195,6 @@ export function enterMap(ctx: Ctx, mapId: string, spawnId: string, groups?: { me
     pieces: {},
     chars: {},
     fieldEffects: [],
-    traps: [],
     turn: { round: 1, acted: [], current: null, moved: [], abilityUsed: [] },
     nextId: 1,
   };

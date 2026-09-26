@@ -1,21 +1,4 @@
-import type {
-  AbilityDef,
-  ChipsetDef,
-  ClassDef,
-  ConfigDef,
-  DialogDef,
-  EnemyDef,
-  FieldEffectDef,
-  GraphicsDb,
-  HeroDef,
-  ItemDef,
-  MapDef,
-  NpcDef,
-  PatternDef,
-  QuestDef,
-  ShopDef,
-  StatusDef,
-} from "./types";
+import type { AbilityDef, ChipsetDef, ClassDef, ConfigDef, DialogDef, EnemyDef, FieldEffectDef, GraphicsDb, HeroDef, ItemDef, MapDef, NpcDef, PatternDef, PrefabDef, QuestDef, ShopDef, StatusDef } from "./types";
 
 /** Raw content as parsed from the data files: collections are `id → definition` (id optional in files). */
 export interface RawContent {
@@ -35,6 +18,7 @@ export interface RawContent {
   chipsets: Record<string, Omit<ChipsetDef, "id">>;
   graphics: GraphicsDb;
   maps: Record<string, Omit<MapDef, "id">>;
+  prefabs?: Record<string, Omit<PrefabDef, "id">>;
   /** Where each layer's assets are (projects.md §4), e.g. "library/v1/assets/" – music is found there by id. */
   roots?: AssetRoots;
 }
@@ -75,6 +59,7 @@ export class Database {
   readonly chipsets: Collection<ChipsetDef>;
   readonly maps: Collection<MapDef>;
   readonly graphics: GraphicsDb;
+  readonly prefabs: Collection<PrefabDef>;
   readonly roots: AssetRoots;
 
   constructor(raw: RawContent) {
@@ -94,6 +79,7 @@ export class Database {
     this.quests = withIds(raw.quests);
     this.chipsets = withIds(raw.chipsets);
     this.maps = withIds(raw.maps);
+    this.prefabs = withIds(raw.prefabs);
     this.graphics = raw.graphics ?? { charsets: {}, battlers: {}, faces: {}, battlebacks: {} };
   }
 

@@ -3,7 +3,7 @@
 # board.range / board.area: pattern ids (patterns.yaml) or inline patterns.
 # board.targets: hero | enemy | npc | anyCharacter | fallen | emptyCell | anyCell | self
 # Effects: damage, fixedDamage, heal, healPercent, restoreMp, applyStatus, cureStatus, revive,
-#          fieldEffect, placeTrap, steal, reveal, learnAbility
+#          fieldEffect, placePrefab, steal, reveal, learnAbility
 
 # ---------------- Knight: Sword Art ----------------
 cleave:
@@ -274,7 +274,7 @@ trap:
     range: lib:range2
     targets: [emptyCell]
     effects:
-      - { type: placeTrap, damage: 15, status: lib:stuck }
+      - { type: placePrefab, prefab: lib:snare_trap }
 
 discover:
   name: Discover

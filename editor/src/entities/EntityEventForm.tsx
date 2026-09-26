@@ -237,14 +237,15 @@ export function EntityEventForm({ project, mapId, index, db, interactionForm }: 
               ))}
             </div>
           </Field>
-          <Field label="Hidden">
-            <div class="row">
+          {/* two entries side by side, half the width each */}
+          <div class="field-pair">
+            <Field label="Hidden">
               <input type="checkbox" class="box-check" title="Not on the board in this state – the heroes can't see it; Discover finds it (its Ability used: discover handler says what then)" checked={!!st.hidden} onChange={(e) => setState({ hidden: e.currentTarget.checked || undefined }, "Hidden")} />
-              <label class="check" title="A flat trap mark on its cell in this state (a danger the heroes know about)">
-                <input type="checkbox" checked={st.mark === "trap"} onChange={(e) => setState({ mark: e.currentTarget.checked ? "trap" : undefined }, "Trap mark")} /> trap mark
-              </label>
-            </div>
-          </Field>
+            </Field>
+            <Field label="Trap mark">
+              <input type="checkbox" class="box-check" title="A flat trap mark on its cell in this state (a danger the heroes know about)" checked={st.mark === "trap"} onChange={(e) => setState({ mark: e.currentTarget.checked ? "trap" : undefined }, "Trap mark")} />
+            </Field>
+          </div>
         </div>
       </div>
 
@@ -327,6 +328,20 @@ export function HandlerTabs({ project, file, path, handlers, triggers, db, mapId
                 <Field label="Trigger">
                   <Select value={h.on} options={choices.map(([t, l]) => [t, l] as [string, string])} onChange={(v) => setHandler({ on: (v ?? "interact") as HandlerTrigger }, "Trigger")} title={TRIGGERS.find((t) => t[0] === h.on)?.[2]} />
                 </Field>
+                {(h.on === "enter" || h.on === "pass" || h.on === "leave") && (
+                  <Field label="By">
+                    <Select
+                      value={h.by ?? "heroes"}
+                      options={[
+                        ["heroes", "heroes"],
+                        ["enemies", "enemies (a trap the heroes set)"],
+                        ["anyone", "anyone"],
+                      ]}
+                      title="Whose pieces set it off"
+                      onChange={(v) => setHandler({ by: v === "heroes" ? undefined : (v as "enemies" | "anyone") }, "By")}
+                    />
+                  </Field>
+                )}
                 {h.on === "ability" && (
                   <Field label="Ability">
                     <Select value={h.ability} options={[...[...db.abilities.values()].filter((a) => a.board).map((a) => [a.id, `${a.name} (${a.id})`] as [string, string]), ...[...db.items.values()].filter((i) => i.board).map((i) => [i.id, `${i.name} (item)`] as [string, string])]} onChange={(v) => setHandler({ ability: v }, "Ability")} />

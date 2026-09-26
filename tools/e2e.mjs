@@ -309,7 +309,8 @@ const scenarios = {
     await page.keyboard.press("3"); // entity mode
     await sleep(300);
     // place a new teleport: its exit here, then – in the destination window – Sandhollow's arrival by the inn
-    await page.locator(".add-grid").getByRole("button", { name: "Teleport", exact: true }).click();
+    await page.locator(".add-row").getByRole("button", { name: /^Teleport/ }).click();
+    await page.getByRole("menuitem", { name: "Teleport", exact: true }).click();
     let p = await at(2, 7);
     await page.mouse.click(p.x, p.y);
     await page.locator(".map-choice button", { hasText: "Sandhollow" }).first().click();
@@ -474,7 +475,8 @@ const scenarios = {
     await page.keyboard.press("3"); // entity mode
     await sleep(300);
     // place the Quick Play start
-    await page.locator(".add-grid").getByRole("button", { name: "Quick Play start" }).click();
+    await page.locator(".add-row").getByRole("button", { name: /^Teleport/ }).click();
+    await page.getByRole("menuitem", { name: "Quick Play start" }).click();
     const qp = await page.evaluate(() => window.__editorMap.cellScreen(5, 6));
     await page.mouse.click(qp.x, qp.y);
     await sleep(300);
@@ -965,7 +967,8 @@ const scenarios = {
     await d.clickCell(3, 6);
     await sleep(800);
     await d.shot("trap");
-    d.expect(await d.dbg(`d.state().board.traps.some(t => t.x === 3 && t.y === 6)`), "trap placed at 3,6");
+    // the snare is a prefab placed during play: an entity in the map's memory
+    d.expect(await d.dbg(`(d.state().maps[d.state().board.mapId].spawned || []).some(t => t.x === 3 && t.y === 6)`), "trap placed at 3,6");
     // an enemy walks into it
     await d.ev(() => {
       const dbg = __game.debug;
@@ -977,7 +980,7 @@ const scenarios = {
     const trapped = await d.ev(() => {
       const s = __game.debug.state();
       const c = s.board.chars["scorp_a#0"];
-      return { traps: s.board.traps.length, hp: c?.hp, stuck: c?.statuses.some((x) => x.id === "lib:stuck") };
+      return { traps: (s.maps[s.board.mapId].spawned ?? []).length, hp: c?.hp, stuck: c?.statuses.some((x) => x.id === "lib:stuck") };
     });
     d.expect(trapped.traps === 0 && trapped.stuck && trapped.hp < 30, `trap triggered ${JSON.stringify(trapped)}`);
     await d.shot("trapped");

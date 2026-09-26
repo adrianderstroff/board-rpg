@@ -92,6 +92,6 @@ export function entitySprites(db: Database, map: MapDef, rotation: number, selec
 
 /** The placing preview: the marker tile of what an Add button places, on the hovered cell. */
 export function placingSprite(add: AddKind, at: { x: number; y: number }): EntitySprite {
-  const kind: EntityKind = add === "teleport" ? "exit" : add === "start" || add === "quickplay" ? "spawn" : add === "gate" || add === "switch" || add === "trap" ? "event" : add;
+  const kind: EntityKind = add === "teleport" ? "exit" : add === "start" || add === "quickplay" ? "spawn" : add;
   return { ref: { kind, key: "preview" }, kind, x: at.x, y: at.y, texture: markerKey(ADD_INFO[add].icon), flat: true, editorOnly: true, preview: true };
 }

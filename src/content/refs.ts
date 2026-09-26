@@ -20,7 +20,8 @@ export type RefCollection =
   | "battlers"
   | "faces"
   | "battlebacks"
-  | "music";
+  | "music"
+  | "prefabs";
 
 const FIELDS: Record<string, RefCollection[]> = {
   giveItem: ["items"], takeItem: ["items"], item: ["items"], items: ["items"],
@@ -31,6 +32,7 @@ const FIELDS: Record<string, RefCollection[]> = {
   effect: ["fieldEffects"], surface: ["fieldEffects"], melts: ["fieldEffects"],
   classId: ["classes"], classes: ["classes"],
   move: ["patterns"], range: ["patterns"], area: ["patterns"], include: ["patterns"],
+  prefab: ["prefabs"],
   chipset: ["chipsets"], battleback: ["battlebacks"], charset: ["charsets"], battler: ["battlers"], face: ["faces"], music: ["music"],
 };
 

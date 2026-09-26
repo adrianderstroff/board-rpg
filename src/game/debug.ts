@@ -9,6 +9,7 @@ import { stateOf } from "../core/board/entities";
 import { runActions } from "../core/script/actions";
 import { getSession } from "./session";
 import { Menu } from "../engine/ui/widgets";
+import { entityTriggers } from "../core/board/entities";
 
 /**
  * Console / automated-test helpers (window.__game). Setup shortcuts only – tests still drive
@@ -84,7 +85,8 @@ export function installDebug(game: Phaser.Game) {
     },
     /** Walks a piece onto a cell with full landing rules (field effects, traps). */
     stepOnto(charId: string, x: number, y: number) {
-      const events = movePiece(ctx(), mustPieceOf(ctx(), charId), [{ x, y }], "walk").events;
+      // the move, then what reacts to it (traps are entities: their handlers run when things settle)
+      const events = [...movePiece(ctx(), mustPieceOf(ctx(), charId), [{ x, y }], "walk").events, ...entityTriggers(ctx()).events];
       resync();
       return events;
     },

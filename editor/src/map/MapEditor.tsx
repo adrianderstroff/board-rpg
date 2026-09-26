@@ -5,7 +5,11 @@ import { getGrid } from "../../../src/core/board/grid";
 import type { Corner, MapDef } from "../../../src/core/data/types";
 import type { Dir, Pos } from "../../../src/core/util/grid";
 import { K } from "../../../src/game/keys";
-import { addEntity, entitiesAt, entityPath, listEntities, moveEntity, sameRef, type EntityKind, type EntityRef, duplicateEntity, type AddKind, addPreset } from "../entities/model";
+import { entitiesIn, placePrefabOnMap, prefabFootprint } from "../entities/prefabs";
+import { PrefabIcon } from "../entities/PrefabPicker";
+import { SavePrefabWindow } from "../entities/SavePrefabWindow";
+import { placePrefab } from "../../../src/core/data/prefab";
+import { addEntity, entitiesAt, entityPath, listEntities, moveEntity, sameRef, type EntityKind, type EntityRef, duplicateEntity, type AddKind } from "../entities/model";
 import { entitySprites, placingSprite } from "../entities/visuals";
 import { removeEntity } from "../entities/remove";
 import { placeStart } from "../entities/teleports";
@@ -78,6 +82,9 @@ export interface EntitySelection {
   /** An entity being duplicated: the copy goes where the next click is. */
   copying: EntityRef | null;
   setCopying: (ref: EntityRef | null) => void;
+  /** A prefab (its id) waiting to be placed with the next click (editor-design §6.5). */
+  placingPrefab: string | null;
+  setPlacingPrefab: (id: string | null) => void;
 }
 
 const typing = (e: KeyboardEvent) => e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement;
@@ -117,6 +124,8 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
     setAreaDragState(d);
   };
   const [pasting, setPasting] = useState(false);
+  /** The Select tool's area being saved as a prefab (its window is open). */
+  const [savingArea, setSavingArea] = useState<Rect | null>(null);
   const [carryEntities, setCarryEntities] = useState(true);
   const [copied, setCopied] = useState<string | null>(clipboard ? `${clipboard.w}×${clipboard.h}` : null);
   // another map: no selection (the clipboard stays)
@@ -219,6 +228,18 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
         if (target && removeEntity(project, mapId, target)) entities.select(null);
         return;
       }
+      if (entities.placingPrefab) {
+        // the whole footprint must be free and on the map
+        const prefab = db?.prefabs.get(entities.placingPrefab);
+        if (!prefab || !prefabFootprint(project.data<MapDef>(path), prefab, c).fits.every(Boolean)) return;
+        let ref: EntityRef | null = null;
+        project.edit(path, `Place ${prefab.name}`, (doc) => {
+          ref = placePrefabOnMap(doc, doc.toJS() as MapDef, prefab, c);
+        });
+        entities.setPlacingPrefab(null);
+        entities.select(ref);
+        return;
+      }
       if (entities.placing || entities.copying) {
         // one entity per cell: only free cells take a new one
         if (entitiesAt(project.data<MapDef>(path), c).length) return;
@@ -232,10 +253,6 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
           return;
         }
         if (kind === "start" || kind === "quickplay") ref = { kind: "spawn", key: placeStart(project, mapId, c, kind) };
-        else if (kind === "gate" || kind === "switch" || kind === "trap")
-          project.edit(path, `Add ${kind}`, (doc) => {
-            ref = addPreset(doc, doc.toJS() as MapDef, kind, c);
-          });
         else if (src)
           project.edit(path, `Duplicate ${src.kind}`, (doc) => {
             ref = duplicateEntity(doc, doc.toJS() as MapDef, src, c);
@@ -470,6 +487,7 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
       }
       if (e.key === "Escape") {
         if (pasting) setPasting(false);
+        else if (entities.placingPrefab) entities.setPlacingPrefab(null);
         else if (entities.placing) entities.setPlacing(null);
         else if (entities.copying) entities.setCopying(null);
         else setArea(null);
@@ -501,6 +519,15 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
     if (!db) return [];
     const all = entitySprites(db, mapData, rotation, entities.selected, mode === "entity");
     if (mode !== "entity") return all.filter((e) => e.texture && !e.editorOnly).map((e) => ({ ...e, label: undefined }));
+    // a prefab: its whole footprint follows the cursor – its looks, and a tile per cell (red where it doesn't fit)
+    const prefab = entities.placingPrefab ? db.prefabs.get(entities.placingPrefab) : undefined;
+    if (hover && prefab) {
+      const { cells, fits } = prefabFootprint(mapData, prefab, hover);
+      const placed = placePrefab(prefab, hover, () => false);
+      const looks = entitySprites(db, { ...mapData, events: placed.events, enemies: placed.enemies, exits: placed.exits, spawns: {}, editor: undefined }, rotation, null, false);
+      const ok = (x: number, y: number) => fits[cells.findIndex((c) => c.x === x && c.y === y)] ?? false;
+      return [...all, ...cells.map((c, i) => ({ ...placingSprite("event", c), blocked: !fits[i] })), ...looks.map((e) => ({ ...e, preview: true, blocked: !ok(e.x, e.y) }))];
+    }
     // placing or duplicating: what the click adds follows the cursor (red on a taken cell)
     if (!hover || (!entities.placing && !entities.copying)) return all;
     const blocked = entitiesAt(mapData, hover).length > 0;
@@ -509,7 +536,7 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
       ? all.filter((e) => sameRef(e.ref, src)).map((e) => ({ ...e, x: hover.x, y: hover.y, label: undefined, selected: false, preview: true, blocked }))
       : [{ ...placingSprite(entities.placing!, hover), blocked }];
     return [...all, ...ghost];
-  }, [db, mapData, rotation, entities.selected, mode, entities.placing, entities.copying, hover?.x, hover?.y]);
+  }, [db, mapData, rotation, entities.selected, mode, entities.placing, entities.copying, entities.placingPrefab, hover?.x, hover?.y]);
   // what the next click places, see-through under the cursor: a terrain block or a decor object
   // the rectangle being dragged (not while erasing) or the area the fill would reach; else the hovered cell
   const ghostCells: Pos[] | undefined = useMemo(() => {
@@ -559,7 +586,9 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
 
   const hint =
     mode === "entity"
-      ? entities.placing || entities.copying
+      ? entities.placingPrefab
+        ? "Click where the prefab goes – every cell of it must be free (red: taken or off the map) · Esc: cancel"
+        : entities.placing || entities.copying
         ? "Click a free cell to place it · Esc: cancel"
         : "Click: select (again: next on the cell) · drag: move · right click / Del: delete · A/D: turn"
       : tool === "select"
@@ -630,7 +659,19 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
             <label class="check" title="Moving an area takes the events, exits, enemies… standing in it along">
               <input type="checkbox" checked={carryEntities} onChange={(e) => setCarryEntities(e.currentTarget.checked)} /> entities along
             </label>
+            <button
+              class="icon-button"
+              disabled={!area || !entitiesIn(project.data<MapDef>(path), area).length}
+              onClick={() => area && setSavingArea(area)}
+              title="Save the entities in the selected area as a prefab (their cells relative to its top-left corner)"
+              aria-label="Save as prefab"
+            >
+              <PrefabIcon icon="prefab" size={18} />
+            </button>
           </>
+        )}
+        {savingArea && (
+          <SavePrefabWindow project={project} mapId={mapId} refs={entitiesIn(project.data<MapDef>(path), savingArea)} origin={{ x: savingArea.x, y: savingArea.y }} onClose={() => setSavingArea(null)} />
         )}
         <span class="spacer" />
         {view === "iso" && (

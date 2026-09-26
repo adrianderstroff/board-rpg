@@ -24,7 +24,7 @@ export function dataPath(path: string): string {
 }
 
 /** Collections whose entries are keyed by id (the library's get the `lib:` prefix). */
-const KEYED = ["classes", "heroes", "patterns", "statuses", "fieldEffects", "abilities", "items", "enemies", "npcs", "shops", "quests", "chipsets", "maps", "dialogs"] as const;
+const KEYED = ["classes", "heroes", "patterns", "statuses", "fieldEffects", "abilities", "items", "enemies", "npcs", "shops", "quests", "chipsets", "maps", "dialogs", "prefabs"] as const;
 const GRAPHICS = ["charsets", "battlers", "faces", "battlebacks"] as const;
 
 type Rec = Record<string, Record<string, unknown>>;

@@ -109,22 +109,29 @@ export function runAction(ctx: Ctx, a: Action, here?: Pos): ScriptResult {
   else if ("removeEvent" in a) {
     if (s.board) {
       const mem = mapMemory(ctx, board(ctx).mapId);
-      if (!mem.removedEvents.includes(a.removeEvent)) mem.removedEvents.push(a.removeEvent);
+      // made during play: gone from the map's memory; the map's own: remembered as removed
+      if (mem.spawned?.some((e) => e.id === a.removeEvent)) {
+        mem.spawned = mem.spawned.filter((e) => e.id !== a.removeEvent);
+        out.events.push({ type: "state", event: a.removeEvent, state: "" }, { type: "pieces" });
+      } else if (!mem.removedEvents.includes(a.removeEvent)) mem.removedEvents.push(a.removeEvent);
     }
   } else if ("spawnEnemy" in a) {
     if (s.board) out.events.push(...spawnMapEnemy(ctx, (a as { spawnEnemy: string }).spawnEnemy));
   } else if ("damage" in a || "heal" in a) {
-    // the heroes standing on the script's cell, or the whole party (on the board: they keep 1 HP)
+    // whoever stands on the script's cell (a trap the heroes set catches enemies), or the whole party;
+    // on the board heroes keep 1 HP
     const o = "damage" in a ? a.damage : a.heal;
-    const whom = (o.target ?? "here") === "party" || !here || !s.board ? s.roster.map((id) => s.heroes[id]) : piecesAt(ctx, here).filter((p) => p.faction === "hero").flatMap((p) => aliveMembers(ctx, p));
+    const whom = (o.target ?? "here") === "party" || !here || !s.board ? s.roster.map((id) => s.heroes[id]) : piecesAt(ctx, here).filter((p) => p.faction !== "npc").flatMap((p) => aliveMembers(ctx, p));
     if ("damage" in a && a.damage.cue === "trap" && here) out.events.push({ type: "trap", x: here.x, y: here.y });
     for (const c of whom) {
       if (!isAlive(c)) continue;
       if ("damage" in a) {
-        out.events.push(...dealDamage(ctx, c, a.damage.amount, { nonLethal: !!s.board }));
+        out.events.push(...dealDamage(ctx, c, a.damage.amount, { nonLethal: !!s.board && c.kind === "hero" }));
         if (a.damage.status && isAlive(c) && addStatus(ctx, c, a.damage.status)) out.events.push({ type: "status", target: c.id, status: a.damage.status, added: true });
       } else out.events.push(...heal(ctx, c, a.heal.amount));
     }
+    // an enemy a trap finished off leaves the board
+    if (s.board && whom.some((c) => c.kind !== "hero")) out.events.push(...reconcile(ctx));
   } else if ("move" in a || "face" in a || "emote" in a || ("camera" in a && a.camera.who)) {
     // someone on the board: an entity (its piece), a hero (their piece) or the party
     if (!s.board) return out;

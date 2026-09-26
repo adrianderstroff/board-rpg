@@ -1,7 +1,7 @@
 import { getChar, type Ctx } from "../context";
 import type { EventPageDef, Interaction } from "../data/types";
 import { steal } from "../effects/effects";
-import { activePage, board, isExploring, mapMemory, pageOfPiece, pieceOf, syncEvents } from "../board/board";
+import { activePage, board, isExploring, mapEvents, mapMemory, pageOfPiece, pieceOf, syncEvents } from "../board/board";
 import { isAlive } from "../chars/character";
 import { canStealFromNpc } from "../board/actions";
 import { markAbilityUsed } from "../board/turns";
@@ -92,7 +92,7 @@ function triggered(ctx: Ctx, trigger: "step" | "auto", where: (ev: { x: number; 
   const b = board(ctx);
   const mem = mapMemory(ctx, b.mapId);
   const results: InteractionOutcome[] = [];
-  for (const ev of ctx.db.map(b.mapId).events ?? []) {
+  for (const ev of mapEvents(ctx, b.mapId)) {
     if (!where(ev)) continue;
     const page = activePage(ctx, b.mapId, ev);
     if (!page || page.trigger !== trigger) continue;

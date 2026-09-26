@@ -155,7 +155,7 @@ export function applyEffect(ec: EffectContext, target: Character, e: EffectDef):
     }
     case "fieldEffect":
     case "freezeArea":
-    case "placeTrap":
+    case "placePrefab":
     case "discover":
     case "defuse":
     case "shock":

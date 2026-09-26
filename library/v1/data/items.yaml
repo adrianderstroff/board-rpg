@@ -175,7 +175,7 @@ snare:
   price: 40
   icon: status_stuck
   description: "A defused trap. Board (wild boards only): hide it on an empty cell – enemies stepping on it get hurt and stuck."
-  board: { range: lib:range2, targets: [emptyCell], wildOnly: true, effects: [{ type: placeTrap, damage: 15, status: lib:stuck }] }
+  board: { range: lib:range2, targets: [emptyCell], wildOnly: true, effects: [{ type: placePrefab, prefab: lib:snare_trap }] }
 
 # ---------------- key items ----------------
 village_charm:

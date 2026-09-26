@@ -11,6 +11,8 @@ import { ADD_INFO, KIND_INFO, listEntities, sameRef, type AddKind, type EntityKi
 import { removeEntity } from "../entities/remove";
 import { arrivalRole, createTeleport, nearestEdge } from "../entities/teleports";
 import { DestinationWindow } from "../entities/DestinationWindow";
+import { PrefabIcon, PrefabPicker } from "../entities/PrefabPicker";
+import { SavePrefabWindow } from "../entities/SavePrefabWindow";
 import type { Pos } from "../../../src/core/util/grid";
 import { usePersistentState } from "../persist";
 import { MapContext } from "../mapContext";
@@ -37,7 +39,8 @@ export function MapsScreen({ project, selected: mapSel, onSelect }: { project: P
   const [brush, setBrush] = usePersistentState<Brush>("maps.brush", DEFAULT_BRUSH, (b) => ({ ...DEFAULT_BRUSH, ...b }));
   // a resize being prepared on the Info tab (columns / rows added or removed), previewed on the canvas
   const [resizeBy, setResizeBy] = usePersistentState("maps.resizeBy", { x: 0, y: 0 });
-  const entities = { selected, select, placing, setPlacing, copying, setCopying, startTeleport: setPendingTeleport };
+  const [placingPrefab, setPlacingPrefab] = useState<string | null>(null);
+  const entities = { selected, select, placing, setPlacing, copying, setCopying, startTeleport: setPendingTeleport, placingPrefab, setPlacingPrefab };
   // another map: nothing selected, no resize pending (not on the first render: that's a reload)
   const shownMap = useRef(mapSel);
   useEffect(() => {
@@ -294,10 +297,23 @@ export function MusicPreview({ src: track }: { src?: string }) {
 
 /** Entities layer: add new ones, the list of all on this map, and the selected one's form. */
 function EntitiesPanel({ project, mapId, entities }: { project: Project; mapId: string; entities: EntitySelection }) {
-  const { selected, select, placing, setPlacing, copying, setCopying } = entities;
+  const { selected, select, placing, setPlacing, copying, setCopying, placingPrefab, setPlacingPrefab } = entities;
   const map = project.data<MapDef>(mapPath(mapId));
   const list = listEntities(map);
-  const adds = Object.keys(ADD_INFO) as AddKind[];
+  const db = project.content.db;
+  const [teleportMenu, setTeleportMenu] = useState(false);
+  const [picker, setPicker] = useState(false);
+  const [saving, setSaving] = useState<EntityRef[] | null>(null);
+  // one thing waits to be placed at a time
+  const place = (k: AddKind | null) => {
+    setCopying(null);
+    setPlacingPrefab(null);
+    setPlacing(placing === k ? null : k);
+    setTeleportMenu(false);
+  };
+  const teleportKinds: AddKind[] = ["teleport", "start", "quickplay"];
+  const teleportOn = !!placing && teleportKinds.includes(placing);
+  const prefabName = placingPrefab ? db?.prefabs.get(placingPrefab)?.name : null;
   const typeOf = (e: { kind: EntityKind; key: number | string }) => {
     if (e.kind !== "spawn") return KIND_INFO[e.kind].label;
     const role = arrivalRole(project, mapId, e.key as string);
@@ -305,13 +321,19 @@ function EntitiesPanel({ project, mapId, entities }: { project: Project; mapId: 
   };
   return (
     <div class="entities-panel">
-      <div class="add-grid">
-        {adds.map((k) => (
-          <button key={k} class={placing === k ? "on" : ""} title={`${ADD_INFO[k].hint} Click a cell to place it.`} onClick={() => (setCopying(null), setPlacing(placing === k ? null : k))}>
-            {ADD_INFO[k].label}
-          </button>
-        ))}
-      </div>
+      {picker && db && (
+        <PrefabPicker
+          db={db}
+          onClose={() => setPicker(false)}
+          onPick={(id) => {
+            setPicker(false);
+            setPlacing(null);
+            setCopying(null);
+            setPlacingPrefab(id);
+          }}
+        />
+      )}
+      {saving && <SavePrefabWindow project={project} mapId={mapId} refs={saving} onClose={() => setSaving(null)} />}
       {selected && list.some((e) => sameRef(e, selected)) ? (
         <>
           <EntityForm project={project} mapId={mapId} entity={selected} onSelect={select} />
@@ -320,6 +342,15 @@ function EntitiesPanel({ project, mapId, entities }: { project: Project; mapId: 
               ← All
             </button>
             <span class="spacer" />
+            <button
+              class="icon-button"
+              disabled={selected.kind === "spawn"}
+              title={selected.kind === "spawn" ? "Arrivals come with the teleport or start that leads here" : "Save as prefab: a ready-made copy to place again, on any map"}
+              aria-label="Save as prefab"
+              onClick={() => setSaving([selected])}
+            >
+              <PrefabIcon icon="prefab" size={18} />
+            </button>
             <button
               class={copying ? "on" : ""}
               disabled={selected.kind === "spawn"}
@@ -339,6 +370,38 @@ function EntitiesPanel({ project, mapId, entities }: { project: Project; mapId: 
           </div>
         </>
       ) : (
+        <>
+          <div class="section-head">
+            <h3>Add entity</h3>
+          </div>
+          <div class="add-row">
+            {(["event", "enemy"] as AddKind[]).map((k) => (
+              <button key={k} class={placing === k ? "on" : ""} title={`${ADD_INFO[k].hint} Click a cell to place it.`} onClick={() => place(k)}>
+                {ADD_INFO[k].label}
+              </button>
+            ))}
+            <div class="menu-anchor">
+              <button class={teleportOn ? "on" : ""} aria-haspopup="menu" aria-expanded={teleportMenu} title="A teleport, or where the game / Quick Play starts" onClick={() => setTeleportMenu(!teleportMenu)}>
+                {teleportOn ? ADD_INFO[placing!].label : "Teleport"} ▾
+              </button>
+              {teleportMenu && (
+                <div class="menu" role="menu">
+                  {teleportKinds.map((k) => (
+                    <button key={k} role="menuitem" class={placing === k ? "on" : ""} title={ADD_INFO[k].hint} onClick={() => place(k)}>
+                      {ADD_INFO[k].label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <span class="spacer" />
+            <button class={`icon-button ${placingPrefab ? "on" : ""}`} title={prefabName ? `Placing ${prefabName} – Esc: cancel` : "Place a prefab: ready-made entities (gates, plates, traps …)"} aria-label="Prefab" onClick={() => (placingPrefab ? setPlacingPrefab(null) : setPicker(true))}>
+              <PrefabIcon icon="prefab" size={20} />
+            </button>
+          </div>
+          <div class="section-head">
+            <h3>Entities</h3>
+          </div>
         <table class="entity-table">
           <thead>
             <tr>
@@ -359,6 +422,7 @@ function EntitiesPanel({ project, mapId, entities }: { project: Project; mapId: 
             ))}
           </tbody>
         </table>
+        </>
       )}
     </div>
   );

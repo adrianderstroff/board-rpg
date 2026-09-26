@@ -7,7 +7,7 @@ import { itemCount, removeItem } from "../items/inventory";
 import type { Character, Piece } from "../state/types";
 import type { Pos } from "../util/grid";
 import { samePos } from "../util/grid";
-import { recordAbility } from "./entities";
+import { recordAbility, spawnPrefab } from "./entities";
 import {
   aliveMembers,
   board,
@@ -154,15 +154,13 @@ function applyBoardUse(ctx: Ctx, user: Character, use: BoardUse, target: Pos, so
 }
 
 function applyCellEffects(ctx: Ctx, cell: Pos, effects: EffectDef[]): GameEvent[] {
-  const b = board(ctx);
   const events: GameEvent[] = [];
   if (!grid(ctx).cell(cell)) return events;
   for (const e of effects) {
     if (e.type === "fieldEffect" || e.type === "freezeArea") {
       events.push(...placeFieldEffect(ctx, cell, e.effect, e.rounds));
-    } else if (e.type === "placeTrap") {
-      b.traps.push({ x: cell.x, y: cell.y, damage: e.damage, status: e.status });
-      events.push({ type: "trap", x: cell.x, y: cell.y });
+    } else if (e.type === "placePrefab") {
+      events.push(...spawnPrefab(ctx, e.prefab, cell));
     }
   }
   return events;

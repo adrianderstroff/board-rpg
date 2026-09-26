@@ -1,5 +1,6 @@
 import type { Ctx } from "../context";
 import type { Condition } from "../data/types";
+import { mapEvents } from "../board/board";
 import { heroWeightOn, stateOf } from "../board/entities";
 
 /** §10.1 – state-based conditions shared by quests, events, dialogs and exits. */
@@ -11,7 +12,7 @@ export function check(ctx: Ctx, cond: Condition | undefined): boolean {
   if ("state" in cond) return stateOf(ctx, cond.state.event) === cond.state.is;
   if ("heroesOn" in cond) {
     if (!s.board) return false;
-    const ev = (ctx.db.map(s.board.mapId).events ?? []).find((e) => e.id === cond.heroesOn.event);
+    const ev = mapEvents(ctx, s.board.mapId).find((e) => e.id === cond.heroesOn.event);
     return !!ev && heroWeightOn(ctx, ev) >= (cond.heroesOn.weight ?? 1);
   }
   if ("not" in cond) return !check(ctx, cond.not);

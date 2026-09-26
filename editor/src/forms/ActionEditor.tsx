@@ -53,8 +53,8 @@ const KINDS: [string, string][] = [
   ["message", "Show a message"],
   ["reveal", "Reveal a hidden event"],
   ["setState", "Set an entity's state"],
-  ["damage", "Damage heroes"],
-  ["heal", "Heal heroes"],
+  ["damage", "Damage"],
+  ["heal", "Heal"],
   ["move", "Move someone"],
   ["face", "Turn someone"],
   ["hide", "Hide an entity"],
@@ -324,7 +324,7 @@ export function ActionEditor({ value, onChange, db, mapId }: { value: Script | u
               return (
                 <div class="row wrap">
                   <Num value={o.amount} min={0} width={56} onChange={(n) => put({ ...o, amount: n ?? 0 })} />
-                  <Select value={o.target} options={[["party", "the whole party"]]} empty="the heroes here" onChange={(t) => put({ ...o, target: t as "party" | undefined })} />
+                  <Select value={o.target} options={[["party", "the whole party"]]} empty="whoever stands here" onChange={(t) => put({ ...o, target: t as "party" | undefined })} />
                   {kind === "damage" && <Select value={o.status} options={[...db.statuses.values()].map((st) => [st.id, st.name] as [string, string])} empty="(no status)" onChange={(x) => put({ ...o, status: x })} />}
                   {kind === "damage" && (
                     <label class="check" title="Show a trap snapping on the cell">

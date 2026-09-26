@@ -349,6 +349,20 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ `copyEntryToProject` for content entries (heroes, items …) – its buttons come with the E5–E8 screens
 - ☑ Library versions in the project menu: moving to another version is checked first (what it lacks is listed; nothing moves then)
 
+# Prefabs (game-design §10.5, editor-design §6.5)
+
+## PF1 · Prefabs as content ☑
+- ☑ `prefabs` collection (library + project; `lib:` ids): events / enemies / exits, relative cells, `$` placeholders (also inside longer strings); validation; placing = fresh ids + rewired references (core/data/prefab.ts, shared by editor and game)
+- ☑ Library prefabs: gate, floor switch, plate and gate, hidden trap, snare trap
+
+## PF2 · Prefabs in the game ☑
+- ☑ Entities made during play (map memory `spawned`, saves); `placePrefab` effect; enter / leave / pass `by: heroes | enemies | anyone`; damage "here" = whoever stands there (enemies can die of it)
+- ☑ Snare and the Trap skill place `lib:snare_trap`; the runtime trap list and its rules removed
+
+## PF3 · Prefabs in the editor ☑
+- ☑ Entity panel: Add entity (Event, Enemy, Teleport ▾ with the starts, Prefab icon button + picker) and Entities headings; footprint preview (the prefab's looks) while placing
+- ☑ Save as prefab (entity form's bar; the Select tool's area) into the project's prefabs.yaml; handlers' *By* field
+
 # Editor (see [editor-design.md](editor-design.md))
 
 ## E1 · Editor foundation ☑

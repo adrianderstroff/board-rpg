@@ -281,26 +281,11 @@ export function slidePath(ctx: Ctx, piece: Piece): Pos[] {
   return out;
 }
 
-/** Landing on a cell: field effects apply to every member, traps trigger for enemies. */
+/** Landing on a cell: field effects apply to every member (traps are entities: their handlers run when things settle). */
 export function applyLanding(ctx: Ctx, piece: Piece): GameEvent[] {
-  if (isFlyingPiece(ctx, piece)) return []; // hovers over fire, mud, ice and traps
+  if (isFlyingPiece(ctx, piece)) return []; // hovers over fire, mud and ice
   const events: GameEvent[] = [];
-  const b = board(ctx);
-  const members = aliveMembers(ctx, piece);
   events.push(...cellEffects(ctx, piece));
-  if (piece.faction === "enemy") {
-    const trap = b.traps.find((t) => t.x === piece.x && t.y === piece.y);
-    if (trap) {
-      b.traps = b.traps.filter((t) => t !== trap);
-      events.push({ type: "trap", x: trap.x, y: trap.y, triggeredBy: piece.id });
-      for (const c of members) {
-        events.push(...dealDamage(ctx, c, trap.damage));
-        if (trap.status && isAlive(c) && addStatus(ctx, c, trap.status)) {
-          events.push({ type: "status", target: c.id, status: trap.status, added: true });
-        }
-      }
-    }
-  }
   events.push(...reconcile(ctx));
   return events;
 }

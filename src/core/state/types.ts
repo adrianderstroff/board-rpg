@@ -1,4 +1,4 @@
-import type { EquipSlot } from "../data/types";
+import type { EquipSlot, MapEventDef } from "../data/types";
 import type { Dir, Pos } from "../util/grid";
 import type { RngState } from "../util/rng";
 
@@ -66,13 +66,6 @@ export interface FieldEffectInst {
   spreads?: boolean;
 }
 
-export interface TrapInst {
-  x: number;
-  y: number;
-  damage: number;
-  status?: string;
-}
-
 export interface TurnState {
   round: number;
   /** Character ids that finished their turn this round. */
@@ -90,7 +83,6 @@ export interface BoardState {
   /** Enemy and NPC characters living on this board (heroes live in GameState.heroes). */
   chars: Record<string, Character>;
   fieldEffects: FieldEffectInst[];
-  traps: TrapInst[];
   turn: TurnState;
   /** Enemy types whose stats were revealed on this board this round (ambush reduction). */
   perceivedRound?: number;
@@ -129,6 +121,12 @@ export interface MapMemory {
   became?: Record<string, boolean>;
   /** `once` handlers that have run ("event#index"). */
   ranOnce?: string[];
+  /** Entities made during play (prefabs placed by abilities, §10.5), with the map's own. */
+  spawned?: MapEventDef[];
+  /** Numbers the ids of entities made during play. */
+  spawnNo?: number;
+  /** Entities enemy pieces stand on (their enter / leave, like `occupied` for the heroes). */
+  enemyOn?: string[];
   /** Entities a script moved: where they stand now. */
   positions?: Record<string, { x: number; y: number }>;
   /** Exits a script opened (true) or closed (false), by cell "x,y". */
