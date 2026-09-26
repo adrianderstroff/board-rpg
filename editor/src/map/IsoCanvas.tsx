@@ -45,6 +45,8 @@ export interface Ghost {
   cut?: Corner[];
   /** Blocks: the frame for the blocks below the top. */
   fill?: number;
+  /** The cells it covers (a rectangle being dragged, the area a fill reaches); default: the hovered cell. */
+  cells?: Pos[];
 }
 
 /** Duration (ms) of a quarter turn of the view – eased like the game's board rotation. */
@@ -76,11 +78,11 @@ class MapScene extends Phaser.Scene {
   private pan?: { x: number; y: number; sx: number; sy: number };
   private painting = false;
   private entityObjects: Phaser.GameObjects.GameObject[] = [];
-  private ghostImage?: Phaser.GameObjects.Image;
+  private ghostImages: Phaser.GameObjects.Image[] = [];
   /** A terrain ghost: a one-cell map view (so pieces are cut exactly like on the board), see-through. */
   private ghostView?: IsoMapView;
   /** The cell whose own blocks are hidden while the ghost stands in for them. */
-  private replaced?: Pos;
+  private replaced: Pos[] = [];
   /**
    * Grid lines: one thin, smooth outline per cell (holes at ground level) – drawn in the cell's place
    * in the drawing order, so blocks in front cover them; kept up to date while the view turns.
@@ -288,9 +290,11 @@ class MapScene extends Phaser.Scene {
     const start = view.cellTop(pivot.x, pivot.y);
     const offset = { x: cam.midPoint.x - start.x, y: cam.midPoint.y - start.y };
     for (const o of this.entityObjects) (o as unknown as { setVisible: (v: boolean) => void }).setVisible(false);
-    this.ghostImage?.setVisible(false);
+    for (const im of this.ghostImages) im.setVisible(false);
     this.ghostView?.destroy();
     this.ghostView = undefined;
+    for (const p of this.replaced) view.setCellVisible(p.x, p.y, true);
+    this.replaced = [];
     view.clearOverlay("hover");
     view.beginSpin();
     this.spin = this.tweens.addCounter({
@@ -361,42 +365,41 @@ class MapScene extends Phaser.Scene {
     const view = this.view;
     this.ghostView?.destroy();
     this.ghostView = undefined;
-    if (this.replaced) view?.setCellVisible(this.replaced.x, this.replaced.y, true);
-    this.replaced = undefined;
-    if (!g || !view || !this.hover || this.spin || !this.textures.exists(g.texture)) {
-      this.ghostImage?.setVisible(false);
-      return;
-    }
-    const h = this.hover;
+    for (const p of this.replaced) view?.setCellVisible(p.x, p.y, true);
+    this.replaced = [];
+    for (const im of this.ghostImages) im.setVisible(false);
+    const cells = g?.cells ?? (this.hover ? [this.hover] : []);
+    if (!g || !view || !cells.length || this.spin || !this.textures.exists(g.texture)) return;
     if (g.kind === "block") {
-      // the block as it will be: its terrain, its piece shape, at the height it will get
-      this.ghostImage?.setVisible(false);
+      // the blocks as they will be: their terrain, the piece shape, at the height they will get
       const chip = getGrid(this.props.db, this.props.mapId).chipset;
+      const outline = cutSquare((g.cut ?? []).map((k) => CORNERS[k]));
       const src: IsoMapSource = {
         metrics: { tileWidth: chip.tileWidth, tileHeight: chip.tileHeight, blockHeight: chip.blockHeight },
-        cells: [{ x: h.x, y: h.y, height: g.level ?? view.heightAt(h.x, h.y), top: g.frame, fill: g.fill ?? g.frame, outline: cutSquare((g.cut ?? []).map((k) => CORNERS[k])) }],
+        cells: cells.map((c) => ({ x: c.x, y: c.y, height: g.level ?? view.heightAt(c.x, c.y), top: g.frame, fill: g.fill ?? g.frame, outline })),
         blockTexture: g.texture,
         blockFrameHeight: chip.frameHeight,
         decorTexture: K.decor(chip.id),
         decorFrameHeight: chip.decorFrameHeight,
         decorAnchorY: chip.decorAnchorY,
       };
-      // it replaces the cell's block for now: same place in the drawing order, the old block hidden
+      // they replace the cells' blocks for now: same place in the drawing order, the old blocks hidden
       this.ghostView = new IsoMapView(this, src, (x, y) => rotateContinuous(x, y, this.shownRotation));
       this.ghostView.setPreviewLook(0.92, 0.001);
-      view.setCellVisible(h.x, h.y, false);
-      this.replaced = { x: h.x, y: h.y };
+      for (const c of cells) view.setCellVisible(c.x, c.y, false);
+      this.replaced = cells;
       return;
     }
-    const top = view.cellTop(h.x, h.y);
-    if (!this.ghostImage) this.ghostImage = this.add.image(0, 0, g.texture, g.frame);
-    this.ghostImage
-      .setTexture(g.texture, g.frame)
-      .setOrigin(0.5, g.originY)
-      .setPosition(top.x, top.y)
-      .setAlpha(0.65)
-      .setDepth(view.depthOf(h.x, h.y, LAYER.decor, 0.9))
-      .setVisible(true);
+    cells.forEach((c, i) => {
+      const top = view.cellTop(c.x, c.y);
+      const im = (this.ghostImages[i] ??= this.add.image(0, 0, g.texture, g.frame));
+      im.setTexture(g.texture, g.frame)
+        .setOrigin(0.5, g.originY)
+        .setPosition(top.x, top.y)
+        .setAlpha(0.65)
+        .setDepth(view.depthOf(c.x, c.y, LAYER.decor, 0.9))
+        .setVisible(true);
+    });
   }
 
   drawMarkers() {

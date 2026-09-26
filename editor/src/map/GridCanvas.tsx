@@ -188,8 +188,9 @@ export function GridCanvas({ db, mapId, hideDecor, dim, markers, entities, ghost
       g.fillText(ch, px + S - 10 - n * 10, py + S - 2);
     }
     // what the next click places
-    if (ghost && hover) {
-      const [px, py] = at(hover.x, hover.y);
+    for (const gc of ghost ? (ghost.cells ?? (hover ? [hover] : [])) : []) {
+      if (!ghost) break;
+      const [px, py] = at(gc.x, gc.y);
       if (ghost.kind === "block") {
         const id = Object.entries(chip.terrains).find(([, t]) => t.frame === ghost.frame)?.[0];
         if (id && tops[id]) {

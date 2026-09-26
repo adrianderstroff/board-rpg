@@ -327,7 +327,8 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
         if (t) return setTool(t.id);
       }
       // while a preview shows under the cursor, W/S and A/D change what the next click places
-      const previewing = (mode === "board" && brush.board === "terrain" && (tool === "pencil" || tool === "rect")) || (mode === "decor" && (tool === "pencil" || tool === "rect"));
+      const painting = tool === "pencil" || tool === "rect" || tool === "fill";
+      const previewing = painting && ((mode === "board" && brush.board === "terrain") || mode === "decor");
       if (previewing && mode === "board" && (k === "w" || k === "s")) {
         const g = db ? getGrid(db, mapId) : null;
         const h = hoverRef.current;
@@ -402,13 +403,14 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
   const pastePreview = pasting && clipboard && hover ? { x: hover.x, y: hover.y, w: clipboard.w, h: clipboard.h } : null;
   const markers: Marker[] = useMemo(
     () => [
-      ...preview.map((p) => ({ ...p, frame: 3 })),
+      // a dragged rectangle shows the ghost blocks; only erasing (right drag) or lintels mark it
+      ...(stroke.current?.erase || (mode === "board" && brush.board !== "terrain") ? preview.map((p) => ({ ...p, frame: 3 })) : []),
       ...(sel && mode === "entity" ? [{ x: sel.x, y: sel.y, frame: 2 }] : []),
       ...(area && mode !== "entity" && !moving ? areaCells(area, 3) : []),
       ...(moving ? areaCells(moving, 3) : []),
       ...(pastePreview ? areaCells(pastePreview, 3) : []),
     ],
-    [preview, sel?.x, sel?.y, area, mode, moving?.x, moving?.y, pastePreview?.x, pastePreview?.y, pastePreview?.w],
+    [preview, brush.board, sel?.x, sel?.y, area, mode, moving?.x, moving?.y, pastePreview?.x, pastePreview?.y, pastePreview?.w],
   );
   // entity mode shows everything with labels; the other modes only what the game itself shows
   const sprites = useMemo(() => {
@@ -417,18 +419,24 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
     return mode === "entity" ? all : all.filter((e) => e.texture && !e.editorOnly).map((e) => ({ ...e, label: undefined }));
   }, [db, mapData, rotation, entities.selected, mode]);
   // what the next click places, see-through under the cursor: a terrain block or a decor object
+  // the rectangle being dragged (not while erasing) or the area the fill would reach; else the hovered cell
+  const ghostCells: Pos[] | undefined = useMemo(() => {
+    if (tool === "rect" && preview.length && !stroke.current?.erase) return preview;
+    if (tool === "fill") return hover && mode !== "entity" ? floodArea(mapData, mode === "decor" ? "decor" : "terrain", hover) : [];
+    return undefined;
+  }, [tool, preview, hover?.x, hover?.y, mode, mapData]);
   const ghost: Ghost | null = useMemo(() => {
-    if (!chip || tool === "select" || tool === "pick" || tool === "fill") return null;
+    if (!chip || tool === "select" || tool === "pick") return null;
     if (mode === "board") {
       const t = chip.terrains[brush.terrain];
       if (brush.board !== "terrain" || !t) return null;
-      return { texture: K.chipset(chip.id), frame: t.frame, originY: chip.tileHeight / 2 / chip.frameHeight, kind: "block", level: brush.height ?? undefined, cut: brush.piece, fill: t.fill ?? t.frame };
+      return { texture: K.chipset(chip.id), frame: t.frame, originY: chip.tileHeight / 2 / chip.frameHeight, kind: "block", level: brush.height ?? undefined, cut: brush.piece, fill: t.fill ?? t.frame, cells: ghostCells };
     }
     const d = chip.decor[brush.decor];
     if (mode !== "decor" || !d) return null;
     const turns = d.views ? (["S", "W", "N", "E"].indexOf(brush.decorFacing) + rotation) % 4 : 0;
-    return { texture: K.decor(chip.id), frame: d.frame + (d.views ? turns : 0), originY: chip.decorAnchorY / chip.decorFrameHeight };
-  }, [mode, brush.decor, brush.decorFacing, brush.terrain, brush.board, brush.height, brush.piece, chip, tool, rotation]);
+    return { texture: K.decor(chip.id), frame: d.frame + (d.views ? turns : 0), originY: chip.decorAnchorY / chip.decorFrameHeight, cells: ghostCells };
+  }, [mode, brush.decor, brush.decorFacing, brush.terrain, brush.board, brush.height, brush.piece, chip, tool, rotation, ghostCells]);
 
   if (!db) return <div class="placeholder">The content has errors – fix them to see the map (see the problems badge).</div>;
   const grid = getGrid(db, mapId);
@@ -501,14 +509,6 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
           </>
         )}
         <span class="spacer" />
-        <div class="segmented">
-          <button class={view === "iso" ? "on" : ""} onClick={() => setView("iso")} title="The map as the game draws it">
-            Iso
-          </button>
-          <button class={view === "grid" ? "on" : ""} onClick={() => setView("grid")} title="Flat top view – quick for large areas">
-            Top
-          </button>
-        </div>
         {view === "iso" && (
           <>
             <button class="icon-button" onClick={() => setRotation((r) => (r + 3) % 4)} title="Turn the view left (Q)" aria-label="Turn left">
@@ -519,6 +519,14 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
             </button>
           </>
         )}
+        <div class="segmented">
+          <button class={view === "iso" ? "on" : ""} onClick={() => setView("iso")} title="The map as the game draws it">
+            Iso
+          </button>
+          <button class={view === "grid" ? "on" : ""} onClick={() => setView("grid")} title="Flat top view – quick for large areas">
+            Top
+          </button>
+        </div>
       </div>
       <div class="canvas-area">{view === "iso" ? <IsoCanvas {...canvasProps} rotation={rotation} /> : <GridCanvas {...gridProps} />}</div>
       <div class="status">

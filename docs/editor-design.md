@@ -124,8 +124,8 @@ entity and enters the map. The normal game build is unaffected.
   ground level – in both views; in the iso view they sit in the drawing order (blocks in front cover
   them) and turn with the map.
 - **Strip** (above the canvas): the modes, then the tools as icons (their names in tooltips), a
-  divider and two on/off buttons (pressed when on) for the grid and the decor; the view switch
-  (Iso / Top) and the turn buttons are on the right.
+  divider and two on/off buttons (pressed when on) for the grid and the decor; the turn buttons and
+  the view switch (Iso / Top) are on the right.
 - **Top view** (toggle): a flat grid of the same cells for fast painting of large areas; each cell
   shows its terrain's top texture unwarped from the diamond into a square, its height as a number
   and its decor as a thumbnail. Centred on the map at first; wheel zooms around the cursor, middle
@@ -143,13 +143,14 @@ The canvas has three modes (keys 1 / 2 / 3); each shows only its own tools and b
 | **Decor** | objects (`layers.decor`; facing in `layers.decorDir`) – the board is greyed out and the object to place follows the cursor see-through | place / remove | raise / lower | turn a directional object (or the brush) |
 | **Entity** | events, exits, spawns, enemies, gates, switches, traps, signs, the Quick Play start (§6) | select, drag / delete | – | turn the selected one |
 
-**Preview:** with the pencil or the rectangle, what the next click places follows the cursor
+**Preview:** with the pencil, the rectangle or the fill, what the next click places follows the cursor
+(the rectangle shows it over the whole dragged area, the fill over the area it would reach)
 – in Board mode the terrain block, cut to the brush's piece at the height it will get, temporarily
 replacing the cell's own block; in
 Decor mode the object facing its way; the other layer is greyed out (decor while painting the board,
 the board while placing decor). While the preview shows, W / S set the brush's height and A / D turn
 the brush's piece or object; a left click applies them, and they stay for the next cells and other
-terrains (once set, the brush shows its height with a button to go back to keeping the cells'). With the select, fill or pick tool
+terrains (once set, the brush shows its height with a button to go back to keeping the cells'). With the select or pick tool
 the keys act on the map instead: the hovered cell, or the selected area while the cursor is in it.
 Heights have no menu of their own: W / S are the height tool. Pieces (full block, half, point) are
 chosen at the top of the Board brush and painted together with the terrain. The per-map **legend** (character → terrain id) is
