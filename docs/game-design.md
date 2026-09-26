@@ -480,7 +480,8 @@ plate_gate:                     # a floor plate that holds a gate open
   until nobody stands there), **floor switch** (up / down: *enter* → down, *leave* with no hero left
   → up), **plate and gate** (both, wired), **hidden trap** (armed and hidden / revealed / sprung:
   *pass over* → damage, *Stuck*, sprung; Discover reveals, Defuse takes apart), **snare trap** (the
-  heroes' own, above).
+  heroes' own, above), **chest** (containers: closed / open – *Open* gives its item, an input,
+  once).
 
 ### 10.4 Quest engine
 - A **quest** has a title, description, optional parent (**hierarchical**: a quest step can require sub-quests to be done), a `lockSwitch` flag and ordered **steps**.

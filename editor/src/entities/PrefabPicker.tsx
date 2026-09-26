@@ -23,9 +23,15 @@ export function PrefabPicker({ db, onPick, onClose }: { db: Database; onPick: (i
     .sort((a, b) => Number(a.id.startsWith("lib:")) - Number(b.id.startsWith("lib:")) || a.name.localeCompare(b.name));
   const categories = [...new Set(shown.map((p) => p.category ?? "other"))].sort();
   return (
-    <FloatingWindow id="prefab-picker" title="Place a prefab" onClose={onClose} size={{ w: 460, h: 480 }}>
+    <FloatingWindow
+      id="prefab-picker"
+      title="Place a prefab"
+      onClose={onClose}
+      size={{ w: 460, h: 480 }}
+      // the search stays in place; only the prefabs scroll
+      toolbar={<input class="search prefab-search" autoFocus placeholder="Search prefabs…" value={filter} onInput={(e) => setFilter(e.currentTarget.value)} />}
+    >
       <div class="prefab-picker">
-        <input class="search" autoFocus placeholder="Search prefabs…" value={filter} onInput={(e) => setFilter(e.currentTarget.value)} />
         {categories.map((cat) => (
           <section key={cat}>
             <h4>{cat}</h4>

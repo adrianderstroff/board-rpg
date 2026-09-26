@@ -15,6 +15,7 @@ export const ENTITY_ICONS: Record<string, string> = {
   trap: "M3 19h18 M5 19l2-7 2 7 M10 19l2-9 2 9 M15 19l2-7 2 7",
   sign: "M4 5h16v9H4z M12 14v6 M8 20h8",
   quickplay: "M8 5v14l11-7z",
+  chest: "M4 10h16v9H4z M4 10l2-4h12l2 4 M11 10v3h2v-3",
   /** A prefab: stacked blocks. */
   prefab: "M4 9l8-4 8 4-8 4z M4 13l8 4 8-4 M4 17l8 4 8-4",
 };

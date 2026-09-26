@@ -56,4 +56,20 @@ describe("prefabs (§10.5)", () => {
     const b = placePrefab(lever, { x: 0, y: 0 }, () => false, { name: (n) => `${n}~7` });
     expect(b.ids).toMatchObject({ lever: "lever~7", pulled: "pulled~7", lever_done: "lever~7_done", door: "gate" });
   });
+
+  it("the library's Chest: its item chosen when placing, given once, then it stays open", async () => {
+    const { arena, arenaCtx } = await import("./helpers");
+    const { interactionsFor, performInteraction } = await import("../core/script/interact");
+    const { stateOf } = await import("../core/board/entities");
+    const db = loadDatabase();
+    const chest = placePrefab(db.prefabs.get("lib:chest")!, { x: 3, y: 2 }, () => false, { inputs: { loot: "lib:ether" } });
+    const ctx = arenaCtx({ ...arena(), events: chest.events });
+    const opts = interactionsFor(ctx, "lib:aldric", "n:chest");
+    expect(opts.map((o) => o.label)).toEqual(["Open"]);
+    const before = ctx.state.inventory["lib:ether"] ?? 0;
+    performInteraction(ctx, "lib:aldric", "n:chest", opts[0]);
+    expect(ctx.state.inventory["lib:ether"]).toBe(before + 1);
+    expect(stateOf(ctx, "chest")).toBe("open");
+    expect(interactionsFor(ctx, "lib:aldric", "n:chest")).toEqual([]);
+  });
 });

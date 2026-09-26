@@ -91,3 +91,20 @@ snare_trap:
       on:
         - { on: pass, by: enemies, do: [{ damage: { amount: 15, status: lib:stuck, cue: trap } }, { removeEvent: $snare }] }
         - { on: ability, ability: lib:defuse, do: [{ removeEvent: $snare }] }
+
+chest:
+  name: Chest
+  category: containers
+  icon: chest
+  description: A closed chest – opening it gives its item (chosen when placing) once; it stays open.
+  inputs:
+    loot: { label: Item, type: item, default: lib:potion }
+  events:
+    - id: $chest
+      x: 0
+      y: 0
+      states:
+        closed: { decor: chest_closed }
+        open: { decor: chest_open }
+      on:
+        - { on: interact, when: { state: { event: $chest, is: closed } }, label: Open, do: [{ sound: chest }, { giveItem: $loot }, { setState: { event: $chest, state: open } }] }
