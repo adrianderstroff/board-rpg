@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { parseDocument } from "yaml";
 import { loadDatabase } from "../../../src/content/loader";
 import type { MapDef } from "../../../src/core/data/types";
-import { entitiesIn, placePrefabOnMap, prefabFootprint, prefabFrom, prefabNames } from "./prefabs";
+import { entitiesIn, placePrefabOnMap, prefabFootprint, prefabFrom, prefabSlots, type PrefabSlot } from "./prefabs";
 import { canMoveGroup, groupAnchor, groupPrefab, moveGroup } from "./group";
 
 const load = () => {
@@ -59,22 +59,34 @@ describe("prefabs in the editor (editor-design §6.5)", () => {
     expect(prefab.events![2].on![0].when).toEqual({ state: { event: "$plate", is: "down" } });
   });
 
-  it("names: ids and flags named after them are per copy by default, other flags shared; the choice decides", () => {
+  it("values: what each becomes – per copy, fixed or set on placement (with the current value as default)", () => {
     const rows = Array.from({ length: 8 }, () => "    ssssssss").join("\n");
     const doc = parseDocument(["name: Empty", "chipset: lib:desert", "legend: { terrain: { s: sand } }", "layers:", "  terrain: |", rows, "spawns: {}", ""].join("\n"));
     const map = () => doc.toJS() as MapDef;
     placePrefabOnMap(doc, map(), db.prefabs.get("lib:gate")!, { x: 1, y: 1 });
     doc.setIn(["events", 0, "on", 0, "do", 1], doc.createNode({ setFlag: "lever_pulled" }));
+    doc.setIn(["events", 0, "on", 0, "do", 2], doc.createNode({ giveItem: "lib:potion" }));
+    doc.setIn(["events", 0, "on", 0, "do", 3], doc.createNode({ setState: { event: "far_door", state: "open" } }));
     const refs = [{ kind: "event" as const, key: 0 }];
-    expect(prefabNames(map(), refs)).toEqual([
-      { name: "gate", kind: "entity", perCopy: true },
-      { name: "gate_open", kind: "flag", perCopy: true },
-      { name: "lever_pulled", kind: "flag", perCopy: false },
+    const slots = prefabSlots(map(), refs);
+    expect(slots.map((s) => [s.kind, s.value, s.mode])).toEqual([
+      ["entity", "gate", "perCopy"],
+      ["outside", "far_door", "fixed"],
+      ["flag", "gate_open", "perCopy"],
+      ["flag", "lever_pulled", "fixed"],
+      ["item", "lib:potion", "fixed"],
     ]);
-    const shared = prefabFrom(map(), refs, { x: 1, y: 1 }, ["gate"]);
-    expect(shared.events![0].on![0].when).toEqual({ flag: "gate_open" }); // shared now
-    const own = prefabFrom(map(), refs, { x: 1, y: 1 }, ["gate", "gate_open", "lever_pulled"]);
-    expect(JSON.stringify(own.events)).toContain('"$lever_pulled"');
+    const choose = (patch: Record<string, Partial<PrefabSlot>>) => slots.map((s) => ({ ...s, ...(patch[s.value] ?? {}) }));
+    const fixed = prefabFrom(map(), refs, { x: 1, y: 1 }, choose({ gate_open: { mode: "fixed" } }));
+    expect(fixed.events![0].on![0].when).toEqual({ flag: "gate_open" });
+    const inputs = prefabFrom(map(), refs, { x: 1, y: 1 }, choose({ "lib:potion": { mode: "input", label: "Loot" }, far_door: { mode: "input", label: "Door" }, lever_pulled: { mode: "perCopy" } }));
+    expect(inputs.inputs).toEqual({ door: { label: "Door", type: "entity", default: "far_door" }, loot: { label: "Loot", type: "item", default: "lib:potion" } });
+    expect(inputs.events![0].on![0].do!.slice(1)).toEqual([{ setFlag: "$lever_pulled" }, { giveItem: "$loot" }, { setState: { event: "$door", state: "open" } }]);
+    // placed with inputs: the chosen values, per copy names renamed
+    const prefab = { id: "x", name: "x", ...inputs };
+    const placed = placePrefabOnMap(doc, map(), prefab, { x: 5, y: 5 }, { inputs: { loot: "lib:ether", door: "gate" }, takenName: (n) => n === "lever_pulled" });
+    const ev = map().events![placed[0].key as number];
+    expect(ev.on![0].do!.slice(1)).toEqual([{ setFlag: "lever_pulled_2" }, { giveItem: "lib:ether" }, { setState: { event: "gate", state: "open" } }]);
   });
 
   it("a group moves together only where all of it fits; duplicating it is a prefab of it", () => {

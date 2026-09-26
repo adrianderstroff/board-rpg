@@ -5,7 +5,7 @@ import { check } from "../script/conditions";
 import { emptyResult, merge, runActions, type ScriptResult } from "../script/actions";
 import type { Pos } from "../util/grid";
 import { aliveMembers, board, mapEvents, mapMemory, piecesAt, syncEvents } from "./board";
-import { placeholders, rewire } from "../data/prefab";
+import { placePrefab } from "../data/prefab";
 
 /**
  * Entities with states and handlers (§10.3): an event without pages has named states – a look and
@@ -51,9 +51,8 @@ export function spawnPrefab(ctx: Ctx, prefabId: string, at: Pos): GameEvent[] {
   if (!prefab) throw new Error(`Unknown prefab "${prefabId}"`);
   const mem = mapMemory(ctx, board(ctx).mapId);
   const n = (mem.spawnNo = (mem.spawnNo ?? 0) + 1);
-  // made during play: numbered ids of their own, so they never meet the map's
-  const ids = Object.fromEntries(placeholders(prefab).map((name) => [name, `${name}~${n}`]));
-  const spawned = rewire(prefab.events ?? [], ids).map((ev) => ({ ...ev, x: ev.x + at.x, y: ev.y + at.y }));
+  // made during play: numbered names of their own, so they never meet the map's; inputs take their defaults
+  const spawned = placePrefab(prefab, at, () => false, { name: (placeholder) => `${placeholder}~${n}` }).events;
   (mem.spawned ??= []).push(...spawned);
   return [...spawned.map((ev) => ({ type: "state" as const, event: ev.id, state: currentState(ctx, board(ctx).mapId, ev) ?? "" })), ...syncEvents(ctx), { type: "pieces" as const }];
 }

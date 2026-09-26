@@ -365,6 +365,12 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ Save as prefab window: description, icon, anchor, and per copy / shared for every id, flag and variable the entities use (no more implicit "starts with an id" rule)
 - ☑ Groups: Shift+click, a rectangle on empty cells; drag to move them all; group panel with anchor, Save as prefab, Duplicate group, Delete group (editor-design §6.6)
 
+## PF4 · Prefab inputs ☑
+- ☑ Per copy flags / variables really renamed on placement (named after an entity: follow it; else a free name)
+- ☑ `inputs` (label, type, default) – entity, flag, variable, item, dialog, shop, enemy, music; defaults during play; validation (scripts checked with the defaults)
+- ☑ Save as prefab: every value the entities use with its mode (per copy · fixed · on placement) – outside entities and content found too; tooltips per mode
+- ☑ Placing: a window asks for the inputs (defaults filled in); entity inputs from the map's entities
+
 # Editor (see [editor-design.md](editor-design.md))
 
 ## E1 · Editor foundation ☑

@@ -7,12 +7,18 @@ import type { Project } from "../project";
 import { ENTITY_ICONS } from "./icons";
 import { listEntities, sameRef, type EntityRef } from "./model";
 import { PrefabIcon } from "./PrefabPicker";
-import { prefabFrom, prefabNames, savePrefab } from "./prefabs";
+import { prefabFrom, prefabSlots, savePrefab, SLOT_MODES, type PrefabSlot, type SlotMode } from "./prefabs";
 
-/** The tooltip of a name's per copy / shared choice. */
-function sharingHint(kind: "entity" | "flag" | "variable", perCopy: boolean): string {
-  if (kind === "entity") return perCopy ? "Each copy is a separate entity" : "Each copy is the same entity – ids are unique on a map, so only one copy per map";
-  return perCopy ? `Each copy has its own ${kind}` : `All copies use the same ${kind}`;
+const MODE_LABEL: Record<SlotMode, string> = { perCopy: "per copy", fixed: "fixed", input: "on placement" };
+
+/** The tooltip of a value's mode. */
+function modeHint(kind: PrefabSlot["kind"], mode: SlotMode): string {
+  const what = kind === "outside" ? "entity" : kind;
+  if (mode === "perCopy") return kind === "entity" ? "Each copy is a separate entity" : `Each copy has its own ${what}`;
+  if (mode === "input") return kind === "outside" ? "Chosen when placing: which entity of the map" : `Chosen when placing (this one is the default)`;
+  if (kind === "entity") return "Each copy is the same entity – ids are unique on a map, so only one copy per map";
+  if (kind === "outside") return "Every copy refers to this same entity (it isn't part of the prefab)";
+  return `Every copy uses this same ${what}`;
 }
 
 /**
@@ -36,12 +42,12 @@ export function SavePrefabWindow({ project, mapId, refs, origin, onClose }: { pr
     const e = chosen[Number(anchor)];
     return { x: e.x, y: e.y };
   })();
-  const [names, setNames] = useState(() => prefabNames(map, chosenRefs));
+  const [slots, setSlots] = useState(() => prefabSlots(map, chosenRefs));
+  const setSlot = (i: number, patch: Partial<PrefabSlot>) => setSlots(slots.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   const [saved, setSaved] = useState<string | null>(null);
   const categories = [...new Set([...(project.content.db?.prefabs.values() ?? [])].map((p) => p.category).filter(Boolean) as string[])].sort();
   const save = () => {
-    const perCopy = names.filter((n) => n.perCopy).map((n) => n.name);
-    setSaved(savePrefab(project, name.trim(), category.trim() || undefined, prefabFrom(map, chosenRefs, at, perCopy), { icon, description: description.trim() || undefined }));
+    setSaved(savePrefab(project, name.trim(), category.trim() || undefined, prefabFrom(map, chosenRefs, at, slots), { icon, description: description.trim() || undefined }));
   };
   return (
     <FloatingWindow id="save-prefab" title="Save as prefab" onClose={onClose} size={{ w: 480, h: 620 }}>
@@ -101,19 +107,25 @@ export function SavePrefabWindow({ project, mapId, refs, origin, onClose }: { pr
               ))}
             </select>
           </Field>
-          {names.length > 0 && (
-            <Field label="Names">
+          {slots.length > 0 && (
+            <Field label="Values">
               <table class="prefab-names">
                 <tbody>
-                  {names.map((n, i) => (
-                    <tr key={`${n.kind}:${n.name}`}>
-                      <td class="dim">{n.kind}</td>
-                      <td>{n.name}</td>
+                  {slots.map((n, i) => (
+                    <tr key={`${n.kind}:${n.value}`}>
+                      <td class="dim">{n.kind === "outside" ? "entity (outside)" : n.kind}</td>
+                      <td>
+                        {n.mode === "input" ? (
+                          <input class="slot-label" value={n.label} title={`Asked for when placing – default ${n.value}`} onInput={(e) => setSlot(i, { label: e.currentTarget.value })} />
+                        ) : (
+                          n.value
+                        )}
+                      </td>
                       <td>
                         <div class="segmented">
-                          {[true, false].map((per) => (
-                            <button key={String(per)} type="button" class={n.perCopy === per ? "on" : ""} title={sharingHint(n.kind, per)} onClick={() => setNames(names.map((x, j) => (j === i ? { ...x, perCopy: per } : x)))}>
-                              {per ? "per copy" : "shared"}
+                          {SLOT_MODES[n.kind].map((mode) => (
+                            <button key={mode} type="button" class={n.mode === mode ? "on" : ""} title={modeHint(n.kind, mode)} onClick={() => setSlot(i, { mode })}>
+                              {MODE_LABEL[mode]}
                             </button>
                           ))}
                         </div>

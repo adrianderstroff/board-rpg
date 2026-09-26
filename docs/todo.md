@@ -3,6 +3,24 @@
 Ideas that are designed but not built yet. When one is picked up, move its design into
 [game-design.md](game-design.md), add a work package to [packages.md](packages.md) and remove it here.
 
+## Prefabs: numbers as inputs
+- **What:** a prefab's numbers (a trap's damage, the gold in a chest, a wait) chosen when it is
+  placed, like its other inputs (game-design §10.5, editor-design §6.5).
+- **Design:** in Save as prefab, a number of a script or condition can be *promoted to an input*
+  (label, default = the number) – the Names list would get far too long if every number showed up
+  by itself, so it stays opt-in: a small "input" toggle next to number fields, or picking them in a
+  second list.
+- **Open question:** where the toggle lives (the Save window, or the entity form itself).
+
+## Prefabs: linked copies
+- **What:** placed copies that follow their prefab – change the prefab (a better trap), every
+  placed copy changes too. Today placing makes an independent copy.
+- **Design:** a placed copy remembers its prefab (`prefab: lib:gate` plus its inputs' values and
+  the ids it got); the editor re-places it when the prefab changes, keeping the copy's cell, ids and
+  inputs. Edits to a linked copy either unlink it or are refused ("edit the prefab").
+- **Open questions:** what happens to copies' own edits; saves that remember a copy's states when
+  the prefab's states change.
+
 ## Map events (§10)
 Today a map event is one cell with pages (`when`, last match wins) and a `trigger`:
 `interact` (a hero moves onto the cell), `step` (a hero ends a move there), `auto` (map entry

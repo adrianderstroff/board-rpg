@@ -1,5 +1,5 @@
 import { isMap, isPair, isScalar, isSeq, type Document, type YAMLMap } from "yaml";
-import { placePrefab, prefabCells } from "../../../src/core/data/prefab";
+import { placePrefab, prefabCells, type PlaceOptions } from "../../../src/core/data/prefab";
 import type { MapDef, MapEventDef, PrefabDef } from "../../../src/core/data/types";
 import type { Pos } from "../../../src/core/util/grid";
 import { mapSize } from "../map/layers";
@@ -27,9 +27,9 @@ export function prefabFootprint(map: MapDef, prefab: PrefabDef, at: Pos): { cell
 }
 
 /** Places a prefab on the map (fresh ids for its placeholders, references rewired); every entity it added. */
-export function placePrefabOnMap(doc: Document, map: MapDef, prefab: PrefabDef, at: Pos): EntityRef[] {
+export function placePrefabOnMap(doc: Document, map: MapDef, prefab: PrefabDef, at: Pos, opts: PlaceOptions = {}): EntityRef[] {
   const taken = new Set([...(map.events ?? []), ...(map.enemies ?? [])].map((e) => e.id));
-  const placed = placePrefab(prefab, at, (id) => taken.has(id));
+  const placed = placePrefab(prefab, at, (id) => taken.has(id), opts);
   const firstEvent = map.events?.length ?? 0;
   if (placed.events.length && doc.getIn(["events"]) === undefined) doc.set("events", doc.createNode([], { flow: false }));
   for (const ev of placed.events) doc.addIn(["events"], eventNode(doc, ev));
@@ -41,60 +41,126 @@ export function placePrefabOnMap(doc: Document, map: MapDef, prefab: PrefabDef, 
   return [...from("event", firstEvent, placed.events.length), ...from("enemy", map.enemies?.length ?? 0, placed.enemies.length), ...from("exit", map.exits?.length ?? 0, placed.exits.length)];
 }
 
-/** A name the chosen entities use: an entity's id, a flag or a variable – per copy or shared in a prefab. */
-export interface PrefabName {
-  name: string;
-  kind: "entity" | "flag" | "variable";
-  /** What Save as prefab suggests: ids and flags / variables named after one of them per copy, the rest shared. */
-  perCopy: boolean;
+/** What a value of the chosen entities becomes in a prefab (editor-design §6.5). */
+export type SlotMode = "perCopy" | "fixed" | "input";
+
+/**
+ * A value the chosen entities use: their own ids, entities outside the selection they name, flags,
+ * variables, and content (items, dialogs, shops, enemies, music) – with what it becomes when placed.
+ */
+export interface PrefabSlot {
+  value: string;
+  kind: "entity" | "outside" | "flag" | "variable" | "item" | "dialog" | "shop" | "enemy" | "music";
+  mode: SlotMode;
+  /** For an input: what the placing window asks. */
+  label: string;
 }
+
+/** The modes a kind of value can take. */
+export const SLOT_MODES: Record<PrefabSlot["kind"], SlotMode[]> = {
+  entity: ["perCopy", "fixed"],
+  outside: ["fixed", "input"],
+  flag: ["perCopy", "fixed", "input"],
+  variable: ["perCopy", "fixed", "input"],
+  item: ["fixed", "input"],
+  dialog: ["fixed", "input"],
+  shop: ["fixed", "input"],
+  enemy: ["fixed", "input"],
+  music: ["fixed", "input"],
+};
 
 const pickEntities = (map: MapDef, refs: EntityRef[]) => {
   const pick = <T,>(kind: EntityRef["kind"], list: T[] | undefined) => refs.filter((r) => r.kind === kind).map((r) => structuredClone(list![r.key as number]));
   return { events: pick("event", map.events), enemies: pick("enemy", map.enemies), exits: pick("exit", map.exits) };
 };
 
-/** The names the chosen entities use (their ids, the flags and variables their scripts and conditions name). */
-export function prefabNames(map: MapDef, refs: EntityRef[]): PrefabName[] {
+const LABELS: Record<PrefabSlot["kind"], string> = { entity: "Entity", outside: "Entity", flag: "Flag", variable: "Variable", item: "Item", dialog: "Dialog", shop: "Shop", enemy: "Enemy", music: "Music" };
+
+/** Every value the chosen entities use that a prefab can treat on its own, with a suggested mode. */
+export function prefabSlots(map: MapDef, refs: EntityRef[]): PrefabSlot[] {
   const { events, enemies, exits } = pickEntities(map, refs);
   const ids = [...events, ...enemies].map((e) => e.id);
-  const flags = new Set<string>();
-  const vars = new Set<string>();
+  const found = new Map<string, PrefabSlot["kind"]>();
+  const add = (value: unknown, kind: PrefabSlot["kind"]) => {
+    if (typeof value !== "string" || !value || found.has(`${kind}:${value}`)) return;
+    found.set(`${kind}:${value}`, kind);
+  };
+  const entityRef = (v: unknown) => {
+    if (typeof v !== "string" || v === "party" || v.startsWith("lib:")) return;
+    add(v, ids.includes(v) ? "entity" : "outside");
+  };
   const walk = (v: unknown): void => {
     if (Array.isArray(v)) return v.forEach(walk);
     if (!v || typeof v !== "object") return;
-    for (const [k, x] of Object.entries(v)) {
-      if ((k === "setFlag" || k === "clearFlag" || k === "flag") && typeof x === "string") flags.add(x);
-      else if ((k === "setVar" || k === "addVar" || k === "var") && x && typeof x === "object" && typeof (x as { name?: unknown }).name === "string") vars.add((x as { name: string }).name);
+    for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+      if (k === "setFlag" || k === "clearFlag" || k === "flag") add(x, "flag");
+      else if ((k === "setVar" || k === "addVar" || k === "var") && x && typeof x === "object") add((x as { name?: string }).name, "variable");
+      else if ((k === "setState" || k === "state" || k === "heroesOn") && x && typeof x === "object") entityRef((x as { event?: string }).event);
+      else if (k === "removeEvent" || k === "reveal" || k === "hide" || k === "show") entityRef(x);
+      else if ((k === "move" || k === "face" || k === "emote" || k === "camera") && x && typeof x === "object") {
+        const who = (x as { who?: string }).who;
+        if (who && !who.startsWith("lib:")) entityRef(who);
+      } else if (k === "giveItem" || k === "takeItem" || k === "item") add(typeof x === "object" && x ? (x as { id?: string }).id : x, "item");
+      else if (k === "dialog") add(x, "dialog");
+      else if (k === "shop") add(x, "shop");
+      else if (k === "music") add(x, "music");
       walk(x);
     }
   };
-  walk([...events, ...enemies, ...exits]);
-  const named = (n: string) => ids.some((id) => n === id || n.startsWith(`${id}_`));
-  return [
-    ...ids.map((name) => ({ name, kind: "entity" as const, perCopy: true })),
-    ...[...flags].sort().map((name) => ({ name, kind: "flag" as const, perCopy: named(name) })),
-    ...[...vars].sort().map((name) => ({ name, kind: "variable" as const, perCopy: named(name) })),
-  ];
+  walk([...events.map((e) => ({ ...e, id: undefined })), ...exits]);
+  for (const e of enemies) {
+    add(e.enemy, "enemy");
+    walk({ ...e, id: undefined, enemy: undefined });
+  }
+  const named = (n: string) => ids.some((id) => n.startsWith(`${id}_`));
+  const slots: PrefabSlot[] = ids.map((value) => ({ value, kind: "entity", mode: "perCopy", label: LABELS.entity }));
+  for (const [key, kind] of found) {
+    const value = key.slice(kind.length + 1);
+    if (kind === "entity") continue; // listed above
+    const mode: SlotMode = (kind === "flag" || kind === "variable") && named(value) ? "perCopy" : "fixed";
+    slots.push({ value, kind, mode, label: LABELS[kind] });
+  }
+  const order = Object.keys(LABELS);
+  return slots.sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind) || a.value.localeCompare(b.value));
+}
+
+/** A placeholder name for a slot: its value for per copy names, the label (made unique) for inputs. */
+function tokenFor(slot: PrefabSlot, used: Set<string>): string {
+  const base = slot.mode === "input" ? slot.label : slot.value;
+  const clean = base.replace(/[^A-Za-z0-9_]+/g, "_").replace(/^_+|_+$/g, "").toLowerCase() || "value";
+  let t = clean;
+  for (let n = 2; used.has(t); n++) t = `${clean}_${n}`;
+  used.add(t);
+  return t;
 }
 
 /**
- * A prefab from a map's entities (events, enemies, exits – not arrivals): cells relative to `origin`,
- * and the `perCopy` names (ids, flags, variables) become placeholders wherever a value is exactly
- * one of them – each placement gets its own. The rest stays as it is, shared by every copy.
+ * A prefab from a map's entities (events, enemies, exits – not arrivals): cells relative to `origin`;
+ * `slots` say what each value becomes – per copy and inputs are replaced by `$placeholders` wherever
+ * a value is exactly theirs, inputs are listed with their label, type and the current value as
+ * default. Values not in `slots` stay as they are.
  */
-export function prefabFrom(map: MapDef, refs: EntityRef[], origin: Pos, perCopy: Iterable<string> = prefabNames(map, refs).filter((n) => n.perCopy).map((n) => n.name)): Omit<PrefabDef, "id" | "name"> {
+export function prefabFrom(map: MapDef, refs: EntityRef[], origin: Pos, slots: PrefabSlot[] = prefabSlots(map, refs)): Omit<PrefabDef, "id" | "name"> {
   const { events, enemies, exits } = pickEntities(map, refs);
-  const names = new Set(perCopy);
+  const used = new Set<string>();
+  const replace = new Map<string, string>();
+  const inputs: NonNullable<PrefabDef["inputs"]> = {};
+  // entities first: their tokens are their ids (per copy names named after them follow them when placed)
+  for (const slot of [...slots].sort((a, b) => Number(b.kind === "entity") - Number(a.kind === "entity"))) {
+    if (slot.mode === "fixed" || replace.has(slot.value)) continue;
+    const token = tokenFor(slot, used);
+    replace.set(slot.value, `$${token}`);
+    if (slot.mode === "input") inputs[token] = { label: slot.label, type: slot.kind === "outside" ? "entity" : (slot.kind as NonNullable<PrefabDef["inputs"]>[string]["type"]), default: slot.value };
+  }
   const toPlaceholder = (v: unknown): unknown => {
-    if (typeof v === "string") return names.has(v) ? `$${v}` : v;
+    if (typeof v === "string") return replace.get(v) ?? v;
     if (Array.isArray(v)) return v.map(toPlaceholder);
     if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, toPlaceholder(x)]));
     return v;
   };
-  // variables are named in objects ({ var: { name } }) – the same exact rule covers them
   const rel = <T extends { x: number; y: number }>(e: T): T => ({ ...(toPlaceholder(e) as T), x: e.x - origin.x, y: e.y - origin.y });
   return {
+    ...(Object.keys(inputs).length ? { inputs } : {}),
     ...(events.length ? { events: events.map(rel) } : {}),
     ...(enemies.length ? { enemies: enemies.map(rel) } : {}),
     ...(exits.length ? { exits: exits.map(rel) } : {}),
@@ -121,6 +187,7 @@ export function savePrefab(project: Project, name: string, category: string | un
     if (!project.paths(PREFABS_FILE).length) project.create(PREFABS_FILE, "# The project's own prefabs (game-design §10.5): cells relative to where they are placed; $ids get fresh ids.\n");
     project.edit(PREFABS_FILE, `Save prefab ${name}`, (doc: Document) => {
       doc.setIn([id], doc.createNode({ name: entry.name, ...(entry.category ? { category: entry.category } : {}), icon: entry.icon, ...(extra.description ? { description: extra.description } : {}) }));
+      if (body.inputs) doc.setIn([id, "inputs"], doc.createNode(body.inputs));
       for (const list of ["events", "enemies", "exits"] as const) {
         const items = body[list];
         if (!items?.length) continue;

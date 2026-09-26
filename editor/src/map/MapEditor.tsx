@@ -9,6 +9,8 @@ import { entitiesIn, placePrefabOnMap, prefabFootprint } from "../entities/prefa
 import { canMoveGroup, deleteGroup, groupAnchor, groupMembers, moveGroup } from "../entities/group";
 import { PrefabIcon } from "../entities/PrefabPicker";
 import { SavePrefabWindow } from "../entities/SavePrefabWindow";
+import { PlaceInputsWindow } from "../entities/PlaceInputsWindow";
+import { knownFlags } from "../forms/ConditionEditor";
 import { placePrefab } from "../../../src/core/data/prefab";
 import { addEntity, entitiesAt, entityPath, listEntities, moveEntity, sameRef, type EntityKind, type EntityRef, duplicateEntity, type AddKind } from "../entities/model";
 import { entitySprites, placingSprite } from "../entities/visuals";
@@ -121,6 +123,18 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
   };
   /** The prefab waiting to be placed: one of the content's, or a group being duplicated. */
   const prefabOf = (p: string | PrefabDef) => (typeof p === "string" ? db?.prefabs.get(p) : p);
+  /** A prefab placed on a cell waits for its inputs (the placing window). */
+  const [asking, setAsking] = useState<{ prefab: PrefabDef; at: Pos; group: boolean } | null>(null);
+  /** Places a prefab (with its inputs' values): its first entity is selected – a duplicated group becomes the new group. */
+  const placeAt = (prefab: PrefabDef, at: Pos, group: boolean, inputs?: Record<string, string>) => {
+    const flags = new Set(knownFlags(project.content.raw));
+    let refs: EntityRef[] = [];
+    project.edit(path, group ? "Duplicate group" : `Place ${prefab.name}`, (doc) => {
+      refs = placePrefabOnMap(doc, doc.toJS() as MapDef, prefab, at, { inputs, takenName: (n) => flags.has(n) });
+    });
+    entities.setPlacingPrefab(null);
+    choose(group ? refs : refs.slice(0, 1));
+  };
   /** Selects `refs`: one entity is the usual selection, more are a group. */
   const choose = (refs: EntityRef[]) => {
     if (refs.length > 1) {
@@ -256,13 +270,9 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
         const placing = entities.placingPrefab;
         const prefab = prefabOf(placing);
         if (!prefab || !prefabFootprint(project.data<MapDef>(path), prefab, c).fits.every(Boolean)) return;
-        let refs: EntityRef[] = [];
-        project.edit(path, typeof placing === "string" ? `Place ${prefab.name}` : "Duplicate group", (doc) => {
-          refs = placePrefabOnMap(doc, doc.toJS() as MapDef, prefab, c);
-        });
-        entities.setPlacingPrefab(null);
-        // a prefab's first entity is selected; a duplicated group is the new group
-        choose(typeof placing === "string" ? refs.slice(0, 1) : refs);
+        // inputs: asked for first (a window), then placed
+        if (Object.keys(prefab.inputs ?? {}).length) return setAsking({ prefab, at: c, group: typeof placing !== "string" });
+        placeAt(prefab, c, typeof placing !== "string");
         return;
       }
       if (entities.placing || entities.copying) {
@@ -741,6 +751,18 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
               <PrefabIcon icon="prefab" size={18} />
             </button>
           </>
+        )}
+        {asking && (
+          <PlaceInputsWindow
+            project={project}
+            mapId={mapId}
+            prefab={asking.prefab}
+            onClose={() => setAsking(null)}
+            onPlace={(inputs) => {
+              placeAt(asking.prefab, asking.at, asking.group, inputs);
+              setAsking(null);
+            }}
+          />
         )}
         {savingArea && (
           <SavePrefabWindow project={project} mapId={mapId} refs={entitiesIn(project.data<MapDef>(path), savingArea)} origin={{ x: savingArea.x, y: savingArea.y }} onClose={() => setSavingArea(null)} />

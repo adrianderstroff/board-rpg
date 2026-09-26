@@ -325,11 +325,21 @@ Ready-made groups of entities (game-design §10.5), the library's and the projec
   the Select tool marked (Board / Decor mode). The window asks for a name and a category; below a
   divider it holds everything else a prefab has: a **description** (for the picker), an **icon**,
   the **anchor** (the cell a click places: their top-left corner, or one of the entities' cells) and
-  the **names** the entities use – their ids, and the flags and variables their scripts and
-  conditions name – each **per copy** (every placed copy gets its own: `gate`, `gate_2` …, so copies
-  don't affect each other) or **shared** (every copy uses the same – a flag the whole game knows).
-  Ids, and flags / variables named after one of them, start as per copy, the rest as shared. It
-  goes into the project's `data/prefabs.yaml`.
+  **what each value becomes when placed** – one row per value the entities use, each with a mode:
+
+  | Value | Modes |
+  |---|---|
+  | the prefab's own entities (their ids) | per copy · fixed (only one copy per map then) |
+  | entities outside the selection (a gate the lever opens) | fixed · set on placement |
+  | flags, variables | per copy · fixed · set on placement |
+  | content: items, dialogs, shops, enemies, music | fixed · set on placement |
+
+  *Per copy*: each placement gets its own; *fixed*: kept as it is; *set on placement*: asked for
+  when placing (a label; the current value is the default). Ids and flags / variables named after
+  one of them start as per copy, outside entities and content as fixed, other flags / variables as
+  fixed. It goes into the project's `data/prefabs.yaml`.
+- **Placing a prefab with inputs**: after the click a small window asks for them, the defaults
+  filled in (Enter places it); an entity input is chosen from the map's entities.
 
 ### 6.6 Groups
 Several entities can be selected at once in Entity mode: **Shift+click** adds an entity to the

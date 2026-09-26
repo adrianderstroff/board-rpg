@@ -654,6 +654,18 @@ export interface PrefabDef {
   events?: MapEventDef[];
   enemies?: MapEnemyDef[];
   exits?: ExitDef[];
+  /** Values asked for when it is placed (§10.5), by placeholder name; during play their defaults are used. */
+  inputs?: Record<string, PrefabInput>;
+}
+
+/** The kinds of values a prefab can ask for when it is placed. */
+export const PREFAB_INPUT_TYPES = ["entity", "flag", "variable", "item", "dialog", "shop", "enemy", "music"] as const;
+export type PrefabInputType = (typeof PREFAB_INPUT_TYPES)[number];
+
+export interface PrefabInput {
+  label: string;
+  type: PrefabInputType;
+  default?: string;
 }
 
 export interface MapEventDef {

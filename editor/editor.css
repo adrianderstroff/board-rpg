@@ -390,3 +390,5 @@ table.prefab-names .segmented button { font-size: 11px; padding: 2px 8px; }
 .box { border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 8px; margin-bottom: 10px; }
 .box > .field { margin: 4px 0 6px; }
 .box > table.entity-table:first-child th { padding-top: 2px; }
+table.prefab-names input.slot-label { width: 100%; font-size: 12px; padding: 2px 6px; }
+table.prefab-names .segmented button { white-space: nowrap; }

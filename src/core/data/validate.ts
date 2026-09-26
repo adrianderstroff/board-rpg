@@ -1,7 +1,8 @@
 import { BoardGrid } from "../board/grid";
 import type { Database } from "./database";
-import { EMOTES, type Action, type BattleUse, type BoardUse, type Condition, type DialogNode, type EffectDef, type GraphicsRef, type PatternRef, type Script } from "./types";
+import { EMOTES, PREFAB_INPUT_TYPES, type Action, type BattleUse, type BoardUse, type Condition, type DialogNode, type EffectDef, type GraphicsRef, type PatternRef, type Script } from "./types";
 import { BUILTIN } from "./builtins";
+import { rewire } from "./prefab";
 
 /**
  * Cross-reference check of all content. Returns human readable problems (empty = OK).
@@ -210,7 +211,7 @@ export function validateContent(db: Database): string[] {
       if (!v || typeof v !== "object") return;
       const o = v as Record<string, unknown>;
       const ref = (o.setState ?? o.state) as { event?: string; state?: string; is?: string } | undefined;
-      if (ref && typeof ref === "object" && ref.event?.startsWith("$")) {
+      if (ref && typeof ref === "object" && ref.event?.startsWith("$") && !p.inputs?.[ref.event.slice(1)]) {
         const s = states.get(ref.event);
         const name = ref.state ?? ref.is;
         if (!s) err(where, `no entity "${ref.event}" with states in this prefab`);
@@ -218,7 +219,9 @@ export function validateContent(db: Database): string[] {
       }
       Object.values(o).forEach((x) => refs(x, where));
     };
-    for (const ev of p.events ?? []) {
+    // scripts are checked with the inputs' defaults in place ($loot → the default item)
+    const defaults = Object.fromEntries(Object.entries(p.inputs ?? {}).filter(([, i]) => i.default).map(([n, i]) => [n, i.default!]));
+    for (const ev of rewire(p.events ?? [], defaults)) {
       const ew = `${w} event ${ev.id}`;
       if (!ev.pages && !ev.states) err(ew, "needs pages or states");
       for (const [name, st] of Object.entries(ev.states ?? {})) {
@@ -232,9 +235,21 @@ export function validateContent(db: Database): string[] {
         condition(h.when, hw);
         actions(h.do, hw);
       }
-      refs(ev.on, ew);
     }
-    for (const e of p.enemies ?? []) for (const id of [e.enemy, ...(e.party ?? [])]) has(db.enemies, id, w, "enemy");
+    for (const ev of p.events ?? []) refs(ev.on, `${w} event ${ev.id}`);
+    // inputs: a known type and a default that exists
+    for (const [name, input] of Object.entries(p.inputs ?? {})) {
+      const iw = `${w} input ${name}`;
+      if (!(PREFAB_INPUT_TYPES as readonly string[]).includes(input.type)) err(iw, `unknown type "${input.type}"`);
+      const d = input.default;
+      if (d === undefined || d === "") continue;
+      if (input.type === "item") has(db.items, d, iw, "item");
+      else if (input.type === "dialog") has(db.dialogs, d, iw, "dialog");
+      else if (input.type === "shop") has(db.shops, d, iw, "shop");
+      else if (input.type === "enemy") has(db.enemies, d, iw, "enemy");
+    }
+    const isInput = (v: string) => v.startsWith("$") && !!p.inputs?.[v.slice(1)];
+    for (const e of p.enemies ?? []) for (const id of [e.enemy, ...(e.party ?? [])]) if (!isInput(id)) has(db.enemies, id, w, "enemy");
     for (const e of p.exits ?? []) if (!db.maps.has(e.to)) err(w, `exit to unknown map "${e.to}"`);
   }
   // chipsets: terrain that burns must burn into a known terrain

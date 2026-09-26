@@ -447,9 +447,26 @@ plate_gate:                     # a floor plate that holds a gate open
     - { id: $gate,  x: 0, y: -3, states: { closed: {…}, open: {…} }, on: [ … ] }
 ```
 
-- **Placeholders:** ids starting with `$` get fresh ids when placed (`$gate` → `gate`, `gate_2` …),
-  and every string naming a placeholder (a `setState`, a `state` condition) is rewired to them –
-  ten plate-and-gates on one map don't clash.
+- **Placeholders:** a value written `$name` is filled in when the prefab is placed. The prefab's
+  own entities get fresh ids (`$gate` → `gate`, `gate_2` …) and every value naming them follows –
+  ten plate-and-gates on one map don't clash. Other `$names` (a flag, a variable) are **per copy**
+  too: named after one of its entities they follow it (`$gate_open` → `gate_2_open`), otherwise
+  they get a free name of their own.
+- **Inputs:** values that are asked for when the prefab is placed – the gate a lever opens (an
+  entity of the map), the item in a chest, a dialog, a shop, an enemy, a music track, a flag or a
+  variable name. A prefab lists them with a label, a type and a default; the values use `$name`
+  like placeholders:
+
+  ```yaml
+  chest:
+    inputs:
+      loot: { label: Item, type: item, default: lib:potion }
+    events:
+      - { id: $chest, …, on: [{ on: interact, do: [{ giveItem: $loot }, …] }] }
+  ```
+
+  Placed during play (the Thief's traps) a prefab takes its inputs' defaults.
+- Everything else in a prefab is **fixed**: kept exactly as written in every copy.
 - **Placing is a copy**: changing a prefab later doesn't change what was placed.
 - **In the editor** (editor-design §6.5): a picker to place one (its footprint follows the cursor),
   and *Save as prefab* from an entity or the entities in a selected area.
