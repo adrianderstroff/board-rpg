@@ -9,6 +9,12 @@ import { listEntities, sameRef, type EntityRef } from "./model";
 import { PrefabIcon } from "./PrefabPicker";
 import { prefabFrom, prefabNames, savePrefab } from "./prefabs";
 
+/** The tooltip of a name's per copy / shared choice. */
+function sharingHint(kind: "entity" | "flag" | "variable", perCopy: boolean): string {
+  if (kind === "entity") return perCopy ? "Each copy is a separate entity" : "Each copy is the same entity – ids are unique on a map, so only one copy per map";
+  return perCopy ? `Each copy has its own ${kind}` : `All copies use the same ${kind}`;
+}
+
 /**
  * Save as prefab (editor-design §6.5): the chosen entities of a map become a prefab of the project.
  * Name and category first; below the divider everything else a prefab holds – its description and
@@ -96,7 +102,7 @@ export function SavePrefabWindow({ project, mapId, refs, origin, onClose }: { pr
             </select>
           </Field>
           {names.length > 0 && (
-            <Field label="Names" hint="Per copy: each placement gets its own. Shared: all placements use the same one.">
+            <Field label="Names">
               <table class="prefab-names">
                 <tbody>
                   {names.map((n, i) => (
@@ -106,7 +112,7 @@ export function SavePrefabWindow({ project, mapId, refs, origin, onClose }: { pr
                       <td>
                         <div class="segmented">
                           {[true, false].map((per) => (
-                            <button key={String(per)} type="button" class={n.perCopy === per ? "on" : ""} onClick={() => setNames(names.map((x, j) => (j === i ? { ...x, perCopy: per } : x)))}>
+                            <button key={String(per)} type="button" class={n.perCopy === per ? "on" : ""} title={sharingHint(n.kind, per)} onClick={() => setNames(names.map((x, j) => (j === i ? { ...x, perCopy: per } : x)))}>
                               {per ? "per copy" : "shared"}
                             </button>
                           ))}
