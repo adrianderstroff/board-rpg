@@ -217,6 +217,60 @@ async function d_endParty(d) {
 // ---------------- scenarios ----------------
 
 const scenarios = {
+  /** Editor entities (editor-design §6): place an exit, drag an event, give a page a condition, delete, undo. */
+  async editorEntities(d) {
+    const page = d.page;
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.setViewportSize({ width: 1400, height: 820 });
+    await page.goto(new URL("editor/", url).href);
+    await page.getByText("Temple of the Still Sky").click();
+    await page.waitForFunction(() => window.__editorMap?.view);
+    await sleep(500);
+    const f = "data/maps/temple.yaml";
+    const data = () => page.evaluate((f) => window.__editor.project.data(f), f);
+    const at = (x, y) => page.evaluate(([x, y]) => window.__editorMap.cellScreen(x, y), [x, y]);
+    const exits0 = (await data()).exits.length;
+    // place a new exit and send it to Sandhollow's inn door
+    await page.locator(".add-grid").getByRole("button", { name: "Exit", exact: true }).click();
+    let p = await at(2, 7);
+    await page.mouse.click(p.x, p.y);
+    await sleep(300);
+    await page.locator(".entity-form select").nth(1).selectOption("sandhollow");
+    await page.locator(".entity-form select").nth(2).selectOption("from_inn");
+    let m = await data();
+    d.expect(m.exits.length === exits0 + 1 && m.exits[exits0].to === "sandhollow" && m.exits[exits0].spawn === "from_inn", `new exit to sandhollow/from_inn (${JSON.stringify(m.exits[exits0])})`);
+    await d.shot("exit");
+    // drag the free cushion one cell over
+    p = await at(5, 5);
+    const q = await at(6, 5);
+    await page.mouse.move(p.x, p.y);
+    await page.mouse.down();
+    await page.mouse.move(q.x, q.y, { steps: 6 });
+    await page.mouse.up();
+    await sleep(300);
+    m = await data();
+    const cushion = m.events.find((e) => e.id === "free_cushion");
+    d.expect(cushion.x === 6 && cushion.y === 5, `dragged the cushion (${cushion.x},${cushion.y})`);
+    // its page is only active once a flag is set
+    await page.locator(".page-form .condition select").first().selectOption("flag");
+    await page.locator(".page-form .condition input").first().fill("monks_awake");
+    m = await data();
+    d.expect(m.events.find((e) => e.id === "free_cushion").pages[0].when?.flag === "monks_awake", "page condition set");
+    d.expect((await page.evaluate(() => window.__editor.project.content.problems)).length === 0, "still no problems");
+    await d.shot("page");
+    // select the new exit again and delete it with the Delete key
+    await page.getByRole("button", { name: "← All entities" }).click();
+    p = await at(2, 7);
+    await page.mouse.click(p.x, p.y);
+    await page.locator(".toolbar .title").click();
+    await page.keyboard.press("Delete");
+    d.expect((await data()).exits.length === exits0, "deleted the exit");
+    for (let i = 0; i < 12; i++) await page.keyboard.press("Control+z");
+    d.expect(await page.getByRole("button", { name: "Save", exact: true }).isDisabled(), "undo back to the file on disk");
+    d.expect(!errors.length, `no page errors (${errors})`);
+  },
+
   /** Editor map canvas (editor-design §5): pencil, rectangle, fill, pick, height, rotation, undo – with the real mouse. */
   async editorMapPaint(d) {
     const page = d.page;
@@ -247,6 +301,7 @@ const scenarios = {
       await sleep(150);
     };
     const before = await row("terrain", 7);
+    await page.keyboard.press("1"); // terrain layer
     // pencil: grass (the default brush) on one cell
     await click(4, 7);
     d.expect((await row("terrain", 7))[4] === "g", "pencil painted grass");

@@ -3,6 +3,7 @@ import { useProject } from "./hooks";
 import { playtest } from "./playtest";
 import type { Project } from "./project";
 import { MapsScreen } from "./screens/MapsScreen";
+import { knownFlags } from "./forms/ConditionEditor";
 
 /** Navigation entries; the ones without a screen yet are shown greyed out (editor-design §12). */
 const SCREENS = [
@@ -77,8 +78,15 @@ export function App({ project }: { project: Project }) {
 
   const mapName = map ? (project.content.db?.maps.get(map)?.name ?? map) : null;
 
+  const flags = knownFlags(project.content.raw);
   return (
     <div class="shell">
+      {/* suggestions for every flag field */}
+      <datalist id="known-flags">
+        {flags.map((f) => (
+          <option key={f} value={f} />
+        ))}
+      </datalist>
       <div class="toolbar">
         <span class="title">Board RPG Editor</span>
         <button class="primary" onClick={() => playtest(project, "play")} title="Run the game from the title screen with the current content">

@@ -2,16 +2,28 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { MapDef } from "../../../src/core/data/types";
 import { resize } from "../map/layers";
 import { LAYERS, MapEditor, Palette, type Brush, type Layer } from "../map/MapEditor";
+import { EntityForm } from "../entities/EntityForm";
+import { deleteEntity, KIND_INFO, listEntities, sameRef, type EntityKind, type EntityRef } from "../entities/model";
+import { ActionEditor } from "../forms/ActionEditor";
+import { Field, fileSetter } from "../forms/fields";
 import type { Project } from "../project";
 import { QuickPlayForm } from "./QuickPlayForm";
 
 const mapPath = (id: string) => `data/maps/${id}.yaml`;
 
 /** Maps: list, canvas with layers and tools (editor-design §5), inspector with brush, properties and Quick Play. */
-export function MapsScreen({ project, selected, onSelect }: { project: Project; selected: string | null; onSelect: (id: string) => void }) {
+export function MapsScreen({ project, selected: mapSel, onSelect }: { project: Project; selected: string | null; onSelect: (id: string) => void }) {
   const [filter, setFilter] = useState("");
   const [tab, setTab] = useState<"paint" | "map" | "quick">("paint");
-  const [layer, setLayer] = useState<Layer>("terrain");
+  const [layer, setLayer] = useState<Layer>("entities");
+  const [selected, select] = useState<EntityRef | null>(null);
+  const [placing, setPlacing] = useState<EntityKind | null>(null);
+  const entities = { selected, select, placing, setPlacing };
+  // another map: nothing selected
+  useEffect(() => {
+    select(null);
+    setPlacing(null);
+  }, [mapSel]);
   const [brush, setBrush] = useState<Brush>({ terrain: "grass", decor: "palm", heightMode: "raise", height: 1, shape: ["NW"], facing: "N", lintel: "adobe", lintelTop: 5 });
   const ids = project.paths("data/maps/").map((p) => p.replace(/^data\/maps\//, "").replace(/\.yaml$/, ""));
   const shown = ids.filter((id) => {
@@ -41,7 +53,7 @@ export function MapsScreen({ project, selected, onSelect }: { project: Project; 
           <div class="list">
             <input class="search" placeholder="Search maps…" value={filter} onInput={(e) => setFilter(e.currentTarget.value)} />
             {shown.map((id) => (
-              <div key={id} class={`item ${selected === id ? "active" : ""}`} onClick={() => onSelect(id)}>
+              <div key={id} class={`item ${mapSel === id ? "active" : ""}`} onClick={() => onSelect(id)}>
                 <span>
                   {project.data<MapDef>(mapPath(id))?.name ?? id}
                   {dirty.has(mapPath(id)) && <span class="dirty"> ●</span>}
@@ -50,15 +62,15 @@ export function MapsScreen({ project, selected, onSelect }: { project: Project; 
               </div>
             ))}
           </div>
-          {selected ? <MapEditor project={project} mapId={selected} layer={layer} brush={brush} setBrush={setBrush} /> : <p class="placeholder">Select a map.</p>}
+          {mapSel ? <MapEditor project={project} mapId={mapSel} layer={layer} brush={brush} setBrush={setBrush} entities={entities} /> : <p class="placeholder">Select a map.</p>}
         </div>
       </main>
       <aside class="inspector">
-        {selected && (
+        {mapSel && (
           <>
             <div class="tabs">
               <button class={tab === "paint" ? "on" : ""} onClick={() => setTab("paint")}>
-                Paint
+                {layer === "entities" ? "Entities" : "Paint"}
               </button>
               <button class={tab === "map" ? "on" : ""} onClick={() => setTab("map")}>
                 Map
@@ -67,9 +79,14 @@ export function MapsScreen({ project, selected, onSelect }: { project: Project; 
                 Quick Play
               </button>
             </div>
-            {tab === "paint" && <Palette project={project} mapId={selected} layer={layer} setLayer={setLayer} brush={brush} setBrush={setBrush} />}
-            {tab === "map" && <MapProperties project={project} id={selected} />}
-            {tab === "quick" && <QuickPlayForm project={project} mapId={selected} />}
+            {tab === "paint" && (
+              <>
+                <Palette project={project} mapId={mapSel} layer={layer} setLayer={setLayer} brush={brush} setBrush={setBrush} />
+                {layer === "entities" && <EntitiesPanel project={project} mapId={mapSel} selected={selected} select={select} placing={placing} setPlacing={setPlacing} />}
+              </>
+            )}
+            {tab === "map" && <MapProperties project={project} id={mapSel} />}
+            {tab === "quick" && <QuickPlayForm project={project} mapId={mapSel} />}
           </>
         )}
       </aside>
@@ -129,9 +146,11 @@ function MapProperties({ project, id }: { project: Project; id: string }) {
         </select>
         <MusicPreview track={map.music} />
       </div>
+      <label>On entering</label>
+      <OnEnter project={project} id={id} />
       <label>Contents</label>
       <span>{counts.map(([k, n]) => `${n} ${k}`).join(", ") || "–"}</span>
-      <span class="hint">edited as entities on the canvas (E4)</span>
+      <span class="hint">edited on the Entities layer</span>
       <label>
         Size: {size.w} × {size.h}
       </label>
@@ -218,5 +237,67 @@ function MusicPreview({ track }: { track?: string }) {
     <button disabled={!track} onClick={toggle} title="Listen">
       {playing ? "■ Stop" : "▶ Listen"}
     </button>
+  );
+}
+
+/** Actions run every time the party enters the map (MapDef.onEnter). */
+function OnEnter({ project, id }: { project: Project; id: string }) {
+  const map = project.data<MapDef>(mapPath(id));
+  const db = project.content.db;
+  if (!db) return null;
+  return <ActionEditor value={map.onEnter} onChange={(a) => fileSetter(project, mapPath(id))(["onEnter"], a, "On entering")} db={db} mapId={id} />;
+}
+
+/** Entities layer: add new ones, the list of all on this map, and the selected one's form. */
+function EntitiesPanel(props: { project: Project; mapId: string; selected: EntityRef | null; select: (r: EntityRef | null) => void; placing: EntityKind | null; setPlacing: (k: EntityKind | null) => void }) {
+  const { project, mapId, selected, select, placing, setPlacing } = props;
+  const map = project.data<MapDef>(mapPath(mapId));
+  const list = listEntities(map);
+  const kinds = Object.keys(KIND_INFO) as EntityKind[];
+  return (
+    <div class="entities-panel">
+      <Field label="Add">
+        <div class="add-grid">
+          {kinds.map((k) => (
+            <button key={k} class={placing === k ? "on" : ""} title={KIND_INFO[k].hint} onClick={() => setPlacing(placing === k ? null : k)}>
+              {KIND_INFO[k].label}
+            </button>
+          ))}
+        </div>
+      </Field>
+      {placing && <p class="hint">Click a cell on the map to place the {KIND_INFO[placing].label.toLowerCase()}.</p>}
+      {selected && list.some((e) => sameRef(e, selected)) ? (
+        <>
+          <EntityForm project={project} mapId={mapId} entity={selected} onSelect={select} />
+          <button
+            style={{ marginTop: 8 }}
+            title="Delete (Del)"
+            onClick={() => {
+              const ref = selected;
+              project.edit(mapPath(mapId), `Delete ${ref.kind}`, (doc) => deleteEntity(doc, ref));
+              select(null);
+            }}
+          >
+            Delete {KIND_INFO[selected.kind].label.toLowerCase()}
+          </button>
+        </>
+      ) : (
+        <div class="entity-list">
+          {list.map((e) => (
+            <div key={`${e.kind}:${e.key}`} class="item" onClick={() => select({ kind: e.kind, key: e.key })}>
+              <span>{e.label}</span>
+              <small>
+                {KIND_INFO[e.kind].label} · {e.x},{e.y}
+              </small>
+            </div>
+          ))}
+        </div>
+      )}
+      {selected && (
+        <button style={{ marginTop: 8 }} onClick={() => select(null)}>
+          ← All entities
+        </button>
+      )}
+    </div>
   );
 }

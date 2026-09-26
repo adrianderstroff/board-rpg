@@ -299,9 +299,11 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☐ Area select → copy / paste / move across all board layers
 - ☑ Map properties: name, kind, chipset, battleback, music (with preview); onEnter comes with the action builder (E4)
 
-## E4 · Entities ☐
-- ☐ Events (pages, appearance, triggers, interactions), exits/teleports, spawns, enemies, gates & switches, traps, wall signs, Quick Play
-- ☐ Condition and action builders
+## E4 · Entities ☑
+- ☑ Entities layer: every kind drawn with the game's sprites (editor-only markers as labels), select / cycle / drag / place / delete
+- ☑ Forms: events (pages with condition, look, trigger, dialog, close-up options, actions), exits/teleports, spawns (rename), enemies (party, level, condition), gates & switches (links), traps, wall signs, Quick Play start
+- ☑ Condition and action builders (all condition and action kinds, nested all/any/not, flag suggestions); map `onEnter`
+- ☐ Inn wake-up spot (`wakeAt`) is kept but not editable yet
 
 ## E5 · Items ☐
 - ☐ One form: basics (quest item), equipment, battle use, board use, teaches; derived category

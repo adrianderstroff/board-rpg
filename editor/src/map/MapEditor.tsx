@@ -7,13 +7,16 @@ import { GridCanvas } from "./GridCanvas";
 import { IsoCanvas, type CanvasHandlers, type Marker } from "./IsoCanvas";
 import { floodArea, MAX_HEIGHT, paint, rectCells, setFacing, setHeights, setOverhead } from "./layers";
 import { frameStyle } from "./sprites";
+import { addEntity, deleteEntity, entitiesAt, listEntities, moveEntity, sameRef, type EntityKind, type EntityRef } from "../entities/model";
+import { entitySprites } from "../entities/visuals";
 
 /** Map canvas with layers and tools (editor-design §5.1–5.3). */
 
-export type Layer = "terrain" | "height" | "decor" | "shape" | "facing" | "lintel";
+export type Layer = "entities" | "terrain" | "height" | "decor" | "shape" | "facing" | "lintel";
 export type Tool = "pencil" | "rect" | "fill" | "pick";
 
 export const LAYERS: { id: Layer; label: string; key: string }[] = [
+  { id: "entities", label: "Entities", key: "0" },
   { id: "terrain", label: "Terrain", key: "1" },
   { id: "height", label: "Height", key: "2" },
   { id: "decor", label: "Decor", key: "3" },
@@ -52,7 +55,15 @@ export interface Brush {
   lintelTop: number;
 }
 
-export function MapEditor({ project, mapId, layer, brush, setBrush }: { project: Project; mapId: string; layer: Layer; brush: Brush; setBrush: (b: Brush) => void }) {
+export interface EntitySelection {
+  selected: EntityRef | null;
+  select: (ref: EntityRef | null) => void;
+  /** An entity kind waiting to be placed with the next click. */
+  placing: EntityKind | null;
+  setPlacing: (kind: EntityKind | null) => void;
+}
+
+export function MapEditor({ project, mapId, layer, brush, setBrush, entities }: { project: Project; mapId: string; layer: Layer; brush: Brush; setBrush: (b: Brush) => void; entities: EntitySelection }) {
   const [tool, setTool] = useState<Tool>("pencil");
   const [view, setView] = useState<"iso" | "grid">("iso");
   const [rotation, setRotation] = useState(0);
@@ -60,6 +71,8 @@ export function MapEditor({ project, mapId, layer, brush, setBrush }: { project:
   const [hover, setHover] = useState<Pos | null>(null);
   const [preview, setPreview] = useState<Pos[]>([]);
   const stroke = useRef<{ id: string; start: Pos; done: Set<string> } | null>(null);
+  /** The entity being dragged (entities layer). */
+  const drag = useRef<{ ref: EntityRef; id: string; at: Pos } | null>(null);
   const strokeNo = useRef(0);
   const path = `data/maps/${mapId}.yaml`;
   const db = project.content.db;
@@ -102,7 +115,39 @@ export function MapEditor({ project, mapId, layer, brush, setBrush }: { project:
     setTool("pencil");
   };
 
-  const handlers: CanvasHandlers = {
+  const entityHandlers: CanvasHandlers = {
+    down(c) {
+      if (entities.placing) {
+        let ref: EntityRef | null = null;
+        const kind = entities.placing;
+        project.edit(path, `Add ${kind}`, (doc) => {
+          ref = addEntity(doc, doc.toJS() as MapDef, kind, c, { map: mapId, enemy: [...(db?.enemies.keys() ?? [])][0], sign: Object.keys(db?.graphics.wallSigns?.frames ?? { inn: 0 })[0] });
+        });
+        entities.setPlacing(null);
+        entities.select(ref);
+        return;
+      }
+      const here = entitiesAt(project.data<MapDef>(path), c);
+      if (!here.length) return entities.select(null);
+      // clicking again cycles through the entities on one cell
+      const i = here.findIndex((e) => sameRef(e, entities.selected));
+      const pick = here[(i + 1) % here.length];
+      entities.select(pick);
+      drag.current = { ref: pick, id: `drag${++strokeNo.current}`, at: c };
+    },
+    move(c, buttons) {
+      setHover(c);
+      const d = drag.current;
+      if (!d || !buttons || !c || (c.x === d.at.x && c.y === d.at.y)) return;
+      d.at = c;
+      project.edit(path, "Move entity", (doc) => moveEntity(doc, d.ref, c), d.id);
+    },
+    up() {
+      drag.current = null;
+    },
+  };
+
+  const paintHandlers: CanvasHandlers = {
     down(c) {
       const id = `stroke${++strokeNo.current}`;
       stroke.current = { id, start: c, done: new Set([`${c.x},${c.y}`]) };
@@ -136,6 +181,22 @@ export function MapEditor({ project, mapId, layer, brush, setBrush }: { project:
     },
   };
 
+  const handlers = layer === "entities" ? entityHandlers : paintHandlers;
+
+  // Delete removes the selected entity; Escape stops placing
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (layer !== "entities" || e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
+      if ((e.key === "Delete" || e.key === "Backspace") && entities.selected) {
+        const ref = entities.selected;
+        project.edit(path, `Delete ${ref.kind}`, (doc) => deleteEntity(doc, ref));
+        entities.select(null);
+      } else if (e.key === "Escape") entities.setPlacing(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   // keyboard: tools and rotation (not while typing)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -149,7 +210,10 @@ export function MapEditor({ project, mapId, layer, brush, setBrush }: { project:
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const markers: Marker[] = useMemo(() => preview.map((p) => ({ ...p, frame: 3 })), [preview]);
+  const mapData = project.data<MapDef>(path);
+  const sel = entities.selected ? (listEntities(mapData).find((e) => sameRef(e, entities.selected)) ?? null) : null;
+  const markers: Marker[] = useMemo(() => [...preview.map((p) => ({ ...p, frame: 3 })), ...(sel ? [{ x: sel.x, y: sel.y, frame: 2 }] : [])], [preview, sel?.x, sel?.y]);
+  const sprites = useMemo(() => (db ? entitySprites(db, mapData, rotation, entities.selected, layer === "entities") : []), [db, mapData, rotation, entities.selected, layer]);
   if (!db) return <div class="placeholder">The content has errors – fix them to see the map (see the problems badge).</div>;
   const grid = getGrid(db, mapId);
   const cell = hover ? grid.cell(hover) : undefined;
@@ -157,7 +221,7 @@ export function MapEditor({ project, mapId, layer, brush, setBrush }: { project:
   return (
     <div class="map-editor">
       <div class="strip">
-        {TOOLS.map((t) => (
+        {layer !== "entities" && TOOLS.map((t) => (
           <button key={t.id} class={effTool === t.id ? "on" : ""} disabled={layer === "facing" && t.id !== "pencil"} title={t.title} onClick={() => setTool(t.id)}>
             {t.label}
           </button>
@@ -185,9 +249,9 @@ export function MapEditor({ project, mapId, layer, brush, setBrush }: { project:
       </div>
       <div class="canvas-area">
         {view === "iso" ? (
-          <IsoCanvas db={db} mapId={mapId} rotation={rotation} hideDecor={hideDecor} markers={markers} handlers={handlers} />
+          <IsoCanvas db={db} mapId={mapId} rotation={rotation} hideDecor={hideDecor} markers={markers} entities={sprites} handlers={handlers} />
         ) : (
-          <GridCanvas db={db} mapId={mapId} hideDecor={hideDecor} markers={markers} handlers={handlers} />
+          <GridCanvas db={db} mapId={mapId} hideDecor={hideDecor} markers={markers} entities={sprites} handlers={handlers} />
         )}
       </div>
       <div class="status">
@@ -210,7 +274,13 @@ export function MapEditor({ project, mapId, layer, brush, setBrush }: { project:
             )}
           </>
         ) : (
-          <span class="dim">Left: {LAYERS.find((l) => l.id === layer)!.label.toLowerCase()} with the {effTool} · right drag: pan · wheel: zoom · Q/E: turn</span>
+          <span class="dim">
+            {layer === "entities"
+              ? entities.placing
+                ? `Click a cell to place the ${entities.placing} · Esc: cancel`
+                : "Click: select (again: next on the cell) · drag: move · Delete: remove · right drag: pan · wheel: zoom"
+              : `Left: ${LAYERS.find((l) => l.id === layer)!.label.toLowerCase()} with the ${effTool} · right drag: pan · wheel: zoom · Q/E: turn`}
+          </span>
         )}
       </div>
     </div>

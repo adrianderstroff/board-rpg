@@ -5,6 +5,20 @@ import type { Pos } from "../../../src/core/util/grid";
 import { CORNERS } from "../../../src/game/board/mapSource";
 import type { CanvasHandlers, Marker } from "./IsoCanvas";
 import { loadImage, terrainColors } from "./sprites";
+import type { EntitySprite } from "../entities/visuals";
+
+/** Letter per entity kind in the grid view. */
+const KIND_MARK: Record<string, [string, string]> = {
+  event: ["E", "#feae34"],
+  exit: ["→", "#feae34"],
+  spawn: ["⚑", "#2ce8f5"],
+  enemy: ["☠", "#e43b44"],
+  gate: ["G", "#c0cbdc"],
+  switch: ["P", "#c0cbdc"],
+  trap: ["T", "#2ce8f5"],
+  sign: ["S", "#c0cbdc"],
+  quickplay: ["▶", "#63c74d"],
+};
 
 const MARKER_COLORS = ["#0099db", "#e43b44", "#63c74d", "#feae34", "#ffffff", "#8b9bb4"];
 const DIR_ARROW: Record<string, string> = { N: "↑", E: "→", S: "↓", W: "←" };
@@ -13,7 +27,7 @@ const DIR_ARROW: Record<string, string> = { N: "↑", E: "→", S: "↓", W: "�
  * Flat top-down view of the same cells (editor-design §5.1): terrain colour, height number, decor
  * thumbnail, shape, facing; blocked cells darker. Fast for painting large areas. Ctrl+wheel zooms.
  */
-export function GridCanvas({ db, mapId, hideDecor, markers, handlers }: { db: Database; mapId: string; hideDecor: boolean; markers: Marker[]; handlers: CanvasHandlers }) {
+export function GridCanvas({ db, mapId, hideDecor, markers, entities, handlers }: { db: Database; mapId: string; hideDecor: boolean; markers: Marker[]; entities: EntitySprite[]; handlers: CanvasHandlers }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [size, setSize] = useState(26);
   const [colors, setColors] = useState<Record<string, string> | null>(null);
@@ -91,13 +105,27 @@ export function GridCanvas({ db, mapId, hideDecor, markers, handlers }: { db: Da
         g.strokeStyle = "rgba(0,0,0,0.25)";
         g.strokeRect(px + 0.5, py + 0.5, size - 1, size - 1);
       }
+    // entities: one mark per kind and cell, in the cell's lower right
+    const drawn = new Set<string>();
+    g.font = `bold ${Math.round(size * 0.42)}px sans-serif`;
+    for (const e of entities) {
+      const k = `${e.x},${e.y},${e.kind}`;
+      if (drawn.has(k)) continue;
+      drawn.add(k);
+      const [ch, color] = KIND_MARK[e.kind];
+      const n = [...drawn].filter((d) => d.startsWith(`${e.x},${e.y},`)).length - 1;
+      g.fillStyle = "rgba(24,20,37,0.8)";
+      g.fillRect(e.x * size + size - 11 - n * 10, e.y * size + size - 11, 10, 10);
+      g.fillStyle = e.selected ? "#63c74d" : color;
+      g.fillText(ch, e.x * size + size - 10 - n * 10, e.y * size + size - 2);
+    }
     for (const m of [...markers, ...(hover ? [{ ...hover, frame: 0 }] : [])]) {
       g.strokeStyle = MARKER_COLORS[m.frame] ?? "#fff";
       g.lineWidth = 2;
       g.strokeRect(m.x * size + 1, m.y * size + 1, size - 2, size - 2);
       g.lineWidth = 1;
     }
-  }, [grid, colors, decorImg, size, hover, markers, hideDecor]);
+  }, [grid, colors, decorImg, size, hover, markers, hideDecor, entities]);
 
   const cellOf = (e: MouseEvent): Pos | null => {
     const r = canvas.current!.getBoundingClientRect();

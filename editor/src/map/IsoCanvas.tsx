@@ -8,6 +8,7 @@ import { LAYER } from "../../../src/engine/iso";
 import { IsoMapView, type IsoMapSource } from "../../../src/engine/iso/IsoMapView";
 import { isoMapSource, rotateContinuous, wallDecorSources } from "../../../src/game/board/mapSource";
 import { K } from "../../../src/game/keys";
+import type { EntitySprite } from "../entities/visuals";
 
 /**
  * The map exactly as the game draws it (editor-design §5.1): the engine's IsoMapView fed by the
@@ -34,6 +35,8 @@ interface Props {
   hideDecor: boolean;
   /** Cells to highlight (rect preview, selection…). */
   markers: Marker[];
+  /** Events, exits, enemies… placed on the map (editor-design §6). */
+  entities: EntitySprite[];
   handlers: CanvasHandlers;
 }
 
@@ -45,6 +48,7 @@ class MapScene extends Phaser.Scene {
   private hover?: Pos | null;
   private pan?: { x: number; y: number; sx: number; sy: number };
   private painting = false;
+  private entityObjects: Phaser.GameObjects.GameObject[] = [];
 
   constructor(private readonly initial: () => Props) {
     super("editorMap");
@@ -61,6 +65,9 @@ class MapScene extends Phaser.Scene {
     if (ws) loadSheet(this, { key: K.wallSigns, path: ws.image, frameWidth: ws.frameWidth, frameHeight: ws.frameHeight });
     loadSheet(this, { key: K.highlight, path: "system/highlight.png", frameWidth: 32, frameHeight: 16 });
     loadSheet(this, { key: K.boardCursor, path: "system/board_cursor.png", frameWidth: 32, frameHeight: 24 });
+    loadSheet(this, { key: K.exitArrows, path: "system/exit_arrows.png", frameWidth: 32, frameHeight: 16 });
+    loadSheet(this, { key: K.fieldEffects, path: "system/field_effects.png", frameWidth: 32, frameHeight: 24 });
+    for (const [id, c] of Object.entries(this.props.db.graphics.charsets)) loadSheet(this, { key: K.charset(id), path: c.image, frameWidth: c.frameWidth, frameHeight: c.frameHeight });
   }
 
   /** Page position of a cell's top centre (for automated tests). */
@@ -150,6 +157,40 @@ class MapScene extends Phaser.Scene {
     }
     this.shownRotation = props.rotation;
     this.drawMarkers();
+    this.drawEntities();
+  }
+
+  /** Entities as the game's sprites; editor-only ones (spawns, invisible events…) as labels. */
+  drawEntities() {
+    for (const o of this.entityObjects) o.destroy();
+    this.entityObjects = [];
+    const view = this.view;
+    if (!view) return;
+    for (const e of this.props.entities) {
+      if (!view.hasCell(e.x, e.y)) continue;
+      const top = view.cellTop(e.x, e.y);
+      if (e.texture && e.frame !== undefined && this.textures.exists(e.texture)) {
+        const img = this.add.image(top.x, top.y + (e.flat ? 0 : 3), e.texture, e.frame);
+        img.setOrigin(0.5, e.flat ? (e.texture === K.fieldEffects ? 16 / 24 : 0.5) : (e.originY ?? 1));
+        img.setDepth(view.depthOf(e.x, e.y, e.flat ? LAYER.overlay + 1 : LAYER.char, 0.5));
+        if (e.editorOnly) img.setAlpha(0.8);
+        this.entityObjects.push(img);
+      }
+      if (e.label) {
+        const t = this.add
+          .text(top.x, top.y - (e.texture && !e.flat ? 30 : 4), e.label, {
+            fontFamily: "system-ui, sans-serif",
+            fontSize: "7px",
+            color: e.selected ? "#181425" : e.editorOnly ? "#2ce8f5" : "#ffffff",
+            backgroundColor: e.selected ? "#63c74d" : "#181425cc",
+            padding: { x: 2, y: 1 },
+          })
+          .setOrigin(0.5, 1)
+          .setResolution(6)
+          .setDepth(view.depthOf(e.x, e.y, LAYER.marker + 1, 0));
+        this.entityObjects.push(t);
+      }
+    }
   }
 
   drawMarkers() {
@@ -197,6 +238,14 @@ export function IsoCanvas(props: Props) {
       s.drawMarkers();
     }
   }, [props.markers]);
+
+  useEffect(() => {
+    const s = scene.current;
+    if (s?.view) {
+      s.props = latest.current;
+      s.drawEntities();
+    }
+  }, [props.entities]);
 
   // handlers change every render – keep the scene's copy fresh without redrawing
   if (scene.current) scene.current.props = { ...scene.current.props, handlers: props.handlers };
