@@ -28,6 +28,9 @@ const TRIGGERS: [HandlerTrigger, string, string][] = [
   ["becomes", "Becomes true", "Its condition turns true (checked after every change)."],
 ];
 const triggerLabel = (t: HandlerTrigger) => TRIGGERS.find((x) => x[0] === t)?.[1] ?? t;
+/** What entities react to; the map itself only to "map loaded" and "becomes true". */
+export const ENTITY_TRIGGERS: HandlerTrigger[] = ["interact", "enter", "pass", "leave", "load", "becomes"];
+export const MAP_TRIGGERS: HandlerTrigger[] = ["load", "becomes"];
 
 const PASS: [Passability, string, string][] = [
   ["solid", "Solid", "Nobody enters its cell (a closed gate, a wall)."],
@@ -45,12 +48,11 @@ export function EntityEventForm({ project, mapId, index, db, interactionForm }: 
   const map = project.data<MapDef>(file);
   const ev = map.events?.[index];
   const [stateName, setStateName] = useState<string | null>(null);
-  const [handlerNo, setHandlerNo] = useState(0);
   const [picking, setPicking] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
   const setIn = fileSetter(project, file);
   // another entity: start on its first state and handler
-  useEffect(() => (setStateName(null), setHandlerNo(0)), [index, mapId]);
+  useEffect(() => setStateName(null), [index, mapId]);
   if (!ev?.states) return null;
 
   const names = Object.keys(ev.states);
@@ -59,8 +61,6 @@ export function EntityEventForm({ project, mapId, index, db, interactionForm }: 
   const start = ev.state ?? names[0];
   const chip = db.chipsets.get(map.chipset);
   const handlers = ev.on ?? [];
-  const hi = Math.min(handlerNo, Math.max(0, handlers.length - 1));
-  const h = handlers[hi];
   const base = ["events", index];
   const setState = (patch: Partial<EntityState>, label: string, group?: string) =>
     project.edit(
@@ -71,17 +71,6 @@ export function EntityEventForm({ project, mapId, index, db, interactionForm }: 
       },
       group && `ent${index}.${current}.${group}`,
     );
-  const setHandlers = (next: EntityHandler[], label: string) => setIn([...base, "on"], next, label);
-  const setHandler = (patch: Partial<EntityHandler>, label: string, group?: string) =>
-    project.edit(
-      file,
-      label,
-      (doc) => {
-        for (const [k, v] of Object.entries(patch)) (v === undefined ? doc.deleteIn([...base, "on", hi, k]) : doc.setIn([...base, "on", hi, k], v));
-      },
-      group && `ent${index}.on${hi}.${group}`,
-    );
-
   const look = st.npc ? "npc" : st.keeper ? "keeper" : st.decor ? "decor" : "none";
   const pick = (choice: LookPick) => {
     setPicking(false);
@@ -251,6 +240,33 @@ export function EntityEventForm({ project, mapId, index, db, interactionForm }: 
       </div>
 
       <h3>Events</h3>
+      <HandlerTabs project={project} file={file} path={[...base, "on"]} handlers={handlers} triggers={ENTITY_TRIGGERS} db={db} mapId={mapId} interactionForm={interactionForm} resetKey={`${mapId}/${index}`} />
+    </>
+  );
+}
+
+/**
+ * A list of handlers as folder tabs (editor-design §6.2): each a trigger, a condition, for interact
+ * the close-up options, else "once", and the script. Used by entities and by the map itself.
+ */
+export function HandlerTabs({ project, file, path, handlers, triggers, db, mapId, interactionForm, resetKey }: { project: Project; file: string; path: (string | number)[]; handlers: EntityHandler[]; triggers: HandlerTrigger[]; db: Database; mapId: string; interactionForm?: (it: Interaction, set: (v: Interaction) => void) => preact.ComponentChildren; resetKey: string }) {
+  const [handlerNo, setHandlerNo] = useState(0);
+  useEffect(() => setHandlerNo(0), [resetKey]);
+  const setIn = fileSetter(project, file);
+  const hi = Math.min(handlerNo, Math.max(0, handlers.length - 1));
+  const h = handlers[hi];
+  const setHandlers = (next: EntityHandler[], label: string) => setIn(path, next, label);
+  const setHandler = (patch: Partial<EntityHandler>, label: string, group?: string) =>
+    project.edit(
+      file,
+      label,
+      (doc) => {
+        for (const [k, v] of Object.entries(patch)) (v === undefined ? doc.deleteIn([...path, hi, k]) : doc.setIn([...path, hi, k], v));
+      },
+      group && `${path.join(".")}.${hi}.${group}`,
+    );
+  const choices = TRIGGERS.filter(([t]) => triggers.includes(t));
+  return (
       <div class="pages">
         <div class="page-tabs">
           <Tabs labels={handlers.map((x) => triggerLabel(x.on))} active={hi} onPick={setHandlerNo} title="What it does – each a trigger, a condition and a script" />
@@ -258,7 +274,7 @@ export function EntityEventForm({ project, mapId, index, db, interactionForm }: 
             class="icon-button add-page"
             title="Add a handler"
             onClick={() => {
-              setHandlers([...handlers, { on: "interact", do: [] }], "Add handler");
+              setHandlers([...handlers, { on: triggers[0], do: [] }], "Add handler");
               setHandlerNo(handlers.length);
             }}
           >
@@ -299,12 +315,12 @@ export function EntityEventForm({ project, mapId, index, db, interactionForm }: 
             <div class="page-fields">
               <div class="page-form">
                 <Field label="Trigger">
-                  <Select value={h.on} options={TRIGGERS.map(([t, l]) => [t, l] as [string, string])} onChange={(v) => setHandler({ on: (v ?? "interact") as HandlerTrigger }, "Trigger")} title={TRIGGERS.find((t) => t[0] === h.on)?.[2]} />
+                  <Select value={h.on} options={choices.map(([t, l]) => [t, l] as [string, string])} onChange={(v) => setHandler({ on: (v ?? "interact") as HandlerTrigger }, "Trigger")} title={TRIGGERS.find((t) => t[0] === h.on)?.[2]} />
                 </Field>
                 <Field label="Condition" hint={h.on === "becomes" ? "Runs when this turns true." : undefined}>
                   <ConditionEditor value={h.when} onChange={(c) => setHandler({ when: c }, "Condition")} db={db} flags={[]} />
                 </Field>
-                {h.on === "interact" ? (
+                {h.on === "interact" && interactionForm ? (
                   <>
                     <Field label="Options" hint="What the close-up offers (talk, shop, inn…); the script below is one more option.">
                       <ListEditor items={h.options ?? []} onChange={(l) => setHandler({ options: l.length ? l : undefined }, "Options")} add={() => ({ type: "talk", dialog: [...db.dialogs.keys()][0] }) as Interaction} addLabel="+ Option" render={(it, s) => interactionForm(it, s)} />
@@ -325,10 +341,9 @@ export function EntityEventForm({ project, mapId, index, db, interactionForm }: 
             </div>
           </div>
         ) : (
-          <p class="hint">No handlers yet – + adds one (interact, enter, leave…).</p>
+          <p class="hint">No handlers yet – + adds one ({choices.map(([, l]) => l.toLowerCase()).join(", ")}).</p>
         )}
       </div>
-    </>
   );
 }
 

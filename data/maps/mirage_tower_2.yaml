@@ -63,13 +63,6 @@ exits:
   - { x: 9, y: 1, dir: N, to: mirage_tower_3, spawn: east, label: Upstairs, door: true, together: true }
 
 events:
-  - id: f2_intro
-    x: 3
-    y: 9
-    states:
-      idle: {}
-    on:
-      - { on: becomes, when: { always: true }, do: [{ dialog: tower_f2 }], once: true, onceKey: f2_intro#0 }
   - id: west_gate
     x: 3
     y: 4
@@ -106,3 +99,5 @@ events:
     on:
       - { on: becomes, when: { heroesOn: { event: east_plate } }, do: [{ setState: { event: east_plate, state: down } }] }
       - { on: becomes, when: { not: { heroesOn: { event: east_plate } } }, do: [{ setState: { event: east_plate, state: up } }] }
+on:
+  - { on: becomes, when: { always: true }, do: [{ dialog: tower_f2 }], once: true, onceKey: f2_intro#0 }

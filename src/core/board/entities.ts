@@ -91,6 +91,9 @@ export function passCells(ctx: Ctx): Pos[] {
 
 const key = (ev: MapEventDef, i: number) => `${ev.id}#${i}`;
 
+/** The map itself as a holder of handlers (its "load" and "becomes" ones, §10.3). */
+const MAP: MapEventDef = { id: "@map", x: -1, y: -1 };
+
 /** Runs a handler's script (unless it is `once` and has run). */
 function run(ctx: Ctx, ev: MapEventDef, i: number, h: EntityHandler, out: ScriptResult): boolean {
   const mem = mapMemory(ctx, board(ctx).mapId);
@@ -103,6 +106,11 @@ function run(ctx: Ctx, ev: MapEventDef, i: number, h: EntityHandler, out: Script
   return true;
 }
 
+/** The map's handlers and every entity's, each with who holds it. */
+function holders(ctx: Ctx): { ev: MapEventDef; on: EntityHandler[] }[] {
+  return [{ ev: MAP, on: ctx.db.map(board(ctx).mapId).on ?? [] }, ...eventsOf(ctx).map((ev) => ({ ev, on: ev.on ?? [] }))];
+}
+
 /** `load` handlers – when the party arrives on the map (states that depend on flags are set up here). */
 export function loadTriggers(ctx: Ctx): ScriptResult {
   const out = emptyResult();
@@ -113,7 +121,8 @@ export function loadTriggers(ctx: Ctx): ScriptResult {
   mem.occupied = eventsOf(ctx)
     .filter((ev) => heroWeightOn(ctx, ev) > 0)
     .map((ev) => ev.id);
-  for (const ev of eventsOf(ctx)) (ev.on ?? []).forEach((h, i) => h.on === "load" && check(ctx, h.when) && run(ctx, ev, i, h, out));
+  // the map's own first (what used to be its onEnter), then the entities'
+  for (const { ev, on } of holders(ctx)) on.forEach((h, i) => h.on === "load" && check(ctx, h.when) && run(ctx, ev, i, h, out));
   // "becomes true" counts from the arrival: what holds as the party arrives fires now
   mem.became = {};
   merge(out, entityTriggers(ctx));
@@ -147,14 +156,16 @@ export function entityTriggers(ctx: Ctx): ScriptResult {
           if (fits && check(ctx, h.when) && run(ctx, ev, i, h, out)) ran = true;
         });
       }
-      (ev.on ?? []).forEach((h, i) => {
+    }
+    // conditions that turned true – the map's and the entities'
+    for (const { ev, on } of holders(ctx))
+      on.forEach((h, i) => {
         if (h.on !== "becomes") return;
         const now = check(ctx, h.when);
         const before = (mem.became ??= {})[key(ev, i)];
         mem.became[key(ev, i)] = now;
         if (now && !before && run(ctx, ev, i, h, out)) ran = true;
       });
-    }
     if (!ran) break;
   }
   return out;

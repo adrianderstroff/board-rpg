@@ -102,17 +102,6 @@ enemies:
   - { id: g_chili, enemy: chili, x: 7, y: 5, dir: S }
 
 events:
-  - id: garden_intro
-    x: 6
-    y: 10
-    states:
-      idle: {}
-    on:
-      - on: becomes
-        when: { always: true }
-        do: [{ dialog: garden_enter }]
-        once: true
-        onceKey: garden_intro#0
   - id: mora_hostage
     x: 9
     y: 3
@@ -129,17 +118,6 @@ events:
       - on: interact
         when: { not: { defeatedAllOn: grove_garden } }
         options: [{ type: talk, dialog: mora_help }]
-  - id: garden_won
-    x: 6
-    y: 9
-    states:
-      idle: {}
-    on:
-      - on: becomes
-        when: { defeatedAllOn: grove_garden }
-        do: [{ dialog: garden_won }]
-        once: true
-        onceKey: garden_won#1
   - id: mora_door
     x: 6
     y: 3
@@ -149,3 +127,14 @@ events:
     on:
       - { on: becomes, when: { defeatedAllOn: grove_garden }, do: [{ setState: { event: mora_door, state: open } }] }
       - { on: becomes, when: { all: [{ not: { defeatedAllOn: grove_garden } }, { state: { event: mora_door, is: open } }] }, do: [{ setState: { event: mora_door, state: closed } }] }
+on:
+  - on: becomes
+    when: { always: true }
+    do: [{ dialog: garden_enter }]
+    once: true
+    onceKey: garden_intro#0
+  - on: becomes
+    when: { defeatedAllOn: grove_garden }
+    do: [{ dialog: garden_won }]
+    once: true
+    onceKey: garden_won#1

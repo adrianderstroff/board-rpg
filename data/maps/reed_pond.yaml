@@ -81,13 +81,6 @@ enemies:
   - { id: toad_b, enemy: bog_toad, x: 12, y: 3, dir: S }
 
 events:
-  - id: pond_intro
-    x: 1
-    y: 6
-    states:
-      idle: {}
-    on:
-      - { on: becomes, when: { always: true }, do: [{ dialog: pond_enter }], once: true, onceKey: pond_intro#0 }
   - id: serenity_chest
     x: 7
     y: 6
@@ -108,3 +101,5 @@ events:
             label: Open
             dialog: pond_chest
             actions: [{ giveItem: token_serenity }, { setFlag: pond_token_found }]
+on:
+  - { on: becomes, when: { always: true }, do: [{ dialog: pond_enter }], once: true, onceKey: pond_intro#0 }

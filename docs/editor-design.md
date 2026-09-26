@@ -176,8 +176,8 @@ add a column on the right or a row at the bottom; until Resize applies it (Reset
 the part that grows in green, the part that shrinks in red – and the canvas marks the cells it adds
 green and the ones it drops red; new cells are empty, painted afterwards), kind (Peace / Wild
 switch = `peaceful` / `wild`), chipset, **music** (picker with a ▶ button to listen), battle
-background (picker, its picture below in a full-width row). Below the table: the `onEnter` actions
-(action builder, §7.3).
+background (picker, its picture below in a full-width row). Below the table: the **Events** – the
+map's own handlers (map loaded, becomes true) with the same tabs as an entity's.
 
 ---
 

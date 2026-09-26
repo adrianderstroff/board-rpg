@@ -89,17 +89,6 @@ exits:
   - { x: 17, y: 6, dir: E, to: greenwood, spawn: from_harbor, label: Greenwood River }
 
 events:
-  - id: harbor_intro
-    x: 3
-    y: 6
-    states:
-      idle: {}
-    on:
-      - on: becomes
-        when: { always: true }
-        do: [{ dialog: harbor_intro }]
-        once: true
-        onceKey: harbor_intro#0
 
   - id: captain
     x: 2
@@ -274,3 +263,9 @@ events:
             label: Search
             dialog: search_empty_crate
             actions: [{ setFlag: searched_crate_empty }]
+on:
+  - on: becomes
+    when: { always: true }
+    do: [{ dialog: harbor_intro }]
+    once: true
+    onceKey: harbor_intro#0

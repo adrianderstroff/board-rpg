@@ -89,13 +89,6 @@ traps:
   - { id: trap_c, x: 4, y: 7, damage: 8, status: stuck }
 
 events:
-  - id: ruins_enter
-    x: 1
-    y: 6
-    states:
-      idle: {}
-    on:
-      - { on: becomes, when: { always: true }, do: [{ dialog: ruins_enter }], once: true, onceKey: ruins_enter#0 }
 
   - id: hidden_chest
     x: 10
@@ -118,3 +111,5 @@ events:
             label: Open
             dialog: ruins_chest
             actions: [{ giveItem: speed_anklet }, { setFlag: ruins_chest_open }]
+on:
+  - { on: becomes, when: { always: true }, do: [{ dialog: ruins_enter }], once: true, onceKey: ruins_enter#0 }

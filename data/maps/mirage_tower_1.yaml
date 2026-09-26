@@ -64,24 +64,6 @@ exits:
   - { x: 10, y: 1, dir: N, to: mirage_tower_2, spawn: east, label: Upstairs, door: true, together: true }
 
 events:
-  - id: tower_intro
-    x: 6
-    y: 9
-    states:
-      idle: {}
-    on:
-      - { on: becomes, when: { always: true }, do: [{ dialog: tower_enter }], once: true, onceKey: tower_intro#0 }
-  - id: split_up
-    x: 6
-    y: 8
-    states:
-      idle: {}
-    on:
-      - on: becomes
-        when: { flag: tower_split }
-        do: [{ dialog: tower_split_up }]
-        once: true
-        onceKey: split_up#1
   - id: east_gate
     x: 9
     y: 6
@@ -118,3 +100,10 @@ events:
     on:
       - { on: becomes, when: { heroesOn: { event: inner_plate } }, do: [{ setState: { event: inner_plate, state: down } }] }
       - { on: becomes, when: { not: { heroesOn: { event: inner_plate } } }, do: [{ setState: { event: inner_plate, state: up } }] }
+on:
+  - { on: becomes, when: { always: true }, do: [{ dialog: tower_enter }], once: true, onceKey: tower_intro#0 }
+  - on: becomes
+    when: { flag: tower_split }
+    do: [{ dialog: tower_split_up }]
+    once: true
+    onceKey: split_up#1

@@ -78,17 +78,6 @@ exits:
   - { x: 33, y: 5, dir: E, to: sunken_ruins, spawn: from_forest, label: Sunken Ruins }
 
 events:
-  - id: greenwood_enter
-    x: 1
-    y: 6
-    states:
-      idle: {}
-    on:
-      - on: becomes
-        when: { always: true }
-        do: [{ dialog: greenwood_enter }]
-        once: true
-        onceKey: greenwood_enter#0
 
   - id: scout
     x: 15
@@ -105,3 +94,9 @@ events:
       idle: { decor: sign_post }
     on:
       - { on: interact, options: [{ type: examine, label: Read, dialog: sign_river }] }
+on:
+  - on: becomes
+    when: { always: true }
+    do: [{ dialog: greenwood_enter }]
+    once: true
+    onceKey: greenwood_enter#0

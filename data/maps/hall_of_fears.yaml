@@ -68,24 +68,6 @@ enemies:
   - { id: fear_monk, enemy: shadow_monk, x: 4, y: 7, dir: S }
 
 events:
-  - id: fears_intro
-    x: 4
-    y: 10
-    states:
-      idle: {}
-    on:
-      - { on: becomes, when: { always: true }, do: [{ dialog: fears_enter }], once: true, onceKey: fears_intro#0 }
-  - id: fears_beaten
-    x: 4
-    y: 9
-    states:
-      idle: {}
-    on:
-      - on: becomes
-        when: { defeatedAllOn: hall_of_fears }
-        do: [{ dialog: fears_gone }]
-        once: true
-        onceKey: fears_beaten#1
   - id: holy_orb
     x: 4
     y: 1
@@ -110,3 +92,10 @@ events:
     on:
       - { on: becomes, when: { defeatedAllOn: hall_of_fears }, do: [{ setState: { event: orb_gate, state: open } }] }
       - { on: becomes, when: { all: [{ not: { defeatedAllOn: hall_of_fears } }, { state: { event: orb_gate, is: open } }] }, do: [{ setState: { event: orb_gate, state: closed } }] }
+on:
+  - { on: becomes, when: { always: true }, do: [{ dialog: fears_enter }], once: true, onceKey: fears_intro#0 }
+  - on: becomes
+    when: { defeatedAllOn: hall_of_fears }
+    do: [{ dialog: fears_gone }]
+    once: true
+    onceKey: fears_beaten#1

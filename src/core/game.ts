@@ -2,7 +2,7 @@ import { enterMap, exitEnabled } from "./board/board";
 import { makeCtx, type Ctx } from "./context";
 import type { Database } from "./data/database";
 import type { ExitDef } from "./data/types";
-import { emptyResult, merge, runActions, type ScriptResult } from "./script/actions";
+import { emptyResult, merge, type ScriptResult } from "./script/actions";
 import { autoTriggers, type InteractionOutcome } from "./script/interact";
 import { loadTriggers } from "./board/entities";
 import { evaluateQuests, startQuest } from "./script/quests";
@@ -44,12 +44,11 @@ export class Game {
     this.ctx = makeCtx(this.db, state);
   }
 
-  /** Enters a map: builds the board, runs its onEnter actions and auto events. */
+  /** Enters a map: builds the board, runs its "map loaded" handlers and what that sets off. */
   /** `facing`: which way the party looks on arrival (default: the spawn's direction). */
   enter(mapId: string, spawn: string, facing?: Dir): EnterResult {
     const out: EnterResult = { ...emptyResult(), dialogs: [] };
     out.events.push(...enterMap(this.ctx, mapId, spawn, undefined, facing));
-    merge(out, runActions(this.ctx, this.db.map(mapId).onEnter));
     merge(out, loadTriggers(this.ctx));
     for (const r of autoTriggers(this.ctx)) collect(out, r);
     merge(out, evaluateQuests(this.ctx));
@@ -60,7 +59,6 @@ export class Game {
   enterGroups(mapId: string, groups: { members: string[]; spawn: string }[]): EnterResult {
     const out: EnterResult = { ...emptyResult(), dialogs: [] };
     out.events.push(...enterMap(this.ctx, mapId, groups[0].spawn, groups));
-    merge(out, runActions(this.ctx, this.db.map(mapId).onEnter));
     merge(out, loadTriggers(this.ctx));
     for (const r of autoTriggers(this.ctx)) collect(out, r);
     merge(out, evaluateQuests(this.ctx));

@@ -4,7 +4,13 @@ kind: wild
 chipset: desert
 battleback: mirage
 music: mirage
-onEnter: [{ setVar: { name: lost, value: 0 } }, { setFlag: mirage_found }]
+on:
+  - { on: load, do: [{ setVar: { name: lost, value: 0 } }, { setFlag: mirage_found }] }
+  - on: becomes
+    when: { always: true }
+    do: [{ dialog: mirage_sands_enter }]
+    once: true
+    onceKey: sands_intro#0
 
 legend:
   terrain:
@@ -94,15 +100,3 @@ exits:
   - { x: 6, y: 4, dir: N, to: mirage_tower_1, spawn: start, label: Mirage Tower, door: true }
   - { x: 6, y: 11, dir: S, to: scorpion_dunes, spawn: from_south, label: Scorpion Dunes }
 
-events:
-  - id: sands_intro
-    x: 6
-    y: 10
-    states:
-      idle: {}
-    on:
-      - on: becomes
-        when: { always: true }
-        do: [{ dialog: mirage_sands_enter }]
-        once: true
-        onceKey: sands_intro#0

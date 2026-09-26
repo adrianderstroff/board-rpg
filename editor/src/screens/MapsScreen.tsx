@@ -5,13 +5,12 @@ import { resize } from "../map/layers";
 import { MapEditor, type Brush, type EntitySelection, type Mode } from "../map/MapEditor";
 import { BoardPalette, DecorPalette } from "../map/Palettes";
 import { EntityForm } from "../entities/EntityForm";
+import { HandlerTabs, MAP_TRIGGERS } from "../entities/EntityEventForm";
 import { ADD_INFO, KIND_INFO, listEntities, sameRef, type AddKind, type EntityKind, type EntityRef } from "../entities/model";
 import { removeEntity } from "../entities/remove";
 import { arrivalRole, createTeleport, nearestEdge } from "../entities/teleports";
 import { DestinationWindow } from "../entities/DestinationWindow";
 import type { Pos } from "../../../src/core/util/grid";
-import { ActionEditor } from "../forms/ActionEditor";
-import { fileSetter } from "../forms/fields";
 import { usePersistentState } from "../persist";
 import { MapContext } from "../mapContext";
 import type { Project } from "../project";
@@ -201,8 +200,8 @@ function MapProperties({ project, id, resizeBy, setResizeBy }: { project: Projec
           </tr>
         </tbody>
       </table>
-      <label>On entering</label>
-      <OnEnter project={project} id={id} />
+      <h3 title="What happens on this map as a whole: when the party arrives (map loaded) or when a condition turns true (intro scenes, all enemies defeated…)">Events</h3>
+      {db && <HandlerTabs project={project} file={path} path={["on"]} handlers={map.on ?? []} triggers={MAP_TRIGGERS} db={db} mapId={id} resetKey={id} />}
     </div>
   );
 }
@@ -290,14 +289,6 @@ function MusicPreview({ track }: { track?: string }) {
       {playing ? "■" : "▶"}
     </button>
   );
-}
-
-/** Actions run every time the party enters the map (MapDef.onEnter). */
-function OnEnter({ project, id }: { project: Project; id: string }) {
-  const map = project.data<MapDef>(mapPath(id));
-  const db = project.content.db;
-  if (!db) return null;
-  return <ActionEditor value={map.onEnter} onChange={(a) => fileSetter(project, mapPath(id))(["onEnter"], a, "On entering")} db={db} mapId={id} />;
 }
 
 /** Entities layer: add new ones, the list of all on this map, and the selected one's form. */

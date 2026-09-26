@@ -185,17 +185,6 @@ exits:
   - { x: 6, y: 12, dir: N, to: grave_cave, spawn: from_mountain, label: Cave, door: true }
 
 events:
-  - id: mountain_intro
-    x: 1
-    y: 24
-    states:
-      idle: {}
-    on:
-      - on: becomes
-        when: { always: true }
-        do: [{ dialog: mountain_enter }]
-        once: true
-        onceKey: mountain_intro#0
 
   - id: mountain_sign
     x: 3
@@ -229,18 +218,6 @@ events:
       idle: { npc: monk_novice, dir: S, move: wander, wanderRadius: 2 }
     on:
       - { on: interact, options: [{ type: talk, dialog: novice_talk }] }
-
-  - id: cave_hint
-    x: 6
-    y: 14
-    states:
-      idle: {}
-    on:
-      - on: becomes
-        when: { flag: orb_claimed }
-        do: [{ dialog: cave_opened }]
-        once: true
-        onceKey: cave_hint#1
   # An iron grate seals the cave until the Holy Orb is claimed.
   - id: cave_seal
     x: 6
@@ -251,3 +228,14 @@ events:
     on:
       - { on: becomes, when: { flag: orb_claimed }, do: [{ setState: { event: cave_seal, state: open } }] }
       - { on: becomes, when: { all: [{ not: { flag: orb_claimed } }, { state: { event: cave_seal, is: open } }] }, do: [{ setState: { event: cave_seal, state: closed } }] }
+on:
+  - on: becomes
+    when: { always: true }
+    do: [{ dialog: mountain_enter }]
+    once: true
+    onceKey: mountain_intro#0
+  - on: becomes
+    when: { flag: orb_claimed }
+    do: [{ dialog: cave_opened }]
+    once: true
+    onceKey: cave_hint#1

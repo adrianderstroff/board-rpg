@@ -97,13 +97,6 @@ enemies:
   - { id: phantom_b, enemy: mirage_phantom, x: 9, y: 5, dir: S }
 
 events:
-  - id: f5_intro
-    x: 2
-    y: 10
-    states:
-      idle: {}
-    on:
-      - { on: becomes, when: { always: true }, do: [{ dialog: tower_f5 }], once: true, onceKey: f5_intro#0 }
   - id: foresight_chest
     x: 4
     y: 1
@@ -137,3 +130,5 @@ events:
     on:
       - { on: becomes, when: { defeated: { enemy: mirage_djinn } }, do: [{ setState: { event: way_out, state: open } }] }
       - { on: becomes, when: { all: [{ not: { defeated: { enemy: mirage_djinn } } }, { state: { event: way_out, is: open } }] }, do: [{ setState: { event: way_out, state: closed } }] }
+on:
+  - { on: becomes, when: { always: true }, do: [{ dialog: tower_f5 }], once: true, onceKey: f5_intro#0 }

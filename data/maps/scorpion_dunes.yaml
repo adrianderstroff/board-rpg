@@ -121,11 +121,5 @@ events:
     on:
       - { on: interact, when: { flag: trader_thanked }, options: [{ type: talk, dialog: trader_after }] }
       - { on: interact, options: [{ type: talk, dialog: trader_help }] }
-
-  - id: enter_hint
-    x: 1
-    y: 7
-    states:
-      idle: {}
-    on:
-      - { on: becomes, when: { always: true }, do: [{ dialog: dunes_enter }], once: true, onceKey: enter_hint#0 }
+on:
+  - { on: becomes, when: { always: true }, do: [{ dialog: dunes_enter }], once: true, onceKey: enter_hint#0 }

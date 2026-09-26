@@ -79,22 +79,10 @@ enemies:
   - { id: cave_skel_b, enemy: skeleton, x: 9, y: 10, dir: W }
   - { id: grave_toad, enemy: grave_toad, party: [bone_acolyte, bone_acolyte], x: 5, y: 3, dir: S }
 
-events:
-  - id: cave_intro
-    x: 5
-    y: 14
-    states:
-      idle: {}
-    on:
-      - { on: becomes, when: { always: true }, do: [{ dialog: cave_enter }], once: true, onceKey: cave_intro#0 }
-  - id: toad_defeated
-    x: 5
-    y: 5
-    states:
-      idle: {}
-    on:
-      - on: becomes
-        when: { defeated: { enemy: grave_toad } }
-        do: [{ dialog: demo_end }]
-        once: true
-        onceKey: toad_defeated#1
+on:
+  - { on: becomes, when: { always: true }, do: [{ dialog: cave_enter }], once: true, onceKey: cave_intro#0 }
+  - on: becomes
+    when: { defeated: { enemy: grave_toad } }
+    do: [{ dialog: demo_end }]
+    once: true
+    onceKey: toad_defeated#1

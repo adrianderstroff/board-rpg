@@ -396,6 +396,8 @@ instead have states and handlers (the engine supports both; content moves over w
   there; flying pieces are not caught), **map loaded**, **condition becomes true** (also when it
   already holds as the party arrives on the map), and for enemies **defeated** (planned). `once`
   handlers run a single time.
+- **The map has handlers too** (`on` in the map file; *map loaded* and *becomes true*): what happens
+  on the map as a whole – arriving (formerly `onEnter`), intro scenes, "all enemies defeated".
 - A **script** is a sequence of actions with blocks: **if / elif / else**, **choice** (options with
   optional icons, each with its own actions), **wait** (a time, or until moves end), **call** a shared
   script, **stop**. Actions: today's (§10.2) plus **set state** (of this or another entity), **move** an
@@ -727,3 +729,4 @@ Where the rough ideas were incomplete or conflicting, these rules were chosen:
 42. **Clicks pick what is drawn** (user request, made for the editor – the game shares the renderer): the cell under the pointer is the front-most column drawn there, so a wall in front hides the cells behind it instead of passing the click through.
 43. **Gates and floor switches are entities** (R6): the maps' `gates` / `switches` lists were migrated once (`tools/migrate-gates.mjs`) into events with states and handlers; a gate's cell is a wall while it is solid; plates don't stop ice slides; old saves keep latched plates down.
 44. **Every event is an entity** (R6): the 81 paged events were converted once (`editor/src/entities/convertPages.ts`): a look per state (switched by "becomes" handlers where pages changed it), interact pages as interact handlers (the most recent first), step pages as enter handlers, auto pages as "becomes" handlers; run-once handlers keep the pages' old keys (`onceKey`) so saves don't replay scenes. Map-load handlers run after the map's `onEnter` script.
+45. **Map-level handlers** (user decision): `onEnter` and the 23 invisible "controller" entities that only held map-wide scripts were moved into the map's own `on` list (run-once keys kept); the map's load handlers run before the entities'.

@@ -298,7 +298,13 @@ export function validateContent(db: Database): string[] {
       onGrid(t.x, t.y, `trap ${t.id}`);
       has(db.statuses, t.status, w, "status");
     }
-    actions(m.onEnter, w);
+    // the map's own handlers: only "load" and "becomes" make sense for a map
+    for (const h of m.on ?? []) {
+      if (h.on !== "load" && h.on !== "becomes") err(w, `the map can't react to "${h.on}" (only load / becomes)`);
+      condition(h.when, `${w} on ${h.on}`);
+      actions(h.do, `${w} on ${h.on}`);
+    }
+    stateRefs(m.on, w);
   }
   // config
   const s = db.config.start;

@@ -691,7 +691,8 @@ export interface MapDef {
   /** Editor-only data (editor-design §6.3) – the game only reads it for Quick Play. */
   editor?: { quickPlay?: QuickPlayDef };
   /** Actions when the map is entered. */
-  onEnter?: Script;
+  /** The map's own handlers (§10.3): "load" when the party arrives, "becomes" when a condition turns true. */
+  on?: EntityHandler[];
 }
 
 // ---------- config ----------

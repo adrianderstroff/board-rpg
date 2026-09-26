@@ -102,17 +102,6 @@ exits:
   - { x: 2, y: 2, dir: N, to: elvenglade_shop, spawn: from_town, label: Faelar's Glade Magic, door: true }
 
 events:
-  - id: elvenglade_enter
-    x: 7
-    y: 10
-    states:
-      idle: {}
-    on:
-      - on: becomes
-        when: { always: true }
-        do: [{ dialog: elvenglade_enter }]
-        once: true
-        onceKey: elvenglade_enter#0
 
   - id: sylwen
     x: 8
@@ -146,3 +135,9 @@ events:
     on:
       - on: interact
         options: [{ type: examine, label: Drink, dialog: moonwell_drink, actions: [{ healParty: true }] }]
+on:
+  - on: becomes
+    when: { always: true }
+    do: [{ dialog: elvenglade_enter }]
+    once: true
+    onceKey: elvenglade_enter#0
