@@ -66,29 +66,27 @@ src/…                   the game – the editor imports src/core, src/engine a
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ ▶ Play   ▶ Quick Play   │ Save (3)  Revert  │ ↶ ↷ │ problems: 2 ⚠           │
+│ 🗺 🛡 💀 👥 ⚗ ★ 📜 💬 🏪 ⚙ │ ▶ Play  ▶ Quick Play │ Save  Revert │ ↶ ↷   problems │
 ├──────────┬───────────────────────────────────────────────┬───────────────────┤
-│ Maps     │                                               │ Inspector         │
-│ Heroes   │   the selected screen                         │ (the selected     │
-│ Enemies  │   (map canvas, form, list…)                   │  cell / entity /  │
-│ NPCs     │                                               │  list entry)      │
-│ Items    │                                               │                   │
-│ Abilities│                                               │                   │
-│ Quests   │                                               │                   │
-│ Dialogs  │                                               │                   │
-│ Shops    │                                               │                   │
-│ Settings │                                               │                   │
+│ map list │ Board | Decor | Entity   tools…    Iso | Top  │  Edit | Info      │
+│          │                                               │                   │
+│          │   the canvas                                  │  brushes, or the  │
+│          │                                               │  selected entity  │
+│          │ status: cell info / key hints                 │                   │
 └──────────┴───────────────────────────────────────────────┴───────────────────┘
 ```
 
+- The **top bar** starts with the main sections as icons (their names as tooltips): Maps, Heroes,
+  Enemies, NPCs, Items, Abilities, Quests, Dialogs, Shops, Settings. Then ▶ Play and ▶ Quick Play,
+  then Save / Revert, Undo / Redo and the problems badge.
+- The **inspector** has two tabs: **Edit** (the brushes of the current mode, or the selected entity's
+  form) and **Info** (the map's properties).
 - Every list has search, **New**, **Duplicate**, **Delete** (blocked while something still
   references the entry – the editor shows where) and **Rename id** (updates every reference in all
   files).
 - Every reference field (an item, an ability, a dialog, a map + spawn…) is a searchable picker with a
   preview and a "go to" link; a missing target shows as a validation problem.
 - The problems badge lists all `validateContent` problems; clicking one opens the field.
-
----
 
 ## 4. Play-testing
 
@@ -117,37 +115,33 @@ entity and enters the map. The normal game build is unaffected.
 
 ### 5.1 Canvas
 - **Isometric view** (default): the map exactly as the game draws it (same renderer, heights,
-  shaped blocks, animated water), with the game's rotation buttons (Q/E) and zoom. Clicking picks
-  cells the same way the game does.
-- **Grid view** (toggle): a flat top-down grid of the same cells for fast painting of large areas;
-  each cell shows its terrain colour, height as a number, decor as an icon. Both views edit the same
-  data.
-- A cell hover shows its coordinates, terrain, height, decor and walkability (from the game's own
-  grid, so blocked cells are shown as the game sees them).
+  shaped blocks, animated water), with the game's board cursor, rotation (Q / E) and zoom (wheel).
+  Middle drag or Space + drag pans. Clicking picks cells the same way the game does.
+- **Top view** (toggle): a flat grid of the same cells for fast painting of large areas; each cell
+  shows its terrain's top texture unwarped from the diamond into a square, its height as a number
+  and its decor as a thumbnail. Both views edit the same data.
+- The status bar shows the hovered cell's coordinates, terrain, height, decor and walkability (from
+  the game's own grid, so blocked cells are shown as the game sees them), or the current key hints.
 
-### 5.2 Layers
-The layer panel lists the map's layers; each can be shown/hidden and locked. The active layer
-decides what the tools paint.
+### 5.2 Modes
+The canvas has three modes (keys 1 / 2 / 3); each shows only its own tools and brushes.
 
-| Layer | Stored as (map YAML) | Painted with |
-|---|---|---|
-| Terrain | `layers.terrain` + `legend.terrain` | terrain palette from the chipset |
-| Height | `layers.height` | raise/lower brush, set-to value, flatten, smooth |
-| Decor | `layers.decor` + `legend.decor` | decor palette from the chipset |
-| Decor facing | `layers.decorDir` | click a directional decor to turn it (N/E/S/W) |
-| Shape | `layers.shape` + `legend.shapes` | cut-corner palette (half cells, points) §5.9 |
-| Overhead | `layers.overhead` + `layers.overheadHeight` | "lintel" tool on door cells |
-| Entities | `events`, `exits`, `spawns`, `enemies`, `gates`, `switches`, `traps`, `wallDecor` | select / place / move tool (§6) |
+| Mode | Paints | Left / right mouse | W / S | A / D |
+|---|---|---|---|---|
+| **Board** | terrain (`layers.terrain`), pieces (`layers.shape`, §5.9), door lintels (`layers.overhead`) | paint / holes (no cell), full block, remove lintel | raise / lower | turn a piece |
+| **Decor** | objects (`layers.decor`; facing in `layers.decorDir`) – the board is greyed out and the object to place follows the cursor see-through | place / remove | raise / lower | turn a directional object (or the brush) |
+| **Entity** | events, exits, spawns, enemies, gates, switches, traps, signs, the Quick Play start (§6) | select, drag / delete | – | turn the selected one |
 
-The per-map **legend** (character → terrain id) is managed automatically: the user picks terrains,
-the editor assigns free characters, so layer strings stay readable in the YAML.
+The keys act on the hovered cell, or on the selected area while the cursor is in it. Heights have
+no menu of their own: W / S are the height tool. The per-map **legend** (character → terrain id) is
+managed automatically: the user picks terrains, the editor assigns free characters, so layer
+strings stay readable in the YAML.
 
-### 5.3 Tools
-Pencil, rectangle, fill (flood by terrain / height), pick (eyedropper), raise/lower/set height,
-select area – copy / paste (also into another map) / move / clear a block of cells across all
-board layers; moving takes the entities standing in it along and leaves the terrain brush behind –
-resize map (add/remove rows and columns on any side), and for entities select/move/delete.
-Right-drag pans, the wheel zooms.
+### 5.3 Tools (Board and Decor mode)
+Pencil (B), rectangle (R), fill (G, by terrain / decor), pick (I), select area (M) – copy / paste
+(also into another map) / move / clear a block of cells across all board layers; moving takes the
+entities standing in it along and leaves the terrain brush behind. Right mouse is the eraser of the
+current tool. Resize (add / remove rows and columns on any side) is on the Info tab.
 
 ### 5.4 Map properties
 Name, kind (`peaceful` / `wild`), chipset, battleback (with preview), **music** (picker with a ▶
@@ -204,8 +198,9 @@ are shared by quests, dialogs, map events and exits (§10). The editor exposes e
   events and quests read the same flags.
 
 ### 6.3 The Quick Play entity
-One per map (placing a second moves the first). Stored in the map file under `editor:` so the game
-ignores it:
+One per map (placing a second moves the first); its form holds all Quick Play settings (party and
+levels, extra items and abilities, flags, gold) – there is no separate Quick Play panel. Stored in
+the map file under `editor:` so the game ignores it:
 
 ```yaml
 editor:
@@ -395,3 +390,6 @@ Order: E1 → E2 → E3 → E4, then E5–E8 in any order, E9 alongside.
    class only; heroes hold no items of their own – only enemies do (user decision).
 7. **One item form** with optional sections; the category is derived, quest item = `key`.
 8. **Preact for forms, Phaser for the map canvas**, both in one Vite app next to the game (user decision).
+9. **Three map modes** – Board, Decor, Entity – each with its own tools; W / S raise and lower, A / D
+   turn, right mouse erases (holes, no decor, delete); sections as icons in the top bar; inspector
+   tabs Edit and Info; Quick Play edited only through its entity (user decisions).

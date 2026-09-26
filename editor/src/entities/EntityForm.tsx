@@ -8,6 +8,7 @@ import { ConditionEditor } from "../forms/ConditionEditor";
 import { Check, Field, fileSetter, ListEditor, Num, Select, Text } from "../forms/fields";
 import type { Project } from "../project";
 import { entityPath, KIND_INFO, type EntityRef } from "./model";
+import { QuickPlayForm } from "../screens/QuickPlayForm";
 
 const DIRS: Dir[] = ["N", "E", "S", "W"];
 const SIGNS: [string, string][] = [
@@ -179,12 +180,7 @@ export function EntityForm({ project, mapId, entity, onSelect }: { project: Proj
           </>
         );
       case "quickplay":
-        return (
-          <>
-            {position}
-            <p class="hint">Party, levels, items, flags: see the Quick Play tab.</p>
-          </>
-        );
+        return <QuickPlayForm project={project} mapId={mapId} />;
       case "event":
         return <EventForm project={project} mapId={mapId} index={entity.key as number} db={db} />;
     }

@@ -240,7 +240,7 @@ const scenarios = {
       await page.mouse.up();
       await sleep(200);
     };
-    await page.keyboard.press("1"); // terrain layer
+    await page.keyboard.press("1"); // board mode
     await page.keyboard.press("m"); // select tool (the toolbar grows, the canvas moves)
     await sleep(300);
     const before = await rows("terrain");
@@ -266,7 +266,7 @@ const scenarios = {
     await sleep(200);
     d.expect((await rows("decor"))[9].slice(2, 7) === decorBefore[7].slice(6, 11), `pasted a copy (${(await rows("decor"))[9]})`);
     // all undone
-    await page.locator(".toolbar .title").click();
+    await page.locator(".status").click();
     for (let i = 0; i < 4; i++) await page.keyboard.press("Control+z");
     d.expect(JSON.stringify(await rows("terrain")) === JSON.stringify(before), "undo restored the terrain");
     d.expect(await page.getByRole("button", { name: "Save", exact: true }).isDisabled(), "nothing left to save");
@@ -274,7 +274,7 @@ const scenarios = {
     await page.getByText("The Sleeping Camel", { exact: true }).click();
     await page.waitForFunction(() => window.__editorMap?.props?.mapId === "sandhollow_inn");
     await sleep(400);
-    await page.keyboard.press("0"); // entities (the toolbar shrinks, the canvas moves)
+    await page.keyboard.press("3"); // entity mode (the toolbar shrinks, the canvas moves)
     await sleep(300);
     const inn = "data/maps/sandhollow_inn.yaml";
     const keeper = await page.evaluate((f) => window.__editor.project.data(f).events.find((e) => e.pages.some((p) => p.interactions?.some((i) => i.type === "inn"))), inn);
@@ -286,7 +286,7 @@ const scenarios = {
     const wake = await page.evaluate((f) => window.__editor.project.data(f).events.flatMap((e) => e.pages.flatMap((p) => p.interactions ?? [])).find((i) => i.type === "inn").wakeAt, inn);
     d.expect(wake.dir === "E" && wake.map === "sandhollow_inn_upper", `wake-up facing set (${JSON.stringify(wake)})`);
     await d.shot("inn");
-    await page.locator(".toolbar .title").click();
+    await page.locator(".status").click();
     await page.keyboard.press("Control+z");
     d.expect(!errors.length, `no page errors (${errors})`);
   },
@@ -305,6 +305,8 @@ const scenarios = {
     const data = () => page.evaluate((f) => window.__editor.project.data(f), f);
     const at = (x, y) => page.evaluate(([x, y]) => window.__editorMap.cellScreen(x, y), [x, y]);
     const exits0 = (await data()).exits.length;
+    await page.keyboard.press("3"); // entity mode
+    await sleep(300);
     // place a new exit and send it to Sandhollow's inn door
     await page.locator(".add-grid").getByRole("button", { name: "Exit", exact: true }).click();
     let p = await at(2, 7);
@@ -337,7 +339,7 @@ const scenarios = {
     await page.getByRole("button", { name: "← All entities" }).click();
     p = await at(2, 7);
     await page.mouse.click(p.x, p.y);
-    await page.locator(".toolbar .title").click();
+    await page.locator(".status").click();
     await page.keyboard.press("Delete");
     d.expect((await data()).exits.length === exits0, "deleted the exit");
     for (let i = 0; i < 12; i++) await page.keyboard.press("Control+z");
@@ -375,7 +377,7 @@ const scenarios = {
       await sleep(150);
     };
     const before = await row("terrain", 7);
-    await page.keyboard.press("1"); // terrain layer
+    await page.keyboard.press("1"); // board mode
     // pencil: grass (the default brush) on one cell
     await click(4, 7);
     d.expect((await row("terrain", 7))[4] === "g", "pencil painted grass");
@@ -390,22 +392,46 @@ const scenarios = {
     await page.keyboard.press("b");
     await click(9, 9);
     d.expect((await row("terrain", 9))[9] === "g", "picked grass and painted it");
-    // height: raise twice by painting over the cell in two strokes
-    await page.keyboard.press("2");
-    await click(10, 9);
-    await click(10, 9);
-    d.expect((await row("height", 9))[10] === "2", "raised twice");
-    // after turning the map, clicks still hit the right cell
+    // height: W raises the hovered cell
+    const hoverCell = async (x, y) => {
+      const p = await at(x, y);
+      await page.mouse.move(p.x, p.y);
+      await sleep(120);
+    };
+    await hoverCell(10, 9);
+    await page.keyboard.press("w");
+    await page.keyboard.press("w");
+    d.expect((await row("height", 9))[10] === "2", "W raised twice");
+    // after turning the map, the cursor still finds the right cell
     await page.keyboard.press("e");
     await sleep(400);
-    await click(10, 9);
-    const heights = await page.evaluate(() => window.__editor.project.data("data/maps/sandhollow.yaml").layers.height);
-    d.expect((await row("height", 9))[10] === "3", `picking works rotated:
-${heights}`);
+    await hoverCell(10, 9);
+    await page.keyboard.press("w");
+    d.expect((await row("height", 9))[10] === "3", "picking works rotated");
+    await page.keyboard.press("s");
+    d.expect((await row("height", 9))[10] === "2", "S lowers");
+    // right click draws a hole
+    const p1 = await at(3, 5);
+    await page.mouse.move(p1.x, p1.y);
+    await page.mouse.down({ button: "right" });
+    await page.mouse.up({ button: "right" });
+    await sleep(150);
+    d.expect((await row("terrain", 5))[3] === " ", "right click made a hole");
+    // a piece, turned with D
+    await page.getByRole("button", { name: "Pieces", exact: true }).click();
+    await page.getByRole("button", { name: "Half", exact: true }).click();
+    await click(6, 3);
+    const shape = async () => page.evaluate(([f]) => window.__editor.project.content.db.map(f).layers.shape, ["sandhollow"]);
+    d.expect(/[^.\s]/.test((await shape()) ?? ""), "the piece is on the map");
+    await hoverCell(6, 3);
+    const cut0 = await page.evaluate(() => JSON.stringify(window.__editor.project.data("data/maps/sandhollow.yaml").legend.shapes));
+    await page.keyboard.press("d");
+    const cut1 = await page.evaluate(() => JSON.stringify(window.__editor.project.data("data/maps/sandhollow.yaml").legend.shapes));
+    d.expect(cut0 !== cut1, `D turned the piece (${cut0} → ${cut1})`);
     await d.shot("painted");
     // everything undoes back to the file on disk
-    await page.locator(".toolbar .title").click();
-    for (let i = 0; i < 10; i++) await page.keyboard.press("Control+z");
+    await page.locator(".status").click();
+    for (let i = 0; i < 14; i++) await page.keyboard.press("Control+z");
     d.expect((await row("terrain", 7)) === before, "undo restored the terrain");
     d.expect(await page.getByRole("button", { name: "Save", exact: true }).isDisabled(), "nothing left to save");
     d.expect(!errors.length, `no page errors (${errors})`);
@@ -416,14 +442,21 @@ ${heights}`);
     const page = d.page;
     await page.goto(new URL("editor/", url).href);
     await page.getByText("Temple of the Still Sky").click();
-    await page.getByRole("button", { name: "Quick Play", exact: true }).click(); // inspector tab
+    await page.waitForFunction(() => window.__editorMap?.props?.mapId === "temple");
+    await page.keyboard.press("3"); // entity mode
+    await sleep(300);
+    // place the Quick Play start
+    await page.locator(".add-grid").getByRole("button", { name: "Quick Play start" }).click();
+    const qp = await page.evaluate(() => window.__editorMap.cellScreen(5, 6));
+    await page.mouse.click(qp.x, qp.y);
+    await sleep(300);
     await page.getByRole("button", { name: "+ Hero" }).click();
     const party = page.locator(".inspector select").first();
     await party.selectOption("tarek");
     await page.locator(".inspector input[type=number]").nth(3).fill("9"); // level (x, y, gold, level)
     await page.locator(".inspector input[placeholder^='e.g.']").fill("monks_trial");
     // an unsaved edit the play-test must see: other music
-    await page.getByRole("button", { name: "Map", exact: true }).click();
+    await page.getByRole("button", { name: "Info", exact: true }).click();
     await page.locator(".inspector select").nth(3).selectOption("boss");
     d.expect(await page.getByRole("button", { name: "Save (1)" }).isVisible(), "the map is marked unsaved");
     await d.shot("editor");
@@ -438,17 +471,19 @@ ${heights}`);
     await game.waitForTimeout(1500);
     const st = await game.evaluate(() => {
       const s = __game.debug.state();
-      return { roster: s.roster, level: s.heroes.tarek.level, flag: s.flags.monks_trial, music: __game.debug.ctx().db.map("temple").music };
+      const p = Object.values(s.board.pieces).find((x) => x.members.includes("tarek"));
+      return { roster: s.roster, level: s.heroes.tarek.level, flag: s.flags.monks_trial, music: __game.debug.ctx().db.map("temple").music, at: [p.x, p.y] };
     });
     await game.screenshot({ path: `${OUT}/editorQuickPlay-02-game.png` });
     d.expect(JSON.stringify(st.roster) === '["tarek"]', `party from Quick Play (${st.roster})`);
     d.expect(st.level === 9, `level 9 (${st.level})`);
     d.expect(st.flag === true, "flag set");
     d.expect(st.music === "boss", "unsaved edit reached the game");
+    d.expect(st.at[0] === 5 && st.at[1] === 6, `started on the Quick Play entity (${st.at})`);
     // nothing was written to disk: undo everything
     await page.bringToFront();
-    await page.locator(".toolbar .title").click(); // focus out of the form fields
-    for (let i = 0; i < 6; i++) await page.keyboard.press("Control+z");
+    await page.locator(".status").click(); // focus out of the form fields
+    for (let i = 0; i < 8; i++) await page.keyboard.press("Control+z");
     d.expect(await page.getByRole("button", { name: "Save", exact: true }).isDisabled(), "undo brought the files back");
   },
 

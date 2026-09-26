@@ -12,12 +12,14 @@ import type { EntitySprite } from "../entities/visuals";
 
 /**
  * The map exactly as the game draws it (editor-design §5.1): the engine's IsoMapView fed by the
- * game's own map source. Left mouse = the tool, right/middle drag = pan, wheel = zoom.
+ * game's own map source. Left / right mouse = the tool (right = its eraser), middle drag or
+ * Space + drag = pan, wheel = zoom.
  */
 
 export interface CanvasHandlers {
-  down(cell: Pos): void;
-  move(cell: Pos | null, buttons: boolean): void;
+  /** button: 0 left, 2 right. */
+  down(cell: Pos, button: number): void;
+  move(cell: Pos | null, pressed: boolean): void;
   up(cell: Pos | null): void;
 }
 
@@ -28,15 +30,25 @@ export interface Marker {
   frame: number;
 }
 
+/** A see-through preview of what the next click places, following the cursor. */
+export interface Ghost {
+  texture: string;
+  frame: number;
+  originY: number;
+}
+
 interface Props {
   db: Database;
   mapId: string;
   rotation: number;
   hideDecor: boolean;
+  /** Grey the terrain out (decor mode) so objects stand out. */
+  dimBoard: boolean;
   /** Cells to highlight (rect preview, selection…). */
   markers: Marker[];
   /** Events, exits, enemies… placed on the map (editor-design §6). */
   entities: EntitySprite[];
+  ghost: Ghost | null;
   handlers: CanvasHandlers;
 }
 
@@ -45,10 +57,12 @@ class MapScene extends Phaser.Scene {
   props!: Props;
   private shownMap?: string;
   private shownRotation = 0;
-  private hover?: Pos | null;
+  hover?: Pos | null;
   private pan?: { x: number; y: number; sx: number; sy: number };
   private painting = false;
   private entityObjects: Phaser.GameObjects.GameObject[] = [];
+  private ghostImage?: Phaser.GameObjects.Image;
+  private space = false;
 
   constructor(private readonly initial: () => Props) {
     super("editorMap");
@@ -82,8 +96,18 @@ class MapScene extends Phaser.Scene {
   create() {
     (window as unknown as { __editorMap?: MapScene }).__editorMap = this;
     this.input.mouse?.disableContextMenu();
+    // Space + drag pans
+    const keys = (e: KeyboardEvent) => {
+      if (e.code === "Space") this.space = e.type === "keydown";
+    };
+    window.addEventListener("keydown", keys);
+    window.addEventListener("keyup", keys);
+    this.events.once("destroy", () => {
+      window.removeEventListener("keydown", keys);
+      window.removeEventListener("keyup", keys);
+    });
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
-      if (p.rightButtonDown() || p.middleButtonDown()) {
+      if (p.middleButtonDown() || (this.space && p.leftButtonDown())) {
         const cam = this.cameras.main;
         this.pan = { x: p.x, y: p.y, sx: cam.scrollX, sy: cam.scrollY };
         return;
@@ -91,7 +115,7 @@ class MapScene extends Phaser.Scene {
       const cell = this.cellAt(p);
       if (cell) {
         this.painting = true;
-        this.props.handlers.down(cell);
+        this.props.handlers.down(cell, p.rightButtonDown() ? 2 : 0);
       }
     });
     this.input.on("pointermove", (p: Phaser.Input.Pointer) => {
@@ -104,6 +128,7 @@ class MapScene extends Phaser.Scene {
       if (cell?.x !== this.hover?.x || cell?.y !== this.hover?.y) {
         this.hover = cell;
         this.drawMarkers();
+        this.drawGhost();
         this.props.handlers.move(cell, this.painting);
       }
     });
@@ -119,6 +144,12 @@ class MapScene extends Phaser.Scene {
     };
     this.input.on("pointerup", up);
     this.input.on("pointerupoutside", up);
+    this.input.on("gameout", () => {
+      this.hover = null;
+      this.drawMarkers();
+      this.drawGhost();
+      this.props.handlers.move(null, this.painting);
+    });
     this.input.on("wheel", (p: Phaser.Input.Pointer, _o: unknown, _dx: number, dy: number) => {
       const cam = this.cameras.main;
       const before = cam.getWorldPoint(p.x, p.y);
@@ -156,8 +187,10 @@ class MapScene extends Phaser.Scene {
       this.cameras.main.centerOn(b.centerX, b.centerY);
     }
     this.shownRotation = props.rotation;
+    this.view.setBlockTint(props.dimBoard ? 0x6f7086 : null);
     this.drawMarkers();
     this.drawEntities();
+    this.drawGhost();
   }
 
   /** Entities as the game's sprites; editor-only ones (spawns, invisible events…) as labels. */
@@ -191,6 +224,25 @@ class MapScene extends Phaser.Scene {
         this.entityObjects.push(t);
       }
     }
+  }
+
+  /** The next placement, see-through, on the hovered cell. */
+  drawGhost() {
+    const g = this.props.ghost;
+    const view = this.view;
+    if (!g || !view || !this.hover || !this.textures.exists(g.texture)) {
+      this.ghostImage?.setVisible(false);
+      return;
+    }
+    const top = view.cellTop(this.hover.x, this.hover.y);
+    if (!this.ghostImage) this.ghostImage = this.add.image(0, 0, g.texture, g.frame);
+    this.ghostImage
+      .setTexture(g.texture, g.frame)
+      .setOrigin(0.5, g.originY)
+      .setPosition(top.x, top.y)
+      .setAlpha(0.65)
+      .setDepth(view.depthOf(this.hover.x, this.hover.y, LAYER.decor, 0.9))
+      .setVisible(true);
   }
 
   drawMarkers() {
@@ -237,7 +289,7 @@ export function IsoCanvas(props: Props) {
   useEffect(() => {
     const s = scene.current;
     if (s?.view) s.show(latest.current);
-  }, [props.db, props.mapId, props.rotation, props.hideDecor]);
+  }, [props.db, props.mapId, props.rotation, props.hideDecor, props.dimBoard]);
 
   useEffect(() => {
     const s = scene.current;
@@ -254,6 +306,14 @@ export function IsoCanvas(props: Props) {
       s.drawEntities();
     }
   }, [props.entities]);
+
+  useEffect(() => {
+    const s = scene.current;
+    if (s?.view) {
+      s.props = latest.current;
+      s.drawGhost();
+    }
+  }, [props.ghost]);
 
   // handlers change every render – keep the scene's copy fresh without redrawing
   if (scene.current) scene.current.props = { ...scene.current.props, handlers: props.handlers };

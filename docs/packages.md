@@ -298,6 +298,7 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ Layers: terrain (incl. holes), height, decor, decor facing, shape, door lintels; tools: pencil, rectangle, fill, pick; height raise/lower/set; resize (placed things move along)
 - ☑ Area select → copy / paste (also between maps) / move (entities along) / clear, across all board layers
 - ☑ Map properties: name, kind, chipset, battleback, music (with preview); onEnter comes with the action builder (E4)
+- ☑ Reworked layout (user request): sections as icons in the top bar; Board / Decor / Entity modes with their own tools; W/S height, A/D turn, right mouse erases; Edit / Info tabs; top view with unwarped terrain textures; decor ghost preview and greyed-out board
 
 ## E4 · Entities ☑
 - ☑ Entities layer: every kind drawn with the game's sprites (editor-only markers as labels), select / cycle / drag / place / delete

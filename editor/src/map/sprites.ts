@@ -59,3 +59,46 @@ export async function terrainColors(chip: ChipsetDef): Promise<Record<string, st
   }
   return out;
 }
+
+/**
+ * Each terrain's top face, "unwarped" from the isometric diamond into a square (for the flat grid
+ * view): square (u, v) along grid (x, y) samples diamond pixel (16 + (u − v)·16, (u + v)·8).
+ */
+export async function terrainTops(chip: ChipsetDef, size = 16): Promise<Record<string, HTMLCanvasElement>> {
+  const img = await loadImage(chip.image);
+  const src = document.createElement("canvas");
+  src.width = img.width;
+  src.height = img.height;
+  const sg = src.getContext("2d", { willReadFrequently: true })!;
+  sg.drawImage(img, 0, 0);
+  const data = sg.getImageData(0, 0, img.width, img.height).data;
+  const cols = Math.floor(img.width / chip.frameWidth);
+  const hw = chip.tileWidth / 2;
+  const hh = chip.tileHeight / 2;
+  const out: Record<string, HTMLCanvasElement> = {};
+  for (const [id, t] of Object.entries(chip.terrains)) {
+    const fx = (t.frame % cols) * chip.frameWidth;
+    const fy = Math.floor(t.frame / cols) * chip.frameHeight + (t.sink ?? (t.frames ? 2 : 0));
+    const cv = document.createElement("canvas");
+    cv.width = size;
+    cv.height = size;
+    const g = cv.getContext("2d")!;
+    const px = g.createImageData(size, size);
+    for (let v = 0; v < size; v++)
+      for (let u = 0; u < size; u++) {
+        const U = (u + 0.5) / size;
+        const V = (v + 0.5) / size;
+        const x = Math.min(chip.tileWidth - 1, Math.floor(hw + (U - V) * hw));
+        const y = Math.min(chip.tileHeight - 1, Math.floor((U + V) * hh));
+        const i = ((fy + y) * img.width + fx + x) * 4;
+        const o = (v * size + u) * 4;
+        px.data[o] = data[i];
+        px.data[o + 1] = data[i + 1];
+        px.data[o + 2] = data[i + 2];
+        px.data[o + 3] = data[i + 3] < 128 ? 255 : data[i + 3];
+      }
+    g.putImageData(px, 0, 0);
+    out[id] = cv;
+  }
+  return out;
+}

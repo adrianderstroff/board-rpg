@@ -1,50 +1,46 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { getGrid } from "../../../src/core/board/grid";
 import type { MapDef } from "../../../src/core/data/types";
 import { resize } from "../map/layers";
-import { LAYERS, MapEditor, Palette, type Brush, type Layer } from "../map/MapEditor";
+import { MapEditor, type Brush, type Mode } from "../map/MapEditor";
+import { BoardPalette, DecorPalette, KeyHints } from "../map/Palettes";
 import { EntityForm } from "../entities/EntityForm";
 import { deleteEntity, KIND_INFO, listEntities, sameRef, type EntityKind, type EntityRef } from "../entities/model";
 import { ActionEditor } from "../forms/ActionEditor";
 import { Field, fileSetter } from "../forms/fields";
 import type { Project } from "../project";
-import { QuickPlayForm } from "./QuickPlayForm";
 
 const mapPath = (id: string) => `data/maps/${id}.yaml`;
 
-/** Maps: list, canvas with layers and tools (editor-design §5), inspector with brush, properties and Quick Play. */
+/**
+ * Maps (editor-design §5): the map list, the canvas with its three modes, and the inspector with
+ * an Edit tab (brushes, or the selected entity) and an Info tab (the map's properties).
+ */
 export function MapsScreen({ project, selected: mapSel, onSelect }: { project: Project; selected: string | null; onSelect: (id: string) => void }) {
   const [filter, setFilter] = useState("");
-  const [tab, setTab] = useState<"paint" | "map" | "quick">("paint");
-  const [layer, setLayer] = useState<Layer>("entities");
+  const [tab, setTab] = useState<"edit" | "info">("edit");
+  const [mode, setMode] = useState<Mode>("board");
   const [selected, select] = useState<EntityRef | null>(null);
   const [placing, setPlacing] = useState<EntityKind | null>(null);
+  const [brush, setBrush] = useState<Brush>({ board: "terrain", terrain: "grass", piece: ["NW"], lintel: "adobe", lintelTop: 5, decor: "palm", decorFacing: "S" });
   const entities = { selected, select, placing, setPlacing };
   // another map: nothing selected
   useEffect(() => {
     select(null);
     setPlacing(null);
   }, [mapSel]);
-  const [brush, setBrush] = useState<Brush>({ terrain: "grass", decor: "palm", heightMode: "raise", height: 1, shape: ["NW"], facing: "N", lintel: "adobe", lintelTop: 5 });
+  // selecting or placing an entity shows its form
+  useEffect(() => {
+    if (selected || placing) setTab("edit");
+  }, [selected, placing]);
   const ids = project.paths("data/maps/").map((p) => p.replace(/^data\/maps\//, "").replace(/\.yaml$/, ""));
   const shown = ids.filter((id) => {
     const name = project.data<MapDef>(mapPath(id))?.name ?? "";
     return `${id} ${name}`.toLowerCase().includes(filter.toLowerCase());
   });
   const dirty = new Set(project.dirtyPaths());
-
-  // layer shortcuts 1–5
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey || e.altKey || e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
-      const l = LAYERS.find((x) => x.key === e.key);
-      if (l) {
-        setLayer(l.id);
-        setTab("paint");
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  const db = project.content.db;
+  const chip = db && mapSel ? getGrid(db, mapSel).chipset : null;
 
   return (
     <>
@@ -62,31 +58,24 @@ export function MapsScreen({ project, selected: mapSel, onSelect }: { project: P
               </div>
             ))}
           </div>
-          {mapSel ? <MapEditor project={project} mapId={mapSel} layer={layer} brush={brush} setBrush={setBrush} entities={entities} /> : <p class="placeholder">Select a map.</p>}
+          {mapSel ? <MapEditor project={project} mapId={mapSel} mode={mode} setMode={setMode} brush={brush} setBrush={setBrush} entities={entities} /> : <p class="placeholder">Select a map.</p>}
         </div>
       </main>
       <aside class="inspector">
         {mapSel && (
           <>
             <div class="tabs">
-              <button class={tab === "paint" ? "on" : ""} onClick={() => setTab("paint")}>
-                {layer === "entities" ? "Entities" : "Paint"}
+              <button class={tab === "edit" ? "on" : ""} onClick={() => setTab("edit")}>
+                Edit
               </button>
-              <button class={tab === "map" ? "on" : ""} onClick={() => setTab("map")}>
-                Map
-              </button>
-              <button class={tab === "quick" ? "on" : ""} onClick={() => setTab("quick")}>
-                Quick Play
+              <button class={tab === "info" ? "on" : ""} onClick={() => setTab("info")}>
+                Info
               </button>
             </div>
-            {tab === "paint" && (
-              <>
-                <Palette project={project} mapId={mapSel} layer={layer} setLayer={setLayer} brush={brush} setBrush={setBrush} />
-                {layer === "entities" && <EntitiesPanel project={project} mapId={mapSel} selected={selected} select={select} placing={placing} setPlacing={setPlacing} />}
-              </>
-            )}
-            {tab === "map" && <MapProperties project={project} id={mapSel} />}
-            {tab === "quick" && <QuickPlayForm project={project} mapId={mapSel} />}
+            {tab === "edit" && chip && mode === "board" && <BoardPalette chip={chip} brush={brush} setBrush={setBrush} />}
+            {tab === "edit" && chip && mode === "decor" && <DecorPalette chip={chip} brush={brush} setBrush={setBrush} />}
+            {tab === "edit" && mode === "entity" && <EntitiesPanel project={project} mapId={mapSel} selected={selected} select={select} placing={placing} setPlacing={setPlacing} />}
+            {tab === "info" && <MapProperties project={project} id={mapSel} />}
           </>
         )}
       </aside>
@@ -266,6 +255,16 @@ function EntitiesPanel(props: { project: Project; mapId: string; selected: Entit
         </div>
       </Field>
       {placing && <p class="hint">Click a cell on the map to place the {KIND_INFO[placing].label.toLowerCase()}.</p>}
+      {!selected && (
+        <KeyHints
+          items={[
+            ["Click", "select (again: the next one on the cell)"],
+            ["Drag", "move"],
+            ["Right / Del", "delete"],
+            ["A / D", "turn the selected one"],
+          ]}
+        />
+      )}
       {selected && list.some((e) => sameRef(e, selected)) ? (
         <>
           <EntityForm project={project} mapId={mapId} entity={selected} onSelect={select} />

@@ -4,6 +4,7 @@ import { playtest } from "./playtest";
 import type { Project } from "./project";
 import { MapsScreen } from "./screens/MapsScreen";
 import { knownFlags } from "./forms/ConditionEditor";
+import { Icon } from "./icons";
 
 /** Navigation entries; the ones without a screen yet are shown greyed out (editor-design §12). */
 const SCREENS = [
@@ -76,7 +77,6 @@ export function App({ project }: { project: Project }) {
     return () => window.removeEventListener("beforeunload", onUnload);
   }, [project]);
 
-  const mapName = map ? (project.content.db?.maps.get(map)?.name ?? map) : null;
 
   const flags = knownFlags(project.content.raw);
   return (
@@ -88,7 +88,21 @@ export function App({ project }: { project: Project }) {
         ))}
       </datalist>
       <div class="toolbar">
-        <span class="title">Board RPG Editor</span>
+        {/* the main sections, as icons (their names on hover) */}
+        <nav class="nav" aria-label="Sections">
+          {SCREENS.map((s) => (
+            <button
+              key={s.id}
+              class={`icon-button ${screen === s.id ? "on" : ""} ${"pkg" in s ? "soon" : ""}`}
+              onClick={() => setScreen(s.id)}
+              title={"pkg" in s ? `${s.label} (coming with ${s.pkg})` : s.label}
+              aria-label={s.label}
+            >
+              <Icon name={s.id} />
+            </button>
+          ))}
+        </nav>
+        <span class="sep" />
         <button class="primary" onClick={() => playtest(project, "play")} title="Run the game from the title screen with the current content">
           ▶ Play
         </button>
@@ -98,7 +112,7 @@ export function App({ project }: { project: Project }) {
           onClick={() => map && playtest(project, "quick", map)}
           title={map ? "Start right on this map with its Quick Play settings (F5)" : "Select a map first"}
         >
-          ▶ Quick Play{mapName ? `: ${mapName}` : ""}
+          ▶ Quick Play
         </button>
         <span class="sep" />
         <button disabled={!dirty.length || busy} onClick={save} title={dirty.join("\n") || "Nothing to save"}>
@@ -129,18 +143,6 @@ export function App({ project }: { project: Project }) {
           </ul>
         </div>
       )}
-      <nav class="nav">
-        {SCREENS.map((s) => (
-          <button
-            key={s.id}
-            class={`${screen === s.id ? "active" : ""} ${"pkg" in s ? "soon" : ""}`}
-            onClick={() => setScreen(s.id)}
-            title={"pkg" in s ? `Coming with ${s.pkg}` : undefined}
-          >
-            {s.label}
-          </button>
-        ))}
-      </nav>
       {screen === "maps" ? (
         <MapsScreen project={project} selected={map} onSelect={setMap} />
       ) : (

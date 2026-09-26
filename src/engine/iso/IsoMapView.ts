@@ -680,6 +680,16 @@ export class IsoMapView {
     }
   }
 
+  /**
+   * Tints all terrain blocks (decor, overlays and characters keep their colours) – e.g. an editor
+   * greying the board out so objects stand out. null restores the normal look.
+   */
+  setBlockTint(tint: number | null) {
+    const apply = (o: { setTint?: (t: number) => unknown; clearTint?: () => unknown }) => (tint === null ? o.clearTint?.() : o.setTint?.(tint));
+    for (const p of this.placed) if (p.layer === LAYER.block) apply(p.obj as never);
+    for (const s of this.shaped) apply(s.mesh as never);
+  }
+
   /** The nearest quarter turn of the current transform (orients top textures). */
   private staticQuarter(): number {
     const o = this.transform(0, 0);

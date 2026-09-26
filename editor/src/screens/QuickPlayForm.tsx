@@ -39,8 +39,7 @@ export function QuickPlayForm({ project, mapId }: { project: Project; mapId: str
 
   return (
     <>
-      <h3>▶ Quick Play on this map</h3>
-      <p class="hint">Starts right here for testing. Empty fields use the defaults. The real game start is under Settings.</p>
+      <p class="hint">▶ Quick Play starts right here. Empty fields use the defaults; the real game start is under Settings.</p>
 
       <div class="form" style={{ gridTemplateColumns: "70px 1fr" }}>
         <label>Start at</label>

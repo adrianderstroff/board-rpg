@@ -3,9 +3,12 @@ import { getGrid } from "../../../src/core/board/grid";
 import type { Database } from "../../../src/core/data/database";
 import type { Pos } from "../../../src/core/util/grid";
 import { CORNERS } from "../../../src/game/board/mapSource";
-import type { CanvasHandlers, Marker } from "./IsoCanvas";
-import { loadImage, terrainColors } from "./sprites";
 import type { EntitySprite } from "../entities/visuals";
+import type { CanvasHandlers, Ghost, Marker } from "./IsoCanvas";
+import { loadImage, terrainTops } from "./sprites";
+
+const MARKER_COLORS = ["#0099db", "#e43b44", "#63c74d", "#feae34", "#ffffff", "#8b9bb4"];
+const DIR_ARROW: Record<string, string> = { N: "↑", E: "→", S: "↓", W: "←" };
 
 /** Letter per entity kind in the grid view. */
 const KIND_MARK: Record<string, [string, string]> = {
@@ -20,17 +23,26 @@ const KIND_MARK: Record<string, [string, string]> = {
   quickplay: ["▶", "#63c74d"],
 };
 
-const MARKER_COLORS = ["#0099db", "#e43b44", "#63c74d", "#feae34", "#ffffff", "#8b9bb4"];
-const DIR_ARROW: Record<string, string> = { N: "↑", E: "→", S: "↓", W: "←" };
+interface Props {
+  db: Database;
+  mapId: string;
+  hideDecor: boolean;
+  dimBoard: boolean;
+  markers: Marker[];
+  entities: EntitySprite[];
+  ghost: Ghost | null;
+  handlers: CanvasHandlers;
+}
 
 /**
- * Flat top-down view of the same cells (editor-design §5.1): terrain colour, height number, decor
- * thumbnail, shape, facing; blocked cells darker. Fast for painting large areas. Ctrl+wheel zooms.
+ * Flat top-down view of the same cells (editor-design §5.1): each terrain's top texture unwarped
+ * into a square, height number, decor thumbnail, shape, facing; blocked cells darker. Quick for
+ * painting large areas. Ctrl+wheel zooms; right button = the tool's eraser.
  */
-export function GridCanvas({ db, mapId, hideDecor, markers, entities, handlers }: { db: Database; mapId: string; hideDecor: boolean; markers: Marker[]; entities: EntitySprite[]; handlers: CanvasHandlers }) {
+export function GridCanvas({ db, mapId, hideDecor, dimBoard, markers, entities, ghost, handlers }: Props) {
   const canvas = useRef<HTMLCanvasElement>(null);
-  const [size, setSize] = useState(26);
-  const [colors, setColors] = useState<Record<string, string> | null>(null);
+  const [size, setSize] = useState(28);
+  const [tops, setTops] = useState<Record<string, HTMLCanvasElement> | null>(null);
   const [decorImg, setDecorImg] = useState<HTMLImageElement | null>(null);
   const [hover, setHover] = useState<Pos | null>(null);
   const painting = useRef(false);
@@ -38,18 +50,27 @@ export function GridCanvas({ db, mapId, hideDecor, markers, entities, handlers }
   const chip = grid.chipset;
 
   useEffect(() => {
-    void terrainColors(chip).then(setColors);
+    void terrainTops(chip).then(setTops);
     void loadImage(chip.decorImage).then(setDecorImg);
   }, [chip]);
 
   useEffect(() => {
     const cv = canvas.current;
-    if (!cv || !colors) return;
+    if (!cv || !tops) return;
     cv.width = grid.width * size;
     cv.height = grid.height * size;
     const g = cv.getContext("2d")!;
     g.imageSmoothingEnabled = false;
     g.clearRect(0, 0, cv.width, cv.height);
+    const decorOf = (id: string, px: number, py: number, alpha = 1) => {
+      if (!decorImg) return;
+      const f = chip.decor[id].frame;
+      const cols = Math.floor(decorImg.width / chip.decorFrameWidth);
+      const h = chip.decorAnchorY + 4;
+      g.globalAlpha = alpha;
+      g.drawImage(decorImg, (f % cols) * chip.decorFrameWidth, Math.floor(f / cols) * chip.decorFrameHeight, chip.decorFrameWidth, h, px, py - size * 0.25, size, size * (h / chip.decorFrameWidth));
+      g.globalAlpha = 1;
+    };
     for (let y = 0; y < grid.height; y++)
       for (let x = 0; x < grid.width; x++) {
         const c = grid.cell({ x, y });
@@ -71,26 +92,23 @@ export function GridCanvas({ db, mapId, hideDecor, markers, entities, handlers }
           ].filter(([cx, cy]) => !c.cut!.some((k) => CORNERS[k].x === Math.sign(cx) && CORNERS[k].y === Math.sign(cy)));
           if (c.cut.length === 2) pts.push([0, 0]);
           g.beginPath();
-          const cxy = (p: number[]) => [px + (p[0] + 0.5) * size, py + (p[1] + 0.5) * size];
-          const sorted = pts.sort((a, b) => Math.atan2(a[1], a[0]) - Math.atan2(b[1], b[0]));
-          sorted.forEach((p, i) => (i ? g.lineTo(...(cxy(p) as [number, number])) : g.moveTo(...(cxy(p) as [number, number]))));
+          const cxy = (p: number[]): [number, number] => [px + (p[0] + 0.5) * size, py + (p[1] + 0.5) * size];
+          pts.sort((a, b) => Math.atan2(a[1], a[0]) - Math.atan2(b[1], b[0])).forEach((p, i) => (i ? g.lineTo(...cxy(p)) : g.moveTo(...cxy(p))));
           g.closePath();
           g.clip();
         }
-        g.fillStyle = colors[c.terrain] ?? "#555";
-        g.fillRect(px, py, size, size);
+        const top = tops[c.terrain];
+        if (top) g.drawImage(top, px, py, size, size);
         // higher cells lighter, so heights read at a glance
-        g.fillStyle = `rgba(255,255,255,${Math.min(0.35, c.height * 0.03)})`;
+        g.fillStyle = `rgba(255,255,255,${Math.min(0.3, c.height * 0.025)})`;
         g.fillRect(px, py, size, size);
-        if (!c.walkable) {
-          g.fillStyle = "rgba(0,0,0,0.28)";
+        if (!c.walkable || dimBoard) {
+          g.fillStyle = dimBoard ? "rgba(20,22,28,0.55)" : "rgba(0,0,0,0.25)";
           g.fillRect(px, py, size, size);
         }
         g.restore();
-        if (c.decor && !hideDecor && decorImg) {
-          const f = chip.decor[c.decor].frame;
-          const cols = Math.floor(decorImg.width / chip.decorFrameWidth);
-          g.drawImage(decorImg, (f % cols) * chip.decorFrameWidth, Math.floor(f / cols) * chip.decorFrameHeight, chip.decorFrameWidth, chip.decorAnchorY + 4, px, py, size, size * ((chip.decorAnchorY + 4) / chip.decorFrameWidth) * 0.9);
+        if (c.decor && !hideDecor) {
+          decorOf(c.decor, px, py);
           if (c.decorDir) {
             g.fillStyle = "#feae34";
             g.font = `bold ${Math.round(size * 0.45)}px sans-serif`;
@@ -98,9 +116,11 @@ export function GridCanvas({ db, mapId, hideDecor, markers, entities, handlers }
           }
         }
         if (c.height) {
-          g.fillStyle = "rgba(0,0,0,0.65)";
-          g.font = `${Math.round(size * 0.36)}px monospace`;
-          g.fillText(String(c.height), px + 2, py + size * 0.36);
+          g.fillStyle = "rgba(0,0,0,0.6)";
+          g.fillRect(px + 1, py + 1, size * 0.36 + (c.height > 9 ? size * 0.2 : 0), size * 0.36);
+          g.fillStyle = "#fff";
+          g.font = `${Math.round(size * 0.32)}px monospace`;
+          g.fillText(String(c.height), px + 2, py + size * 0.32);
         }
         g.strokeStyle = "rgba(0,0,0,0.25)";
         g.strokeRect(px + 0.5, py + 0.5, size - 1, size - 1);
@@ -125,13 +145,18 @@ export function GridCanvas({ db, mapId, hideDecor, markers, entities, handlers }
       g.strokeRect(m.x * size + 1, m.y * size + 1, size - 2, size - 2);
       g.lineWidth = 1;
     }
-  }, [grid, colors, decorImg, size, hover, markers, hideDecor, entities]);
+    // the decor about to be placed
+    if (ghost && hover && ghost.texture.startsWith("decor:")) {
+      const id = Object.entries(chip.decor).find(([, d]) => d.frame === ghost.frame)?.[0];
+      if (id) decorOf(id, hover.x * size, hover.y * size, 0.6);
+    }
+  }, [grid, tops, decorImg, size, hover, markers, hideDecor, dimBoard, entities, ghost]);
 
   const cellOf = (e: MouseEvent): Pos | null => {
     const r = canvas.current!.getBoundingClientRect();
     const x = Math.floor((e.clientX - r.left) / size);
     const y = Math.floor((e.clientY - r.top) / size);
-    return grid.has({ x, y }) || (x >= 0 && y >= 0 && x < grid.width && y < grid.height) ? { x, y } : null;
+    return x >= 0 && y >= 0 && x < grid.width && y < grid.height ? { x, y } : null;
   };
 
   return (
@@ -145,12 +170,13 @@ export function GridCanvas({ db, mapId, hideDecor, markers, entities, handlers }
     >
       <canvas
         ref={canvas}
+        onContextMenu={(e) => e.preventDefault()}
         onMouseDown={(e) => {
-          if (e.button !== 0) return;
+          if (e.button !== 0 && e.button !== 2) return;
           const c = cellOf(e);
           if (!c) return;
           painting.current = true;
-          handlers.down(c);
+          handlers.down(c, e.button);
         }}
         onMouseMove={(e) => {
           const c = cellOf(e);
@@ -166,6 +192,7 @@ export function GridCanvas({ db, mapId, hideDecor, markers, entities, handlers }
         }}
         onMouseLeave={() => {
           setHover(null);
+          handlers.move(null, false);
           if (painting.current) {
             painting.current = false;
             handlers.up(null);
