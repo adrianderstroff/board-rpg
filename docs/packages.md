@@ -386,8 +386,8 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ `apps/player/`: Tauri app – file association, a `game.brpg` beside the executable, the start screen otherwise; built and tried on Windows (9 MB app, 3 MB installer)
 - ☐ macOS: games opened with the app while it runs ("open with" events) – with the release builds
 
-## DS4 · The website ☐
-- ☐ Landing page (features, generated screenshots), `/editor/`, `/play/`, `/download/` (GitHub Releases API)
+## DS4 · The website ☑
+- ☑ `npm run build:site` → `site-dist/`: landing page (features, screenshots from tools/screenshots.mjs and tools/editor-screenshots.mjs), `/editor/`, `/play/` (a play-test from the editor gets every library asset from the editor build), `/download/` (GitHub Releases API)
 
 ## DS5 · Releases ☐
 - ☐ GitHub Actions: player builds on version tags (tauri-action → Release); site build + Pages deploy on main

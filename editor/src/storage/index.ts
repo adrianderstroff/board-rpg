@@ -1,7 +1,7 @@
 import { setAssetResolver } from "../../../src/engine/assets";
 import { readStored, writeStored } from "../persist";
 import { ProjectStore } from "./ops";
-import { BundledLibraryTree, bundledAssetUrl, bundledDemo, canOpenFolders, FolderTree, HttpTree, IdbTree, recall, remember } from "./trees";
+import { BundledLibraryTree, bundledAssetUrl, bundledAssetUrls, bundledDemo, canOpenFolders, FolderTree, HttpTree, IdbTree, recall, remember } from "./trees";
 import { LayeredTree, MemoryTree, type FileTree } from "./tree";
 
 /**
@@ -113,8 +113,15 @@ export async function refreshAssets(projectId: string) {
   }
 }
 
-/** The project's asset URLs a play-test tab needs (blob: URLs from here stay valid while the editor is open). */
-export const projectAssetUrls = (): Record<string, string> => Object.fromEntries(blobs);
+/**
+ * The asset URLs a play-test tab needs: the project's own (blob: URLs from here stay valid while the
+ * editor is open) and – outside the dev server – every library asset as this build serves it (the
+ * game next to the editor on the site only has the ones the demo uses).
+ */
+export function playAssetUrls(): Record<string, string> {
+  if (!current || current.kind === "dev") return {};
+  return { ...bundledAssetUrls(location.href), ...Object.fromEntries(blobs) };
+}
 
 /** For tests: a storage on any tree. */
 export function useStorageForTests(tree: FileTree = new MemoryTree(), kind: StorageKind = "browser") {

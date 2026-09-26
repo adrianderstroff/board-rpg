@@ -42,6 +42,10 @@ const bundledAssets = import.meta.glob(["/library/*/assets/**/*.png", "/library/
 /** Where a bundled library asset is served ("library/v1/assets/…" → its URL), or undefined. */
 export const bundledAssetUrl = (path: string): string | undefined => bundledAssets[`/${path}`];
 
+/** Every bundled library asset → its absolute URL (resolved against `base`), for another page. */
+export const bundledAssetUrls = (base: string): Record<string, string> =>
+  Object.fromEntries(Object.entries(bundledAssets).map(([p, url]) => [p.slice(1), new URL(url, base).href]));
+
 /**
  * The library versions bundled with the editor, read-only: their YAML in memory, their assets
  * fetched from this build when read (an export takes the ones the project uses).

@@ -16,7 +16,8 @@
     "e2e": "node tools/e2e.mjs",
     "dev:phone": "vite --host",
     "build:editor": "tsc --noEmit && vite build --config vite.editor.config.ts",
-    "build:player": "tsc --noEmit && vite build --mode player --outDir dist-player"
+    "build:player": "tsc --noEmit && vite build --mode player --outDir dist-player",
+    "build:site": "tsc --noEmit && node tools/build-site.mjs"
   },
   "dependencies": {
     "fflate": "^0.8.3",

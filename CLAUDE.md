@@ -18,6 +18,7 @@ Web first; desktop (Tauri/Electron) and mobile (Capacitor) later.
 - `npm run build` – typecheck + production build to `dist/`
 - `npm run build:editor` – the editor as a static site to `dist-editor/` (projects in a folder or in the browser, docs/distribution.md)
 - `npm run build:player` – the player (the game without a game of its own: it opens `.brpg` files) to `dist-player/`; the Tauri app around it: `apps/player/`
+- `npm run build:site` – the website (landing page, `/editor/`, `/play/`, `/download/`) to `site-dist/`
 - `npm run art` – regenerate procedural placeholder art (content sheets into `library/v1/assets/`, system graphics into `public/assets/`)
 - `npm run audio` – regenerate procedural chiptune SFX (`public/assets/audio/sfx`) and music (`library/v1/assets/audio/music`) (see AUDIO.md)
 - `npm run e2e [-- scenario ...]` – Playwright end-to-end scenarios against the running dev server (keyboard-driven; `window.__game.debug` only for setup, `debug.menu()` exposes the open menu so tests pick entries by label). Screenshots in `tools/out/e2e/`

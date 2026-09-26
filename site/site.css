@@ -1,0 +1,75 @@
+/* The Board RPG website (docs/distribution.md §3) – the game's own palette. */
+:root {
+  --bg: #181425;
+  --panel: #232037;
+  --line: #3a3551;
+  --text: #e8e6f0;
+  --dim: #a09cb8;
+  --accent: #feae34;
+  --good: #63c74d;
+  --link: #2ce8f5;
+  --radius: 8px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+a { color: var(--link); }
+img { max-width: 100%; display: block; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+
+header.top { border-bottom: 1px solid var(--line); }
+header.top .wrap { display: flex; align-items: center; gap: 20px; height: 56px; }
+header.top .brand { font-weight: 700; color: var(--accent); text-decoration: none; font-size: 18px; }
+header.top nav { display: flex; gap: 18px; margin-left: auto; }
+header.top nav a { color: var(--text); text-decoration: none; }
+header.top nav a:hover, header.top nav a.on { color: var(--accent); }
+
+.hero { padding: 56px 0 32px; display: grid; grid-template-columns: 1fr 1.1fr; gap: 40px; align-items: center; }
+.hero h1 { font-size: 42px; line-height: 1.1; margin: 0 0 14px; }
+.hero h1 span { color: var(--accent); }
+.hero p { color: var(--dim); font-size: 18px; margin: 0 0 24px; }
+.hero img { border-radius: var(--radius); border: 1px solid var(--line); image-rendering: pixelated; }
+.buttons { display: flex; flex-wrap: wrap; gap: 10px; }
+.button { display: inline-block; padding: 10px 18px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel); color: var(--text); text-decoration: none; font-weight: 600; }
+.button:hover { border-color: var(--accent); }
+.button.primary { background: #265c42; border-color: #3e8948; }
+
+section { padding: 36px 0; }
+section h2 { font-size: 26px; margin: 0 0 18px; }
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; counter-reset: step; }
+.steps div { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+.steps div::before { counter-increment: step; content: counter(step); display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--bg); font-weight: 700; margin-bottom: 8px; }
+.steps h3 { margin: 0 0 6px; }
+.steps p { margin: 0; color: var(--dim); }
+
+.features { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.feature { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.feature img { image-rendering: pixelated; border-bottom: 1px solid var(--line); }
+.feature div { padding: 14px 16px; }
+.feature h3 { margin: 0 0 4px; font-size: 17px; }
+.feature p { margin: 0; color: var(--dim); font-size: 15px; }
+.wide { grid-column: 1 / -1; }
+
+footer { border-top: 1px solid var(--line); color: var(--dim); font-size: 14px; }
+footer .wrap { padding: 20px; display: flex; gap: 16px; flex-wrap: wrap; }
+
+/* download page */
+.release { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+.release h2 { margin: 0 0 4px; }
+.release .date { color: var(--dim); font-size: 14px; margin-bottom: 14px; }
+.release .notes { color: var(--dim); white-space: pre-wrap; margin: 12px 0 0; font-size: 15px; }
+.files { display: flex; flex-wrap: wrap; gap: 10px; }
+.files .button small { color: var(--dim); font-weight: normal; margin-left: 6px; }
+.older { margin-top: 28px; }
+.older table { width: 100%; border-collapse: collapse; }
+.older td, .older th { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.older th { color: var(--dim); font-weight: normal; font-size: 14px; }
+.older td a { margin-right: 12px; white-space: nowrap; }
+.note { background: #2a2240; border-left: 3px solid var(--accent); padding: 12px 16px; border-radius: 4px; color: var(--dim); font-size: 15px; }
+.note b { color: var(--text); }
+
+@media (max-width: 800px) {
+  .hero { grid-template-columns: 1fr; padding-top: 32px; }
+  .hero h1 { font-size: 32px; }
+  .steps { grid-template-columns: 1fr; }
+  header.top nav { gap: 12px; font-size: 15px; }
+}

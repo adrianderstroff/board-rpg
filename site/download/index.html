@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Download the Board RPG player</title>
+    <meta name="description" content="The Board RPG player for Windows, macOS and Linux – plays the games made with the Board RPG editor." />
+    <link rel="icon" href="../icon-192.png" />
+    <link rel="stylesheet" href="../site.css" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="wrap">
+        <a class="brand" href="../">Board RPG</a>
+        <nav>
+          <a href="../editor/">Editor</a>
+          <a href="../play/">Play the demo</a>
+          <a class="on" href="./">Download</a>
+          <a href="https://github.com/adrianderstroff/board-rpg">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section>
+        <h1>The Board RPG player</h1>
+        <p>Plays games made with the editor: open a <b>.brpg</b> file with it (a double-click once it's installed), or drop one onto its window.</p>
+        <div id="latest" class="release">Looking for the latest version…</div>
+        <div id="older" class="older"></div>
+      </section>
+
+      <section>
+        <div class="note">
+          <b>The builds aren't signed yet.</b> Windows may show "Windows protected your PC" – choose <i>More info → Run anyway</i>.
+          On macOS, right-click the app and choose <i>Open</i> the first time. On Linux, make the AppImage executable
+          (<code>chmod +x</code>) and run it.
+        </div>
+      </section>
+
+      <section>
+        <h2>Ship your own game</h2>
+        <p>Put your exported game next to the player as <b>game.brpg</b> – the player then starts it right away. Zip the two together and you have a finished game to hand out.</p>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <span>Board RPG</span>
+        <a href="https://github.com/adrianderstroff/board-rpg/releases">All releases on GitHub</a>
+      </div>
+    </footer>
+
+    <script type="module">
+      // The releases come from GitHub (docs/distribution.md §4): the latest on top, the others below.
+      const REPO = "adrianderstroff/board-rpg";
+      const latestBox = document.getElementById("latest");
+      const olderBox = document.getElementById("older");
+
+      /** Which system a release file is for (the player's installers and packages). */
+      function platformOf(name) {
+        const n = name.toLowerCase();
+        if (n.endsWith(".sig") || n.endsWith(".json")) return null;
+        if (n.endsWith("-setup.exe") || n.endsWith(".exe") || n.endsWith(".msi")) return "Windows";
+        if (n.endsWith(".dmg") || n.endsWith(".app.tar.gz")) return "macOS";
+        if (n.endsWith(".appimage") || n.endsWith(".deb") || n.endsWith(".rpm")) return "Linux";
+        return null;
+      }
+      const kind = (name) => name.split(".").pop().replace("gz", "tar.gz");
+      const mine = (() => {
+        const p = (navigator.userAgentData?.platform || navigator.platform || navigator.userAgent).toLowerCase();
+        return p.includes("win") ? "Windows" : p.includes("mac") ? "macOS" : p.includes("linux") ? "Linux" : null;
+      })();
+      const size = (bytes) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+      const date = (iso) => new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+      const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+      function files(release) {
+        return release.assets.map((a) => ({ ...a, platform: platformOf(a.name) })).filter((a) => a.platform);
+      }
+
+      function showLatest(release) {
+        const list = files(release).sort((a, b) => (b.platform === mine) - (a.platform === mine));
+        latestBox.innerHTML = `
+          <h2>${esc(release.name || release.tag_name)}</h2>
+          <div class="date">${date(release.published_at)}${mine ? ` · for ${mine} first` : ""}</div>
+          <div class="files">${
+            list.length
+              ? list
+                  .map((a) => `<a class="button${a.platform === mine ? " primary" : ""}" href="${esc(a.browser_download_url)}">${a.platform} <small>${esc(kind(a.name))} · ${size(a.size)}</small></a>`)
+                  .join("")
+              : "<span>This release has no player builds yet.</span>"
+          }</div>
+          ${release.body ? `<p class="notes">${esc(release.body)}</p>` : ""}`;
+      }
+
+      function showOlder(releases) {
+        if (!releases.length) return;
+        olderBox.innerHTML = `
+          <h2>Earlier versions</h2>
+          <table>
+            <thead><tr><th>Version</th><th>Date</th><th>Downloads</th></tr></thead>
+            <tbody>${releases
+              .map(
+                (r) => `<tr>
+                  <td><a href="${esc(r.html_url)}">${esc(r.name || r.tag_name)}</a></td>
+                  <td>${date(r.published_at)}</td>
+                  <td>${files(r).map((a) => `<a href="${esc(a.browser_download_url)}">${a.platform} (${esc(kind(a.name))})</a>`).join("") || "–"}</td>
+                </tr>`,
+              )
+              .join("")}</tbody>
+          </table>`;
+      }
+
+      try {
+        const r = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=50`, { headers: { Accept: "application/vnd.github+json" } });
+        if (!r.ok) throw new Error(r.status === 403 ? "GitHub asks to wait a little (too many requests) – try again in a while" : `GitHub answered ${r.status}`);
+        const releases = (await r.json()).filter((x) => !x.draft && !x.prerelease);
+        if (!releases.length) {
+          latestBox.innerHTML = `<h2>No release yet</h2><p>The first version of the player is on its way. Meanwhile you can <a href="../play/">play the demo</a> in the browser.</p>`;
+        } else {
+          showLatest(releases[0]);
+          showOlder(releases.slice(1));
+        }
+      } catch (e) {
+        latestBox.innerHTML = `<h2>Couldn't load the releases</h2><p>${esc(e.message)}. They are also listed <a href="https://github.com/${REPO}/releases">on GitHub</a>.</p>`;
+      }
+    </script>
+  </body>
+</html>

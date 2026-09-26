@@ -2,6 +2,7 @@ node_modules/
 dist/
 dist-editor/
 dist-player/
+site-dist/
 *.log
 .DS_Store
 tools/out/
