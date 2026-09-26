@@ -389,8 +389,9 @@ Layering (see also [architecture](../CLAUDE.md)):
 ## DS4 · The website ☑
 - ☑ `npm run build:site` → `site-dist/`: landing page (features, screenshots from tools/screenshots.mjs and tools/editor-screenshots.mjs), `/editor/`, `/play/` (a play-test from the editor gets every library asset from the editor build), `/download/` (GitHub Releases API)
 
-## DS5 · Releases ☐
-- ☐ GitHub Actions: player builds on version tags (tauri-action → Release); site build + Pages deploy on main
+## DS5 · Releases ☑
+- ☑ `.github/workflows/release.yml`: a version tag (`v0.1.0`, matching tauri.conf.json) builds the player for Windows, macOS (universal) and Linux (tauri-action) into a GitHub Release
+- ☑ `.github/workflows/site.yml`: every push to main runs the tests, builds the site and deploys it to Pages (https://adrianderstroff.github.io/board-rpg/)
 
 # Editor (see [editor-design.md](editor-design.md))
 

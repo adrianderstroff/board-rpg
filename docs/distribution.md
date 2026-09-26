@@ -53,8 +53,12 @@ it. Where the tree lives is the **storage**:
 
 ## 4. Releases (GitHub Actions)
 
+The repository is public (the Releases API and Pages need that). Workflows: `.github/workflows/release.yml`, `.github/workflows/site.yml`.
+
+
 - A version tag (`v0.3.0`) builds the player for Windows, macOS and Linux (`tauri-action`) and
-  attaches the builds to a **GitHub Release**.
+  attaches the builds to a **GitHub Release**. The tag matches the version in
+  `apps/player/src-tauri/tauri.conf.json`.
 - Every push to `main` builds the site (landing, editor, game) and deploys it to Pages.
 - The download page reads `/repos/<owner>/<repo>/releases` from the GitHub API in the visitor's
   browser: the latest release on top, the others listed below.
