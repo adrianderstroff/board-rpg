@@ -296,7 +296,8 @@ export class BoardView {
   }
 
   /** Brings sprites in line with the current state (creates/removes/snaps). */
-  sync() {
+  /** Redraws the pieces where the state has them – except `skip` (pieces whose walk is still being shown). */
+  sync(skip?: Set<string>) {
     const c = this.ctx();
     const b = board(c);
     const alive = new Set(Object.keys(b.pieces));
@@ -309,7 +310,7 @@ export class BoardView {
         this.visuals.delete(id);
       }
     }
-    for (const piece of Object.values(b.pieces)) this.syncPiece(piece);
+    for (const piece of Object.values(b.pieces)) if (!skip?.has(piece.id)) this.syncPiece(piece);
   }
 
   private syncPiece(piece: Piece) {

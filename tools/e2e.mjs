@@ -665,6 +665,45 @@ const scenarios = {
   },
 
   /** Mirage Tower 1F (§5.8, §5.3): the gate closes behind the plate, the heroes split up, each team climbs its own stairs. */
+  async plateGateWalk(d) {
+    // the whole party on the plate walks toward the gate behind it: stepping off closes the gate at
+    // once, the walk stops in front of it – and is shown step by step (no jump to where it stopped)
+    await d.newGame();
+    await d.ev(() => {
+      __game.debug.state().maps.mirage_tower_1 = { defeated: [], removedEvents: [], triggered: ["tower_intro#0", "split_up#1"] };
+      __game.debug.travel("mirage_tower_1", "start");
+    });
+    await d.waitFor(`d.state().board && d.state().board.mapId === "mirage_tower_1"`);
+    await d.waitReady();
+    const walk = async (x, y) => {
+      await d.waitFor(`!!d.explorer()`, 15000, "exploring");
+      await d.dbg(`(d.cursorTo(${x}, ${y}), true)`);
+      await d.key("Enter", 1, 100);
+    };
+    await walk(3, 8);
+    await d.waitFor(`d.entityState("east_gate") === "open"`, 10000, "east gate open");
+    await d.waitFor(`!!d.explorer()`, 15000, "exploring");
+    // sample where the party is drawn while it walks
+    await d.ev(() => {
+      const view = __game.phaser.scene.getScene("board").view;
+      const piece = Object.values(__game.debug.state().board.pieces).find((p) => p.members.includes("lib:aldric"));
+      window.__drawn = [];
+      window.__sampler = setInterval(() => {
+        const v = view.visuals.get(piece.id);
+        if (v) window.__drawn.push([v.x, v.y]);
+      }, 30);
+    });
+    await walk(9, 4);
+    await d.waitFor(`!!d.explorer()`, 15000, "exploring again");
+    const drawn = await d.ev(() => (clearInterval(window.__sampler), window.__drawn));
+    const at = await d.dbg(`(p => [p.x, p.y])(Object.values(d.state().board.pieces).find(p => p.members.includes("lib:aldric")))`);
+    await d.shot("stopped");
+    d.expect((await d.dbg(`d.entityState("east_gate")`)) === "closed", "the gate closed as the party stepped off the plate");
+    d.expect(at[1] > 6, `the party stopped in front of the gate (${at})`);
+    const jumps = drawn.filter((c, i) => i && Math.abs(c[0] - drawn[i - 1][0]) + Math.abs(c[1] - drawn[i - 1][1]) > 1);
+    d.expect(!jumps.length, `the walk is shown step by step (jumps: ${JSON.stringify(jumps)} in ${JSON.stringify(drawn.filter((c, i) => !i || c[0] !== drawn[i - 1][0] || c[1] !== drawn[i - 1][1]))})`);
+  },
+
   async towerSplit(d) {
     await d.newGame();
     await d.ev(() => {

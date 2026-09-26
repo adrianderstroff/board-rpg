@@ -228,7 +228,11 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
 
   async play(events: GameEvent[]) {
     let expTotal = 0;
-    for (const e of events) {
+    for (let at = 0; at < events.length; at++) {
+      const e = events[at];
+      // pieces still walking later in this playback keep their place until their steps are shown
+      // (a gate closing mid-move redraws the board – the walker isn't at its final cell yet)
+      const walkingOn = () => new Set(events.slice(at + 1).flatMap((x) => (x.type === "move" ? [x.piece] : [])));
       sfxForEvent(this.ctx, e);
       switch (e.type) {
         case "move": {
@@ -296,7 +300,7 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
           this.view.setDecor(e, e.decor);
           break;
         case "state":
-          this.view.sync();
+          this.view.sync(walkingOn());
           break;
         case "shock": {
           // the bolt: every cell it ran through flashes
@@ -362,7 +366,7 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
           await this.view.animateJoin(e.char, e.from, e.to);
           break;
         case "pieces":
-          this.view.sync();
+          this.view.sync(walkingOn());
           break;
         case "steal":
           this.hud.toast(e.item ? `Stole ${this.ctx.db.item(e.item).name}!` : "Couldn't steal anything.", e.item ? COLORS.good : COLORS.dim);
