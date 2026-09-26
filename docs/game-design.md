@@ -409,6 +409,11 @@ instead have states and handlers (the engine supports both; content moves over w
   `on` list; runs once when its whole party is beaten). `once`
   handlers run a single time. Enter, leave and pass over are the heroes' by default; `by: enemies`
   (or `anyone`) makes them react to enemy pieces instead – a trap the heroes set.
+- **During a move** entities react step by step: every step onto or off an entity's cell settles
+  the entities right away (enter, leave, conditions that became true). Stepping off a plate closes
+  its gate at once – a gate that closed further along the path stops the move in front of it, so a
+  lone hero can't hold a plate and slip through its gate in one move. Whatever wants to show
+  something on the way (a line, a question, a dialog) stops the move on that cell.
 - **Abilities and entities:** a board ability (or item) used on cells sets off the *ability used*
   handlers (`on: ability`, `ability: <id>`) of the entities there – Discover reaches the hidden ones
   within its 3 cells, Defuse (which gives the Snare) an adjacent revealed trap; spells can later burn
@@ -802,3 +807,4 @@ Where the rough ideas were incomplete or conflicting, these rules were chosen:
 47. **Staging actions** (R5): move / face / hide / show / emote / camera / sound / music / screen effects / party members / exits, and enemies' *defeated* handlers. Scripted moves don't set off traps or field effects; moved entities keep their cell per map.
 48. **Projects and the library** (user decisions, [projects.md](projects.md)): the demo is a project on a versioned library; library ids are `lib:`-prefixed; exports and builds bundle the library content they use. The rules' own library needs are in `builtins.ts`; saves from before (version 1) are dropped.
 49. **Prefabs** (user decisions): ready-made groups of entities / enemies / exits with `$` placeholders, content of the library and of projects; the editor's Gate / Floor switch / Hidden trap buttons became prefabs behind one Prefab button; *Save as prefab*; the runtime trap list is gone – the Snare and the Trap skill place the `lib:snare_trap` prefab (entities made during play live in the map's memory); enter / leave / pass handlers can be the enemies' (`by`).
+50. **Entities react during a move** (user decision): enter / leave and "becomes true" are settled after every step onto or off an entity's cell, not only when the move ends; a cell ahead that turned solid ends the move before it; a dialog on the way ends it on its cell.

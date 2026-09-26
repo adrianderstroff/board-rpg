@@ -412,6 +412,12 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
     this.hud.refresh(board(this.ctx).turn.current);
   }
 
+  /** Plays a move: its steps and what reacted on the way – then what that wants shown (a dialog, a question). */
+  private async playMove(res: { events: GameEvent[]; requests?: UiRequest[] }) {
+    await this.play(res.events);
+    for (const req of res.requests ?? []) await this.handle(req);
+  }
+
   /** Plays script results: events, then UI requests in order. */
   private async handleResult(r: ScriptResult) {
     await this.play(r.events);
@@ -1013,7 +1019,7 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
         if (option.exit!.door || (await this.confirm(`Travel to ${label}?`, target))) {
           this.spend();
           const res = executeMove(this.ctx, actor, target);
-          await this.play(res.events);
+          await this.playMove(res);
           if (res.interrupted) await this.afterInterrupt(res); // ice, a hidden trap or a rising skeleton
           else if (option.exit!.together) {
             // split floors (§5.3): wait here until every team stands on its stairs
@@ -1031,7 +1037,7 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
         const snapshot = this.rpg.snapshot();
         const res = executeMove(this.ctx, actor, target);
         this.actions++;
-        await this.play(res.events);
+        await this.playMove(res);
         if (res.ambush) {
           await this.afterInterrupt(res);
           break;
@@ -1055,7 +1061,7 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
   private async interactFlow(actor: string, option: MoveOption) {
     const snapshot = this.rpg.snapshot();
     const res = executeMove(this.ctx, actor, option.pos);
-    await this.play(res.events);
+    await this.playMove(res);
     if (res.interrupted) {
       this.actions++;
       await this.afterInterrupt(res);
@@ -1320,7 +1326,7 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
     }
     if (!pieceOf(this.ctx, actor)) return;
     const d = planBoardTurn(this.ctx, actor);
-    if (d.type === "move") await this.play(executeMove(this.ctx, actor, d.dest).events);
+    if (d.type === "move") await this.playMove(executeMove(this.ctx, actor, d.dest));
     else if (d.type === "engage") {
       const a = this.view.pieceAnchor(mustPieceOf(this.ctx, actor).id);
       if (a) popup(this, a.x, a.y - 34, "!", COLORS.bad, UI_DEPTH - 5);

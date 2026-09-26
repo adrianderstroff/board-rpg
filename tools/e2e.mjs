@@ -682,7 +682,7 @@ const scenarios = {
     await walk(3, 8); // everyone onto the plate
     await d.waitFor(`d.entityState("east_gate") === "open"`, 10000, "east gate open");
     await d.shot("plate");
-    await walk(5, 8); // and off again: the gate slams shut
+    await walk(5, 8); // and off again: the gate slams shut – and the split dialog stops them right there (4,8)
     await d.pressUntil(`!!d.explorer()`, "Enter", 30, 400);
     d.expect(await d.dbg(`d.state().flags.tower_split && d.entityState("east_gate") === "closed"`), "gate closed, split flag set");
     await d.shot("closed");
@@ -693,7 +693,7 @@ const scenarios = {
     await walk(3, 8);
     await d.waitFor(`d.entityState("east_gate") === "open"`, 10000, "east gate open for the others");
     // the others go through and step on the inner plate
-    await walk(5, 8); // selects their piece
+    await walk(4, 8); // selects their piece (where the split stopped them)
     await walk(9, 2);
     await d.waitFor(`d.entityState("west_gate") === "open"`, 10000, "west gate open");
     await d.shot("split");

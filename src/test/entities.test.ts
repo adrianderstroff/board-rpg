@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { leaveParty } from "../core/board/actions";
 import { board, mustPieceOf } from "../core/board/board";
 import { entityTriggers, loadTriggers, stateOf } from "../core/board/entities";
-import { executeMove, moveOptions } from "../core/board/moves";
+import { executeMove, moveOptions, movePiece } from "../core/board/moves";
 import type { Ctx } from "../core/context";
 import type { MapEventDef } from "../core/data/types";
 import { interactionsFor, performInteraction } from "../core/script/interact";
@@ -57,6 +57,50 @@ describe("entities: states and handlers (§10.3)", () => {
     expect(stateOf(ctx, "plate")).toBe("up");
     expect(stateOf(ctx, "gate")).toBe("closed");
     expect(ctx.state.flags.gate_shut).toBe(true);
+  });
+
+  it("stepping off the plate closes its gate at once: a lone hero can't slip through – a second hero on the plate holds it open", () => {
+    const north = [4, 3, 2, 1, 0].map((y) => ({ x: 3, y }));
+    // alone: pressed, then walking north – the gate closes as the hero steps off, the walk stops before it
+    const ctx = world([plate, gate]);
+    step(ctx, { x: 3, y: 5 });
+    expect(stateOf(ctx, "gate")).toBe("open");
+    const hero = mustPieceOf(ctx, "lib:aldric");
+    const res = movePiece(ctx, hero, north, "walk");
+    expect(res.interrupted).toBe(true);
+    expect([hero.x, hero.y]).toEqual([3, 2]);
+    expect(stateOf(ctx, "gate")).toBe("closed");
+    // the closing plays between the steps: move, then the gate's state, then the rest of the walk
+    const kinds = res.events.map((e) => e.type);
+    expect(kinds.indexOf("state")).toBeGreaterThan(kinds.indexOf("move"));
+    expect(kinds.lastIndexOf("move")).toBeGreaterThan(kinds.indexOf("state"));
+
+    // with Kit standing on the plate the gate stays open and Aldric walks through
+    const two = world([plate, gate]);
+    const kit = mustPieceOf(two, "lib:kit");
+    kit.x = 3;
+    kit.y = 5;
+    entityTriggers(two);
+    expect(stateOf(two, "gate")).toBe("open");
+    const aldric = mustPieceOf(two, "lib:aldric");
+    aldric.x = 3;
+    aldric.y = 5;
+    const through = movePiece(two, aldric, north, "walk");
+    expect(through.interrupted).toBeFalsy();
+    expect([aldric.x, aldric.y]).toEqual([3, 0]);
+    expect(stateOf(two, "gate")).toBe("open");
+  });
+
+  it("an entity that wants a dialog on the way stops the move on its cell and hands the request over", () => {
+    const voice: MapEventDef = { id: "voice", x: 1, y: 3, states: { here: { pass: "walk" } }, on: [{ on: "enter", once: true, do: [{ say: "Halt, traveller!" }] }] };
+    const ctx = world([voice]);
+    const hero = mustPieceOf(ctx, "lib:aldric");
+    hero.x = 1;
+    hero.y = 5;
+    const res = movePiece(ctx, hero, [4, 3, 2, 1].map((y) => ({ x: 1, y })), "walk");
+    expect(res.interrupted).toBe(true);
+    expect([hero.x, hero.y]).toEqual([1, 3]);
+    expect(res.requests).toEqual([expect.objectContaining({ type: "say", text: "Halt, traveller!" })]);
   });
 
   it("a solid state waits until nobody stands on the cell (a gate never closes on someone)", () => {

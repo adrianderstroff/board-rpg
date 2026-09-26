@@ -20,9 +20,11 @@ import {
   pieceReach,
   piecesAt,
   reconcile,
+  mapEvents,
 } from "./board";
 import { hiddenStop, interruptionAt } from "./hidden";
-import { avoidCells } from "./entities";
+import { avoidCells, entityPos, entityTriggers, solidCells } from "./entities";
+import type { UiRequest } from "../script/actions";
 import { resolveMoves, resolvePatternRef, type Occupancy, type Reach } from "./patterns";
 
 export type MoveKind = "move" | "engage" | "interact" | "exit";
@@ -187,6 +189,8 @@ export interface MoveResult {
   interrupted?: boolean;
   /** A dormant enemy that rose within reach and attacks right away (ambush, §7.5). */
   ambush?: string;
+  /** What entities reacting during the move want shown (a dialog, a question) – the move stopped there. */
+  requests?: UiRequest[];
 }
 
 /**
@@ -211,7 +215,13 @@ export function movePiece(ctx: Ctx, piece: Piece, path: Pos[], mode: "walk" | "l
   const iceCut = iceAt >= 0 && iceAt < path.length - 1;
   if (iceAt >= 0) path = path.slice(0, iceAt + 1);
 
-  // Walk, stopping on every crossed cell with a field effect to apply it (§7.4).
+  // Walk, stopping on every crossed cell with a field effect to apply it (§7.4) – and on every
+  // step onto or off an entity's cell, where entities react right away (§10.3: stepping off a plate
+  // closes its gate at once; a gate that closed further along the path stops the move before it).
+  const entityCells = new Set(mapEvents(ctx).map((e) => key(entityPos(ctx, e))));
+  let prev: Pos = start;
+  let stopped = false;
+  const requests: UiRequest[] = [];
   let seg: Pos[] = [];
   const advance = () => {
     if (!seg.length) return;
@@ -225,12 +235,34 @@ export function movePiece(ctx: Ctx, piece: Piece, path: Pos[], mode: "walk" | "l
   };
   for (let i = 0; i < path.length; i++) {
     seg.push(path[i]);
-    const crossing = i < path.length - 1 && mode === "walk" && !flying;
-    if (!crossing || !fieldEffectsAt(ctx, path[i]).length) continue;
+    const crossing = i < path.length - 1 && mode === "walk";
+    const effects = crossing && !flying && fieldEffectsAt(ctx, path[i]).length > 0;
+    const reacting = crossing && piece.faction !== "npc" && (entityCells.has(key(prev)) || entityCells.has(key(path[i])));
+    prev = path[i];
+    if (!effects && !reacting) continue;
     advance();
-    events.push(...cellEffects(ctx, piece), ...reconcile(ctx));
-    if (!board(ctx).pieces[piece.id] || !aliveMembers(ctx, piece).length) {
-      return { events, final: { x: piece.x, y: piece.y }, interrupted: true };
+    if (effects) {
+      events.push(...cellEffects(ctx, piece), ...reconcile(ctx));
+      if (!board(ctx).pieces[piece.id] || !aliveMembers(ctx, piece).length) {
+        return { events, final: { x: piece.x, y: piece.y }, interrupted: true };
+      }
+    }
+    if (reacting) {
+      const out = entityTriggers(ctx);
+      events.push(...out.events);
+      // something to show (a dialog, a question): the move ends here
+      if (out.requests.length) {
+        requests.push(...out.requests);
+        stopped = true;
+        break;
+      }
+      // a cell further along that just turned solid (a gate closing): stop in front of it
+      const solid = new Set(solidCells(ctx).map(key));
+      const blocked = path.findIndex((p, j) => j > i && solid.has(key(p)));
+      if (blocked >= 0) {
+        path = path.slice(0, blocked);
+        stopped = true;
+      }
     }
   }
   advance();
@@ -249,14 +281,14 @@ export function movePiece(ctx: Ctx, piece: Piece, path: Pos[], mode: "walk" | "l
   if (!isFrozen(ctx, piece)) delete piece.iceOrigin;
   events.push(...applyLanding(ctx, piece)); // (its reconcile also updates plates and gates)
   // The piece didn't end where it was sent: callers skip close-ups / travel.
-  const interrupted = cut >= 0 || slideCut >= 0 || iceCut || slide.length > 0;
+  const interrupted = cut >= 0 || slideCut >= 0 || iceCut || slide.length > 0 || stopped;
   let ambush: string | undefined;
   if (cut >= 0 || slideCut >= 0) {
     const stop = hiddenStop(ctx, piece, flying);
     events.push(...stop.events);
     ambush = stop.ambush;
   }
-  return { events, final: { x: piece.x, y: piece.y }, interrupted, ambush };
+  return { events, final: { x: piece.x, y: piece.y }, interrupted, ambush, ...(requests.length ? { requests } : {}) };
 }
 
 export function isFrozen(ctx: Ctx, p: Pos) {
