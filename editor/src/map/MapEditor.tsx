@@ -5,7 +5,7 @@ import type { Dir, Pos } from "../../../src/core/util/grid";
 import type { Project } from "../project";
 import { GridCanvas } from "./GridCanvas";
 import { IsoCanvas, type CanvasHandlers, type Marker } from "./IsoCanvas";
-import { floodArea, MAX_HEIGHT, paint, rectCells, setFacing, setHeights, setOverhead } from "./layers";
+import { copyArea, floodArea, inRect, MAX_HEIGHT, moveArea, paint, pasteArea, rectCells, rectOf, setFacing, setHeights, setOverhead, writeCells, type Clip, type Rect } from "./layers";
 import { frameStyle } from "./sprites";
 import { addEntity, deleteEntity, entitiesAt, listEntities, moveEntity, sameRef, type EntityKind, type EntityRef } from "../entities/model";
 import { entitySprites } from "../entities/visuals";
@@ -13,7 +13,7 @@ import { entitySprites } from "../entities/visuals";
 /** Map canvas with layers and tools (editor-design §5.1–5.3). */
 
 export type Layer = "entities" | "terrain" | "height" | "decor" | "shape" | "facing" | "lintel";
-export type Tool = "pencil" | "rect" | "fill" | "pick";
+export type Tool = "pencil" | "rect" | "fill" | "pick" | "select";
 
 export const LAYERS: { id: Layer; label: string; key: string }[] = [
   { id: "entities", label: "Entities", key: "0" },
@@ -29,7 +29,11 @@ const TOOLS: { id: Tool; label: string; key: string; title: string }[] = [
   { id: "rect", label: "▭ Rectangle", key: "r", title: "Drag a rectangle (R)" },
   { id: "fill", label: "◍ Fill", key: "g", title: "Fill the connected area of the same kind (G)" },
   { id: "pick", label: "⌖ Pick", key: "i", title: "Take the brush from a cell (I)" },
+  { id: "select", label: "⬚ Select", key: "m", title: "Select an area (M): drag inside it to move it, Ctrl+C / Ctrl+V to copy, Delete to clear" },
 ];
+
+/** Copied cells – kept across maps, so areas can be copied from one map into another. */
+let clipboard: Clip | null = null;
 
 export const SHAPES: { label: string; cut: Corner[] }[] = [
   { label: "Full cell", cut: [] },
@@ -73,6 +77,29 @@ export function MapEditor({ project, mapId, layer, brush, setBrush, entities }: 
   const stroke = useRef<{ id: string; start: Pos; done: Set<string> } | null>(null);
   /** The entity being dragged (entities layer). */
   const drag = useRef<{ ref: EntityRef; id: string; at: Pos } | null>(null);
+  // area selection (select tool)
+  // refs hold the live values (mouse events can come faster than re-renders); state redraws the previews
+  const [area, setAreaState] = useState<Rect | null>(null);
+  const areaRef = useRef<Rect | null>(null);
+  const setArea = (r: Rect | null) => {
+    areaRef.current = r;
+    setAreaState(r);
+  };
+  const [areaDrag, setAreaDragState] = useState<{ from: Pos; to: Pos; mode: "select" | "move" } | null>(null);
+  const areaDragRef = useRef<{ from: Pos; to: Pos; mode: "select" | "move" } | null>(null);
+  const setAreaDrag = (d: { from: Pos; to: Pos; mode: "select" | "move" } | null) => {
+    areaDragRef.current = d;
+    setAreaDragState(d);
+  };
+  const [pasting, setPasting] = useState(false);
+  const [carryEntities, setCarryEntities] = useState(true);
+  const [copied, setCopied] = useState<string | null>(clipboard ? `${clipboard.w}×${clipboard.h}` : null);
+  // another map: no selection (the clipboard stays)
+  useEffect(() => {
+    setArea(null);
+    setAreaDrag(null);
+    setPasting(false);
+  }, [mapId]);
   const strokeNo = useRef(0);
   const path = `data/maps/${mapId}.yaml`;
   const db = project.content.db;
@@ -147,6 +174,48 @@ export function MapEditor({ project, mapId, layer, brush, setBrush, entities }: 
     },
   };
 
+  const selectHandlers: CanvasHandlers = {
+    down(c) {
+      if (pasting && clipboard) {
+        const clip = clipboard;
+        project.edit(path, "Paste area", (doc) => pasteArea(doc, doc.toJS() as MapDef, clip, c));
+        setArea({ x: c.x, y: c.y, w: clip.w, h: clip.h });
+        setPasting(false);
+        return;
+      }
+      const area = areaRef.current;
+      if (area && inRect(area, c)) setAreaDrag({ from: c, to: c, mode: "move" });
+      else {
+        setArea({ x: c.x, y: c.y, w: 1, h: 1 });
+        setAreaDrag({ from: c, to: c, mode: "select" });
+      }
+    },
+    move(c, buttons) {
+      setHover(c);
+      const areaDrag = areaDragRef.current;
+      if (!c || !buttons || !areaDrag) return;
+      setAreaDrag({ ...areaDrag, to: c });
+      if (areaDrag.mode === "select") setArea(rectOf(areaDrag.from, c));
+    },
+    up(c) {
+      const d = areaDragRef.current;
+      const area = areaRef.current;
+      setAreaDrag(null);
+      if (!d || d.mode !== "move" || !area || !c) return;
+      const to = { x: area.x + c.x - d.from.x, y: area.y + c.y - d.from.y };
+      if (to.x === area.x && to.y === area.y) return;
+      const r = area;
+      project.edit(path, "Move area", (doc) => moveArea(doc, doc.toJS() as MapDef, r, to, brush.terrain, carryEntities));
+      setArea({ ...r, x: to.x, y: to.y });
+    },
+  };
+
+  const copyAreaNow = () => {
+    if (!area) return;
+    clipboard = copyArea(project.data<MapDef>(path), area);
+    setCopied(`${area.w}×${area.h}`);
+  };
+
   const paintHandlers: CanvasHandlers = {
     down(c) {
       const id = `stroke${++strokeNo.current}`;
@@ -181,7 +250,32 @@ export function MapEditor({ project, mapId, layer, brush, setBrush, entities }: 
     },
   };
 
-  const handlers = layer === "entities" ? entityHandlers : paintHandlers;
+  const handlers = layer === "entities" ? entityHandlers : effTool === "select" ? selectHandlers : paintHandlers;
+
+  // area keys: Ctrl+C copy, Ctrl+V paste, Delete clear, Escape cancel
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (layer === "entities" || e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.key.toLowerCase() === "c" && area) {
+        e.preventDefault();
+        copyAreaNow();
+      } else if (mod && e.key.toLowerCase() === "v" && clipboard) {
+        e.preventDefault();
+        setTool("select");
+        setPasting(true);
+      } else if ((e.key === "Delete" || e.key === "Backspace") && area && effTool === "select") {
+        const r = area;
+        const empty = { terrain: brush.terrain, height: 0, decor: null, facing: null, shape: null, lintel: null };
+        project.edit(path, "Clear area", (doc) => writeCells(doc, doc.toJS() as MapDef, rectCells({ x: r.x, y: r.y }, { x: r.x + r.w - 1, y: r.y + r.h - 1 }).map((p) => ({ p, c: empty }))));
+      } else if (e.key === "Escape") {
+        if (pasting) setPasting(false);
+        else setArea(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   // Delete removes the selected entity; Escape stops placing
   useEffect(() => {
@@ -212,7 +306,19 @@ export function MapEditor({ project, mapId, layer, brush, setBrush, entities }: 
 
   const mapData = project.data<MapDef>(path);
   const sel = entities.selected ? (listEntities(mapData).find((e) => sameRef(e, entities.selected)) ?? null) : null;
-  const markers: Marker[] = useMemo(() => [...preview.map((p) => ({ ...p, frame: 3 })), ...(sel ? [{ x: sel.x, y: sel.y, frame: 2 }] : [])], [preview, sel?.x, sel?.y]);
+  const areaCells = (r: Rect, frame: number) => rectCells({ x: r.x, y: r.y }, { x: r.x + r.w - 1, y: r.y + r.h - 1 }).map((p) => ({ ...p, frame }));
+  const moving = areaDrag?.mode === "move" && area ? { ...area, x: area.x + areaDrag.to.x - areaDrag.from.x, y: area.y + areaDrag.to.y - areaDrag.from.y } : null;
+  const pastePreview = pasting && clipboard && hover ? { x: hover.x, y: hover.y, w: clipboard.w, h: clipboard.h } : null;
+  const markers: Marker[] = useMemo(
+    () => [
+      ...preview.map((p) => ({ ...p, frame: 3 })),
+      ...(sel ? [{ x: sel.x, y: sel.y, frame: 2 }] : []),
+      ...(area && layer !== "entities" && !moving ? areaCells(area, 3) : []),
+      ...(moving ? areaCells(moving, 3) : []),
+      ...(pastePreview ? areaCells(pastePreview, 3) : []),
+    ],
+    [preview, sel?.x, sel?.y, area, layer, moving?.x, moving?.y, pastePreview?.x, pastePreview?.y, pastePreview?.w],
+  );
   const sprites = useMemo(() => (db ? entitySprites(db, mapData, rotation, entities.selected, layer === "entities") : []), [db, mapData, rotation, entities.selected, layer]);
   if (!db) return <div class="placeholder">The content has errors – fix them to see the map (see the problems badge).</div>;
   const grid = getGrid(db, mapId);
@@ -226,6 +332,20 @@ export function MapEditor({ project, mapId, layer, brush, setBrush, entities }: 
             {t.label}
           </button>
         ))}
+        {layer !== "entities" && effTool === "select" && (
+          <>
+            <span class="sep" />
+            <button disabled={!area} onClick={copyAreaNow} title="Copy the selected area (Ctrl+C)">
+              Copy
+            </button>
+            <button disabled={!copied} class={pasting ? "on" : ""} onClick={() => setPasting(!pasting)} title="Paste: click where its top-left corner goes (Ctrl+V)">
+              Paste{copied ? ` ${copied}` : ""}
+            </button>
+            <label class="check" title="Moving an area takes the events, exits, enemies… standing in it along">
+              <input type="checkbox" checked={carryEntities} onChange={(e) => setCarryEntities(e.currentTarget.checked)} /> entities move along
+            </label>
+          </>
+        )}
         <span class="sep" />
         <button class={view === "iso" ? "on" : ""} onClick={() => setView("iso")} title="The map as the game draws it">
           Iso
@@ -279,7 +399,11 @@ export function MapEditor({ project, mapId, layer, brush, setBrush, entities }: 
               ? entities.placing
                 ? `Click a cell to place the ${entities.placing} · Esc: cancel`
                 : "Click: select (again: next on the cell) · drag: move · Delete: remove · right drag: pan · wheel: zoom"
-              : `Left: ${LAYERS.find((l) => l.id === layer)!.label.toLowerCase()} with the ${effTool} · right drag: pan · wheel: zoom · Q/E: turn`}
+              : effTool === "select"
+                ? pasting
+                  ? "Click where the top-left corner of the pasted area goes · Esc: cancel"
+                  : `Drag: select an area${area ? ` (${area.w}×${area.h})` : ""} · drag inside it: move (left behind: ${brush.terrain ?? "holes"}) · Ctrl+C / Ctrl+V · Delete: clear · Esc`
+                : `Left: ${LAYERS.find((l) => l.id === layer)!.label.toLowerCase()} with the ${effTool} · right drag: pan · wheel: zoom · Q/E: turn`}
           </span>
         )}
       </div>

@@ -6,11 +6,13 @@ import { addItem, removeItem } from "../items/inventory";
 import { board, mapMemory, reconcile, spawnMapEnemy, syncEvents } from "../board/board";
 import { completeQuest, evaluateQuests, setQuestStep, startQuest } from "./quests";
 
+import type { Dir } from "../util/grid";
+
 /** Things only the presentation layer can do; returned to it in order. */
 export type UiRequest =
   | { type: "dialog"; id: string }
   | { type: "shop"; id: string }
-  | { type: "inn"; price: number; wakeAt?: { map: string; spawn: string } }
+  | { type: "inn"; price: number; wakeAt?: { map: string; spawn: string; dir?: Dir } }
   | { type: "message"; text: string }
   | { type: "teleport"; map: string; spawn: string };
 

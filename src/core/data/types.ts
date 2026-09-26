@@ -509,8 +509,8 @@ export interface ChipsetDef {
 export type Interaction =
   | { type: "talk"; dialog: string; label?: string }
   | { type: "shop"; shop: string; label?: string }
-  /** `wakeAt`: where the party wakes up after resting (e.g. the inn's upper floor). */
-  | { type: "inn"; price?: number; label?: string; wakeAt?: { map: string; spawn: string } }
+  /** `wakeAt`: where the party wakes up after resting (e.g. the inn's upper floor); `dir` = which way it faces (default: the spawn's). */
+  | { type: "inn"; price?: number; label?: string; wakeAt?: { map: string; spawn: string; dir?: Dir } }
   | { type: "examine"; dialog?: string; actions?: Action[]; label?: string };
 
 export interface EventPageDef {

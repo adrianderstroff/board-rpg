@@ -293,17 +293,17 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ Game boot hook `?editor=`: content over `postMessage`; play-tests use their own save slots
 - ☑ Play (title → New Game) and Quick Play (current map, Quick Play settings: position, party/levels, items, abilities, flags, gold) – set in the map inspector for now, placed on the canvas with E4
 
-## E3 · Map editor ☑ (except area copy/move)
+## E3 · Map editor ☑
 - ☑ Canvas: isometric (the game's own map source + engine renderer, rotation, zoom, pan, game board cursor) and a flat grid view
 - ☑ Layers: terrain (incl. holes), height, decor, decor facing, shape, door lintels; tools: pencil, rectangle, fill, pick; height raise/lower/set; resize (placed things move along)
-- ☐ Area select → copy / paste / move across all board layers
+- ☑ Area select → copy / paste (also between maps) / move (entities along) / clear, across all board layers
 - ☑ Map properties: name, kind, chipset, battleback, music (with preview); onEnter comes with the action builder (E4)
 
 ## E4 · Entities ☑
 - ☑ Entities layer: every kind drawn with the game's sprites (editor-only markers as labels), select / cycle / drag / place / delete
 - ☑ Forms: events (pages with condition, look, trigger, dialog, close-up options, actions), exits/teleports, spawns (rename), enemies (party, level, condition), gates & switches (links), traps, wall signs, Quick Play start
 - ☑ Condition and action builders (all condition and action kinds, nested all/any/not, flag suggestions); map `onEnter`
-- ☐ Inn wake-up spot (`wakeAt`) is kept but not editable yet
+- ☑ Inn wake-up spot: map, spawn point and facing (`wakeAt.dir`, new in the game)
 
 ## E5 · Items ☐
 - ☐ One form: basics (quest item), equipment, battle use, board use, teaches; derived category

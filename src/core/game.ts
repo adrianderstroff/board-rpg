@@ -8,6 +8,7 @@ import { evaluateQuests, startQuest } from "./script/quests";
 import { newGameState } from "./state/newGame";
 import type { GameState } from "./state/types";
 import { deepClone } from "./util/misc";
+import type { Dir } from "./util/grid";
 
 /**
  * Thin facade owning the mutable state. All rules live in the core modules and take `game.ctx`.
@@ -43,9 +44,10 @@ export class Game {
   }
 
   /** Enters a map: builds the board, runs its onEnter actions and auto events. */
-  enter(mapId: string, spawn: string): EnterResult {
+  /** `facing`: which way the party looks on arrival (default: the spawn's direction). */
+  enter(mapId: string, spawn: string, facing?: Dir): EnterResult {
     const out: EnterResult = { ...emptyResult(), dialogs: [] };
-    out.events.push(...enterMap(this.ctx, mapId, spawn));
+    out.events.push(...enterMap(this.ctx, mapId, spawn, undefined, facing));
     merge(out, runActions(this.ctx, this.db.map(mapId).onEnter));
     for (const r of autoTriggers(this.ctx)) collect(out, r);
     merge(out, evaluateQuests(this.ctx));

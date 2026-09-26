@@ -219,7 +219,15 @@ export function IsoCanvas(props: Props) {
       input: { mouse: { preventDefaultWheel: true } },
       scene: s,
     });
+    // Phaser only re-measures its canvas on window resizes; the editor's layout can move or resize
+    // it (a toolbar wrapping, the inspector) – keep sizes and pointer positions right
+    const observer = new ResizeObserver(() => game.scale.refresh());
+    observer.observe(host.current!);
+    const onScroll = () => game.scale.refresh();
+    window.addEventListener("scroll", onScroll, true);
     return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", onScroll, true);
       scene.current = null;
       game.destroy(true);
     };

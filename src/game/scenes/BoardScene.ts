@@ -442,7 +442,7 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
           if (req.wakeAt) {
             this.closeUp?.destroy();
             this.closeUp = undefined;
-            await this.travelTo(req.wakeAt.map, req.wakeAt.spawn, { quiet: true, message: "The party has *recovered*!" });
+            await this.travelTo(req.wakeAt.map, req.wakeAt.spawn, { quiet: true, message: "The party has *recovered*!", facing: req.wakeAt.dir });
             return;
           }
           await fadeIn(this, 600);
@@ -1323,11 +1323,11 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
     this.scene.restart({ enter: result });
   }
 
-  private async travelTo(map: string, spawn: string, opts: { quiet?: boolean; message?: string } = {}) {
+  private async travelTo(map: string, spawn: string, opts: { quiet?: boolean; message?: string; facing?: Dir } = {}) {
     this.travelling = true;
     if (!opts.quiet) sfx("travel");
     await fadeOut(this, opts.quiet ? 0 : 350);
-    const result = this.rpg.enter(map, spawn);
+    const result = this.rpg.enter(map, spawn, opts.facing);
     this.scene.restart({ enter: result, message: opts.message });
   }
 

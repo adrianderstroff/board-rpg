@@ -143,9 +143,11 @@ The per-map **legend** (character → terrain id) is managed automatically: the 
 the editor assigns free characters, so layer strings stay readable in the YAML.
 
 ### 5.3 Tools
-Pencil, rectangle, fill (flood by terrain / height), eyedropper, raise/lower height, select area
-(copy / paste / move a block of cells across all board layers), resize map (add/remove rows and
-columns on any side), and for entities select/move/duplicate/delete. Right-click is the eyedropper.
+Pencil, rectangle, fill (flood by terrain / height), pick (eyedropper), raise/lower/set height,
+select area – copy / paste (also into another map) / move / clear a block of cells across all
+board layers; moving takes the entities standing in it along and leaves the terrain brush behind –
+resize map (add/remove rows and columns on any side), and for entities select/move/delete.
+Right-drag pans, the wheel zooms.
 
 ### 5.4 Map properties
 Name, kind (`peaceful` / `wild`), chipset, battleback (with preview), **music** (picker with a ▶

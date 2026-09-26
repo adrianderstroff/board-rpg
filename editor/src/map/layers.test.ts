@@ -95,3 +95,30 @@ describe("door lintels", () => {
     expect(map().layers.overhead).toBeUndefined();
   });
 });
+
+describe("areas: copy, paste, move", () => {
+  it("copies every board layer and pastes it elsewhere; cells outside the map are dropped", async () => {
+    const { copyArea, pasteArea, rectOf } = await import("./layers");
+    const { doc, map } = load();
+    const clip = copyArea(map(), rectOf({ x: 2, y: 0 }, { x: 3, y: 1 }));
+    expect(clip.cells[0][1]).toMatchObject({ terrain: "rock", height: 1 });
+    pasteArea(doc, map(), clip, { x: 0, y: 1 });
+    expect(rowsOf(map(), "terrain").map((r) => r.join(""))).toEqual(["sssr", "srrr", "rrss"]);
+    expect(rowsOf(map(), "height")[2].join("")).toBe("1100");
+    // the decor at (1,1) was overwritten by the pasted cell without decor
+    expect(rowsOf(map(), "decor")[1].join("")).toBe("....");
+    pasteArea(doc, map(), clip, { x: 3, y: 2 }); // half outside
+    expect(rowsOf(map(), "terrain")[2].join("")).toBe("rrss".slice(0, 3) + "s");
+  });
+
+  it("moving leaves the fill terrain behind and takes the entities along", async () => {
+    const { moveArea } = await import("./layers");
+    const { doc, map } = load();
+    // the palm at (1,1) and the spawn at (1,2) move two cells right
+    moveArea(doc, map(), { x: 0, y: 1, w: 2, h: 2 }, { x: 2, y: 1 }, "rock", true);
+    expect(rowsOf(map(), "terrain").map((r) => r.join(""))).toEqual(["sssr", "rrss", "rrss"]);
+    expect(rowsOf(map(), "decor")[1].join("")).toBe("...P");
+    expect(map().spawns.start).toEqual({ x: 3, y: 2 });
+    expect(map().events![0]).toMatchObject({ x: 3, y: 0 }); // outside the area: stays
+  });
+});

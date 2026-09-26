@@ -217,3 +217,144 @@ export function setOverhead(doc: Document, map: MapDef, cells: Pos[], terrain: s
     doc.setIn(["layers", layer], n);
   }
 }
+
+// ---------- areas: copy / paste / move (editor-design §5.3) ----------
+
+/** One cell with everything the board layers say about it. */
+export interface ClipCell {
+  terrain: string | null;
+  height: number;
+  decor: string | null;
+  facing: Dir | null;
+  shape: Corner[] | null;
+  lintel: { terrain: string; top: number } | null;
+}
+
+export interface Clip {
+  w: number;
+  h: number;
+  cells: ClipCell[][];
+}
+
+export interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export const rectOf = (a: Pos, b: Pos): Rect => ({ x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(a.x - b.x) + 1, h: Math.abs(a.y - b.y) + 1 });
+export const inRect = (r: Rect, p: Pos) => p.x >= r.x && p.y >= r.y && p.x < r.x + r.w && p.y < r.y + r.h;
+
+/** Everything in the board layers of a rectangle (cells outside the map are left out on paste). */
+export function copyArea(map: MapDef, r: Rect): Clip {
+  const terrain = rowsOf(map, "terrain");
+  const height = rowsOf(map, "height");
+  const decor = rowsOf(map, "decor");
+  const dirs = rowsOf(map, "decorDir");
+  const shape = rowsOf(map, "shape");
+  const over = splitRows(map.layers.overhead);
+  const overTop = splitRows(map.layers.overheadHeight);
+  const lt = map.legend.terrain;
+  const cells = Array.from({ length: r.h }, (_, dy) =>
+    Array.from({ length: r.w }, (_, dx): ClipCell => {
+      const x = r.x + dx;
+      const y = r.y + dy;
+      const t = terrain[y]?.[x];
+      const o = over[y]?.[x];
+      return {
+        terrain: t && t !== " " ? (lt[t] ?? null) : null,
+        height: Math.max(0, HEIGHTS.indexOf(height[y]?.[x] ?? "0")),
+        decor: map.legend.decor?.[decor[y]?.[x] ?? "."] ?? null,
+        facing: "NESW".includes(dirs[y]?.[x] ?? ".") && dirs[y]?.[x] !== "." ? (dirs[y][x] as Dir) : null,
+        shape: map.legend.shapes?.[shape[y]?.[x] ?? "."]?.cut ?? null,
+        lintel: o && o !== "." && lt[o] ? { terrain: lt[o], top: Math.max(0, HEIGHTS.indexOf(overTop[y]?.[x] ?? "0")) } : null,
+      };
+    }),
+  );
+  return { w: r.w, h: r.h, cells };
+}
+
+/** Writes cells into all board layers at once (one undo step). */
+export function writeCells(doc: Document, map: MapDef, writes: { p: Pos; c: ClipCell }[]) {
+  const { w, h } = mapSize(map);
+  const inside = writes.filter(({ p }) => p.x >= 0 && p.y >= 0 && p.x < w && p.y < h);
+  const terrain = rowsOf(map, "terrain");
+  const height = rowsOf(map, "height");
+  const decor = rowsOf(map, "decor");
+  const dirs = rowsOf(map, "decorDir");
+  const shape = rowsOf(map, "shape");
+  const read = (text: string | undefined) => {
+    const src = splitRows(text);
+    return Array.from({ length: h }, (_, y) => Array.from({ length: w }, (_, x) => src[y]?.[x] ?? "."));
+  };
+  const over = read(map.layers.overhead);
+  const overTop = read(map.layers.overheadHeight);
+  for (const { p, c } of inside) {
+    terrain[p.y][p.x] = c.terrain ? legendChar(doc, map, "terrain", c.terrain) : " ";
+    height[p.y][p.x] = HEIGHTS[Math.min(MAX_HEIGHT, c.height)];
+    decor[p.y][p.x] = c.decor ? legendChar(doc, map, "decor", c.decor) : ".";
+    dirs[p.y][p.x] = c.facing && c.facing !== "S" ? c.facing : ".";
+    shape[p.y][p.x] = c.shape?.length ? legendChar(doc, map, "shape", "shape", c.shape) : ".";
+    over[p.y][p.x] = c.lintel ? legendChar(doc, map, "terrain", c.lintel.terrain) : ".";
+    overTop[p.y][p.x] = c.lintel ? HEIGHTS[Math.min(MAX_HEIGHT, c.lintel.top)] : ".";
+  }
+  writeRows(doc, "terrain", terrain);
+  writeRows(doc, "height", height);
+  writeRows(doc, "decor", decor);
+  // optional layers only exist while something uses them
+  const optional: [LayerName | "overhead" | "overheadHeight", string[][]][] = [
+    ["decorDir", dirs],
+    ["shape", shape],
+    ["overhead", over],
+    ["overheadHeight", overTop],
+  ];
+  const anyLintel = over.flat().some((c) => c !== ".");
+  for (const [layer, rows] of optional) {
+    const used = layer === "overhead" || layer === "overheadHeight" ? anyLintel : rows.flat().some((c) => c !== ".");
+    if (!used) {
+      if (doc.hasIn(["layers", layer])) doc.deleteIn(["layers", layer]);
+      continue;
+    }
+    const n = doc.createNode(rows.map((r) => r.join("")).join("\n") + "\n") as Scalar;
+    n.type = Scalar.BLOCK_LITERAL;
+    doc.setIn(["layers", layer], n);
+  }
+  for (const layer of ["terrain", "decor", "shape"] as const) pruneLegend(doc, doc.toJS() as MapDef, layer, rowsOf(doc.toJS() as MapDef, layer));
+}
+
+/** Pastes a clip with its top-left corner at `at`. */
+export function pasteArea(doc: Document, map: MapDef, clip: Clip, at: Pos) {
+  const writes: { p: Pos; c: ClipCell }[] = [];
+  clip.cells.forEach((row, dy) => row.forEach((c, dx) => writes.push({ p: { x: at.x + dx, y: at.y + dy }, c })));
+  writeCells(doc, map, writes);
+}
+
+/**
+ * Moves an area: its cells go to `to` (top-left), the cells it leaves behind become `fill`
+ * (a terrain id, or null for holes) at height 0 with nothing on them. Entities standing in the
+ * area move along when `withEntities`.
+ */
+export function moveArea(doc: Document, map: MapDef, r: Rect, to: Pos, fill: string | null, withEntities: boolean) {
+  const clip = copyArea(map, r);
+  const empty: ClipCell = { terrain: fill, height: 0, decor: null, facing: null, shape: null, lintel: null };
+  const writes: { p: Pos; c: ClipCell }[] = [];
+  for (let dy = 0; dy < r.h; dy++) for (let dx = 0; dx < r.w; dx++) writes.push({ p: { x: r.x + dx, y: r.y + dy }, c: empty });
+  clip.cells.forEach((row, dy) => row.forEach((c, dx) => writes.push({ p: { x: to.x + dx, y: to.y + dy }, c })));
+  writeCells(doc, map, writes);
+  if (withEntities) {
+    const dx = to.x - r.x;
+    const dy = to.y - r.y;
+    const inside = (e: { x: number; y: number }) => inRect(r, e);
+    const move = (path: (string | number)[]) => {
+      doc.setIn([...path, "x"], (doc.getIn([...path, "x"]) as number) + dx);
+      doc.setIn([...path, "y"], (doc.getIn([...path, "y"]) as number) + dy);
+    };
+    for (const list of ["events", "exits", "enemies", "gates", "switches", "traps", "wallDecor"] as const) {
+      (map[list] as { x: number; y: number }[] | undefined)?.forEach((e, i) => inside(e) && move([list, i]));
+    }
+    for (const [id, s] of Object.entries(map.spawns ?? {})) if (inside(s)) move(["spawns", id]);
+    const qp = map.editor?.quickPlay;
+    if (qp?.x !== undefined && qp.y !== undefined && inside({ x: qp.x, y: qp.y })) move(["editor", "quickPlay"]);
+  }
+}

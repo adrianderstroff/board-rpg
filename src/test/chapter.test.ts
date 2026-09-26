@@ -121,6 +121,16 @@ describe("the Mountain Temple chapter (§18.7-12)", () => {
     expect(board(ctx).gates?.west_stairs).toBe(false);
   });
 
+  it("waking up at the inn: the party can face another way than the spawn point", () => {
+    const game = villageGame();
+    const spawnDir = game.ctx.db.map("sandhollow_inn_upper").spawns.bed.dir ?? "S";
+    game.enter("sandhollow_inn_upper", "bed");
+    expect(mustPieceOf(game.ctx, "aldric").facing).toBe(spawnDir);
+    const other = spawnDir === "N" ? "E" : "N";
+    game.enter("sandhollow_inn_upper", "bed", other);
+    expect(mustPieceOf(game.ctx, "aldric").facing).toBe(other);
+  });
+
   it("the cave half-way up the mountain stays sealed until the Holy Orb is claimed", () => {
     const game = villageGame();
     game.enter("temple_mountain", "from_dunes");

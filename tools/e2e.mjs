@@ -217,6 +217,80 @@ async function d_endParty(d) {
 // ---------------- scenarios ----------------
 
 const scenarios = {
+  /** Editor: select an area, move it (entities along), copy + paste it; the inn's wake-up facing. */
+  async editorArea(d) {
+    const page = d.page;
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.setViewportSize({ width: 1400, height: 820 });
+    await page.goto(new URL("editor/", url).href);
+    await page.getByText("Sandhollow", { exact: true }).click();
+    await page.waitForFunction(() => window.__editorMap?.view);
+    await sleep(500);
+    const f = "data/maps/sandhollow.yaml";
+    const data = () => page.evaluate((f) => window.__editor.project.data(f), f);
+    const rows = async (layer) => (await data()).layers[layer].split(/\n/);
+    const at = (x, y) => page.evaluate(([x, y]) => window.__editorMap.cellScreen(x, y), [x, y]);
+    const drag = async (a, b) => {
+      const p = await at(...a);
+      const q = await at(...b);
+      await page.mouse.move(p.x, p.y);
+      await page.mouse.down();
+      await page.mouse.move(q.x, q.y, { steps: 8 });
+      await page.mouse.up();
+      await sleep(200);
+    };
+    await page.keyboard.press("1"); // terrain layer
+    await page.keyboard.press("m"); // select tool (the toolbar grows, the canvas moves)
+    await sleep(300);
+    const before = await rows("terrain");
+    const decorBefore = await rows("decor");
+    // the market stalls (row 7, x 6..10) and the nia event nearby: select the stall row and move it one row up
+    await drag([6, 7], [10, 8]); // the stalls and the shopkeepers in front of them
+    await drag([8, 7], [8, 6]);
+    const decor = await rows("decor");
+    d.expect(decor[6].slice(6, 11) === decorBefore[7].slice(6, 11), `stalls moved up (${decor[6]})`);
+    d.expect(decor[7].slice(6, 11) === ".....", `left behind: no decor (${decor[7]})`);
+    const smith = (await data()).events.find((e) => e.id === "smith");
+    d.expect(smith.x === 6 && smith.y === 7, `the smith in the area moved along (${smith.x},${smith.y})`);
+    await d.shot("moved");
+    // copy the moved stalls and paste them at the bottom left
+    await page.keyboard.press("Control+c");
+    await page.keyboard.press("Control+v");
+    const p = await at(2, 9);
+    await page.mouse.move(p.x, p.y);
+    await sleep(200);
+    await d.shot("paste-preview");
+    await page.mouse.down();
+    await page.mouse.up();
+    await sleep(200);
+    d.expect((await rows("decor"))[9].slice(2, 7) === decorBefore[7].slice(6, 11), `pasted a copy (${(await rows("decor"))[9]})`);
+    // all undone
+    await page.locator(".toolbar .title").click();
+    for (let i = 0; i < 4; i++) await page.keyboard.press("Control+z");
+    d.expect(JSON.stringify(await rows("terrain")) === JSON.stringify(before), "undo restored the terrain");
+    d.expect(await page.getByRole("button", { name: "Save", exact: true }).isDisabled(), "nothing left to save");
+    // the inn: wake up upstairs, facing east
+    await page.getByText("The Sleeping Camel", { exact: true }).click();
+    await page.waitForFunction(() => window.__editorMap?.props?.mapId === "sandhollow_inn");
+    await sleep(400);
+    await page.keyboard.press("0"); // entities (the toolbar shrinks, the canvas moves)
+    await sleep(300);
+    const inn = "data/maps/sandhollow_inn.yaml";
+    const keeper = await page.evaluate((f) => window.__editor.project.data(f).events.find((e) => e.pages.some((p) => p.interactions?.some((i) => i.type === "inn"))), inn);
+    const k = await at(keeper.x, keeper.y);
+    await page.mouse.click(k.x, k.y);
+    await sleep(300);
+    const facing = page.locator(".list-row select").filter({ hasText: "(the spawn's)" }).first();
+    await facing.selectOption("E");
+    const wake = await page.evaluate((f) => window.__editor.project.data(f).events.flatMap((e) => e.pages.flatMap((p) => p.interactions ?? [])).find((i) => i.type === "inn").wakeAt, inn);
+    d.expect(wake.dir === "E" && wake.map === "sandhollow_inn_upper", `wake-up facing set (${JSON.stringify(wake)})`);
+    await d.shot("inn");
+    await page.locator(".toolbar .title").click();
+    await page.keyboard.press("Control+z");
+    d.expect(!errors.length, `no page errors (${errors})`);
+  },
+
   /** Editor entities (editor-design §6): place an exit, drag an event, give a page a condition, delete, undo. */
   async editorEntities(d) {
     const page = d.page;

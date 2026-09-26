@@ -91,7 +91,9 @@ input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px s
 
 /* ---------- map editor ---------- */
 .map-editor { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100%; }
-.strip { display: flex; gap: 4px; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+/* one line, scrolling sideways if needed: the canvas below never moves when tools change */
+.strip { display: flex; gap: 4px; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--line); flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; flex: none; }
+.strip > * { flex: none; }
 .strip .sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 4px; }
 button.on { background: #124e89; border-color: var(--accent-2); color: #fff; }
 .canvas-area { flex: 1; min-height: 0; position: relative; }

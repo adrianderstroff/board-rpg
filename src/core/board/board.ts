@@ -13,7 +13,7 @@ import type { EventPageDef, ExitDef, MapEnemyDef, MapEventDef } from "../data/ty
 import type { GameEvent } from "../events";
 import { check } from "../script/conditions";
 import type { BoardState, Character, MapMemory, Piece } from "../state/types";
-import type { Pos } from "../util/grid";
+import type { Dir, Pos } from "../util/grid";
 import { ALL_DIRS, add, samePos } from "../util/grid";
 import { getGrid, LiveGrid } from "./grid";
 import { updateGates } from "./gates";
@@ -177,7 +177,7 @@ export function syncEvents(ctx: Ctx): GameEvent[] {
 
 // ---------- entering a map ----------
 
-export function enterMap(ctx: Ctx, mapId: string, spawnId: string, groups?: { members: string[]; spawn: string }[]): GameEvent[] {
+export function enterMap(ctx: Ctx, mapId: string, spawnId: string, groups?: { members: string[]; spawn: string }[], facing?: Dir): GameEvent[] {
   const map = ctx.db.map(mapId);
   const spawn = map.spawns[spawnId];
   if (!spawn) throw new Error(`Map ${mapId} has no spawn "${spawnId}"`);
@@ -208,7 +208,7 @@ export function enterMap(ctx: Ctx, mapId: string, spawnId: string, groups?: { me
   } else {
     for (let i = 0; i < alive.length; i += size) {
       const id = newPieceId(ctx, "h");
-      b.pieces[id] = { id, faction: "hero", members: alive.slice(i, i + size), x: spawn.x, y: spawn.y, facing: spawn.dir ?? "S" };
+      b.pieces[id] = { id, faction: "hero", members: alive.slice(i, i + size), x: spawn.x, y: spawn.y, facing: facing ?? spawn.dir ?? "S" };
     }
   }
   for (const heroId of ctx.state.roster.filter((id) => !isAlive(ctx.state.heroes[id]))) {

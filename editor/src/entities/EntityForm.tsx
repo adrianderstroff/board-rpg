@@ -390,11 +390,48 @@ function InteractionForm({ it, set, db, mapId }: { it: Interaction; set: (v: Int
       {(it.type === "talk" || it.type === "examine") && <Select value={it.dialog} options={dialogs} empty="(no dialog)" onChange={(v) => set({ ...it, dialog: v } as Interaction)} />}
       {it.type === "shop" && <Select value={it.shop} options={[...db.shops.entries()].map(([id, s]) => [id, s.name] as [string, string])} onChange={(v) => set({ ...it, shop: v ?? "" })} />}
       {it.type === "inn" && (
-        <div class="row">
-          price <Num value={it.price} placeholder="per hero" onChange={(v) => set({ ...it, price: v })} />
-        </div>
+        <>
+          <div class="row">
+            price <Num value={it.price} placeholder={`${db.config.innPricePerHero} per hero`} onChange={(v) => set({ ...it, price: v })} />
+          </div>
+          <WakeUpForm it={it} set={set} db={db} mapId={mapId} />
+        </>
       )}
       {it.type === "examine" && <ActionEditor value={it.actions} onChange={(a) => set({ ...it, actions: a.length ? a : undefined })} db={db} mapId={mapId} />}
+    </div>
+  );
+}
+
+/** Where the party wakes up after resting at the inn, and which way it faces (default: here, as it stood). */
+function WakeUpForm({ it, set, db, mapId }: { it: Extract<Interaction, { type: "inn" }>; set: (v: Interaction) => void; db: Database; mapId: string }) {
+  const wake = it.wakeAt;
+  const target = wake ? db.maps.get(wake.map) : undefined;
+  const spawnDir = wake ? (target?.spawns[wake.spawn]?.dir ?? "S") : undefined;
+  return (
+    <div class="stack">
+      <label class="check">
+        <input
+          type="checkbox"
+          checked={!!wake}
+          onChange={(e) => {
+            const m = db.maps.get(mapId)!;
+            set({ ...it, wakeAt: e.currentTarget.checked ? { map: mapId, spawn: Object.keys(m.spawns)[0] ?? "start" } : undefined });
+          }}
+        />
+        wake up somewhere else (e.g. by the beds upstairs)
+      </label>
+      {wake && (
+        <>
+          <div class="row">
+            <Select value={wake.map} options={[...db.maps.entries()].map(([id, m]) => [id, m.name] as [string, string])} onChange={(v) => set({ ...it, wakeAt: { map: v ?? mapId, spawn: Object.keys(db.maps.get(v ?? mapId)?.spawns ?? {})[0] ?? "" } })} />
+            <Select value={wake.spawn} options={Object.keys(target?.spawns ?? {})} onChange={(v) => set({ ...it, wakeAt: { ...wake, spawn: v ?? "" } })} />
+          </div>
+          <div class="row">
+            facing
+            <Select value={wake.dir} options={DIRS} empty={`${spawnDir} (the spawn's)`} onChange={(v) => set({ ...it, wakeAt: { ...wake, dir: v as Dir | undefined } })} />
+          </div>
+        </>
+      )}
     </div>
   );
 }
