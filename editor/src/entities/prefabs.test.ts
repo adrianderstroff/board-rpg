@@ -55,7 +55,7 @@ describe("prefabs in the editor (editor-design §6.5)", () => {
       ["$plate", 3, 2],
       ["$gate_2", 3, 0],
     ]);
-    expect(prefab.events![0].on![0].when).toEqual({ flag: "$gate_open" });
+    expect(prefab.events![0].on![0].when).toEqual({ flag: "gate_open" }); // flags start fixed
     expect(prefab.events![2].on![0].when).toEqual({ state: { event: "$plate", is: "down" } });
   });
 
@@ -72,7 +72,7 @@ describe("prefabs in the editor (editor-design §6.5)", () => {
     expect(slots.map((s) => [s.kind, s.value, s.mode])).toEqual([
       ["entity", "gate", "perCopy"],
       ["outside", "far_door", "fixed"],
-      ["flag", "gate_open", "perCopy"],
+      ["flag", "gate_open", "fixed"],
       ["flag", "lever_pulled", "fixed"],
       ["item", "lib:potion", "fixed"],
     ]);

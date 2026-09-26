@@ -335,9 +335,8 @@ Ready-made groups of entities (game-design §10.5), the library's and the projec
   | content: items, dialogs, shops, enemies, music | fixed · set on placement |
 
   *Per copy*: each placement gets its own; *fixed*: kept as it is; *set on placement*: asked for
-  when placing (a label; the current value is the default). Ids and flags / variables named after
-  one of them start as per copy, outside entities and content as fixed, other flags / variables as
-  fixed. It goes into the project's `data/prefabs.yaml`.
+  when placing (a label; the current value is the default). The prefab's own entities start as per
+  copy, everything else as fixed; *fixed* is always the second choice of a row. It goes into the project's `data/prefabs.yaml`.
 - **Placing a prefab with inputs**: after the click a small window asks for them, the defaults
   filled in (Enter places it); an entity input is chosen from the map's entities.
 

@@ -59,14 +59,15 @@ export interface PrefabSlot {
 /** The modes a kind of value can take. */
 export const SLOT_MODES: Record<PrefabSlot["kind"], SlotMode[]> = {
   entity: ["perCopy", "fixed"],
-  outside: ["fixed", "input"],
+  // fixed is always the second choice
+  outside: ["input", "fixed"],
   flag: ["perCopy", "fixed", "input"],
   variable: ["perCopy", "fixed", "input"],
-  item: ["fixed", "input"],
-  dialog: ["fixed", "input"],
-  shop: ["fixed", "input"],
-  enemy: ["fixed", "input"],
-  music: ["fixed", "input"],
+  item: ["input", "fixed"],
+  dialog: ["input", "fixed"],
+  shop: ["input", "fixed"],
+  enemy: ["input", "fixed"],
+  music: ["input", "fixed"],
 };
 
 const pickEntities = (map: MapDef, refs: EntityRef[]) => {
@@ -76,7 +77,7 @@ const pickEntities = (map: MapDef, refs: EntityRef[]) => {
 
 const LABELS: Record<PrefabSlot["kind"], string> = { entity: "Entity", outside: "Entity", flag: "Flag", variable: "Variable", item: "Item", dialog: "Dialog", shop: "Shop", enemy: "Enemy", music: "Music" };
 
-/** Every value the chosen entities use that a prefab can treat on its own, with a suggested mode. */
+/** Every value the chosen entities use that a prefab can treat on its own – its own entities per copy, the rest fixed. */
 export function prefabSlots(map: MapDef, refs: EntityRef[]): PrefabSlot[] {
   const { events, enemies, exits } = pickEntities(map, refs);
   const ids = [...events, ...enemies].map((e) => e.id);
@@ -112,13 +113,11 @@ export function prefabSlots(map: MapDef, refs: EntityRef[]): PrefabSlot[] {
     add(e.enemy, "enemy");
     walk({ ...e, id: undefined, enemy: undefined });
   }
-  const named = (n: string) => ids.some((id) => n.startsWith(`${id}_`));
+  // the prefab's own entities start per copy, everything else fixed
   const slots: PrefabSlot[] = ids.map((value) => ({ value, kind: "entity", mode: "perCopy", label: LABELS.entity }));
   for (const [key, kind] of found) {
-    const value = key.slice(kind.length + 1);
     if (kind === "entity") continue; // listed above
-    const mode: SlotMode = (kind === "flag" || kind === "variable") && named(value) ? "perCopy" : "fixed";
-    slots.push({ value, kind, mode, label: LABELS[kind] });
+    slots.push({ value: key.slice(kind.length + 1), kind, mode: "fixed", label: LABELS[kind] });
   }
   const order = Object.keys(LABELS);
   return slots.sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind) || a.value.localeCompare(b.value));
