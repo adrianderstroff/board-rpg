@@ -3,6 +3,7 @@ import { useProject } from "./hooks";
 import { playtest } from "./playtest";
 import type { Project } from "./project";
 import { MapsScreen } from "./screens/MapsScreen";
+import { ResourcesScreen } from "./screens/ResourcesScreen";
 import { knownFlags } from "./forms/ConditionEditor";
 import { Icon } from "./icons";
 import { usePersistentState } from "./persist";
@@ -11,6 +12,7 @@ import { ProjectMenu } from "./ProjectMenu";
 /** Navigation entries; the ones without a screen yet are shown greyed out (editor-design §12). */
 const SCREENS = [
   { id: "maps", label: "Maps" },
+  { id: "resources", label: "Resources" },
   { id: "heroes", label: "Heroes", pkg: "E6" },
   { id: "enemies", label: "Enemies", pkg: "E6" },
   { id: "npcs", label: "NPCs", pkg: "E6" },
@@ -153,6 +155,8 @@ export function App({ project }: { project: Project }) {
       )}
       {screen === "maps" ? (
         <MapsScreen project={project} selected={map} onSelect={setMap} />
+      ) : screen === "resources" ? (
+        <ResourcesScreen project={project} />
       ) : (
         <>
           <main class="main">

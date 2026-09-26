@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { strToU8, strFromU8, unzipSync, zipSync } from "fflate";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import type { Plugin } from "vite";
@@ -79,6 +79,19 @@ export function createProject(root: string, opts: { id: string; name: string; fr
   return { id, name, library: String(doc.get("library")) };
 }
 
+/** The asset files a project may hold (projects.md §6): graphics sheets and music, by kind folder. */
+export const ASSET_PATH = /^(charsets|battlers|faces|battlebacks)\/[a-z0-9][a-z0-9_-]*\.png$|^audio\/music\/[a-z0-9][a-z0-9_-]*\.wav$/;
+
+/** Writes (bytes) or deletes (null) one of a project's asset files. */
+export function writeAsset(root: string, project: string, path: string, bytes: Uint8Array | null) {
+  if (!PROJECT_ID.test(project) || !existsSync(resolve(root, "projects", project, "project.yaml"))) throw new Error(`No project "${project}"`);
+  if (!ASSET_PATH.test(path)) throw new Error(`"${path}" can't be a project asset (charsets|battlers|faces|battlebacks/<id>.png, audio/music/<id>.wav)`);
+  const abs = resolve(root, "projects", project, "assets", path);
+  if (bytes === null) return void (existsSync(abs) && rmSync(abs));
+  mkdirSync(dirname(abs), { recursive: true });
+  writeFileSync(abs, bytes);
+}
+
 /** Every file below `dir` (paths relative to it, with /). */
 const allFiles = (dir: string, base = dir): string[] =>
   existsSync(dir)
@@ -153,6 +166,7 @@ export function importProject(root: string, bytes: Uint8Array): ProjectInfo {
  *   PUT  /__editor/file             ← { project, path: "data/…yaml", text } (only a project's own YAML files; the library is read-only)
  *   GET  /__editor/export?project=id → <id>.brpg (exportProject)
  *   POST /__editor/import           ← the bytes of a .brpg → ProjectInfo (importProject)
+ *   PUT|DELETE /__editor/asset?project=id&path=charsets/x.png ← the file's bytes (writeAsset)
  */
 export function editorFiles(root = process.cwd()): Plugin {
   /** A safe absolute path for one of a project's data files, or null. */
@@ -209,6 +223,29 @@ export function editorFiles(root = process.cwd()): Plugin {
         req.on("end", () => {
           try {
             json(res, importProject(root, new Uint8Array(Buffer.concat(chunks))));
+          } catch (e) {
+            res.writeHead(400).end((e as Error).message);
+          }
+        });
+      });
+      server.middlewares.use("/__editor/asset", (req, res) => {
+        const q = new URL(req.url ?? "", "http://x").searchParams;
+        const [project, path] = [q.get("project") ?? "", q.get("path") ?? ""];
+        if (req.method === "DELETE") {
+          try {
+            writeAsset(root, project, path, null);
+            return void res.writeHead(204).end();
+          } catch (e) {
+            return void res.writeHead(400).end((e as Error).message);
+          }
+        }
+        if (req.method !== "PUT") return void res.writeHead(405).end();
+        const chunks: Buffer[] = [];
+        req.on("data", (c: Buffer) => chunks.push(c));
+        req.on("end", () => {
+          try {
+            writeAsset(root, project, path, new Uint8Array(Buffer.concat(chunks)));
+            res.writeHead(204).end();
           } catch (e) {
             res.writeHead(400).end((e as Error).message);
           }

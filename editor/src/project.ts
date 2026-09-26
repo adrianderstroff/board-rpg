@@ -77,6 +77,13 @@ export async function fetchProjects(): Promise<ProjectInfo[]> {
   return r.json();
 }
 
+/** Stores (a Blob) or deletes (null) one of a project's asset files (charsets/x.png, audio/music/y.wav). */
+export async function putAsset(project: string, path: string, file: Blob | null): Promise<void> {
+  const url = `/__editor/asset?project=${encodeURIComponent(project)}&path=${encodeURIComponent(path)}`;
+  const r = await fetch(url, file ? { method: "PUT", body: file } : { method: "DELETE" });
+  if (!r.ok) throw new Error(await r.text());
+}
+
 /** Unpacks an exported project (.brpg) as a new project. */
 export async function importProjectFile(file: Blob): Promise<ProjectInfo> {
   const r = await fetch("/__editor/import", { method: "POST", body: file });
@@ -203,6 +210,12 @@ export class Project {
   }
 
   // ---------- reading ----------
+
+  /** A music track was added to (or removed from) the project's assets. */
+  setMusic(id: string, present: boolean) {
+    this.music = present ? [...new Set([...this.music, id])].sort() : this.music.filter((m) => m !== id);
+    this.changed();
+  }
 
   paths(prefix = ""): string[] {
     return [...this.files.keys()].filter((p) => p.startsWith(prefix)).sort();

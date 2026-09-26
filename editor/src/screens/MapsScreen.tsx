@@ -260,7 +260,7 @@ function ResizeForm(props: { project: Project; id: string; size: { w: number; h:
 }
 
 /** ▶ / ■ to listen to a track while choosing it. */
-function MusicPreview({ src: track }: { src?: string }) {
+export function MusicPreview({ src: track }: { src?: string }) {
   const audio = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   // another track or another map: stop listening

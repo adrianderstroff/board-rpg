@@ -317,3 +317,24 @@ details.lintel summary { cursor: pointer; color: var(--dim); }
 .project-menu .menu-file { padding: 6px 8px; cursor: pointer; border-radius: var(--radius); }
 .project-menu .menu-file:hover { background: #ffffff10; }
 .project-menu .menu-file input { display: none; }
+
+/* resources (projects.md §6) */
+.resources { overflow: auto; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.resources.drop { outline: 2px dashed var(--accent); outline-offset: -6px; }
+.resources-head { display: flex; align-items: center; gap: 12px; }
+.resources-head .hint { margin: 0; flex: 1; }
+label.button { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: var(--radius); padding: 5px 12px; cursor: pointer; white-space: nowrap; }
+label.button.primary { background: #265c42; border-color: #3e8948; }
+label.button input { display: none; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.card { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px; position: relative; min-height: 120px; justify-content: flex-end; }
+.card.on { border-color: var(--accent); }
+.card .name { font-size: 12px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card .badge-lib { font-size: 10px; color: var(--dim); margin-top: -4px; }
+.thumb { display: block; margin: auto 0; }
+img.thumb { image-rendering: pixelated; }
+img.thumb.faces { width: 72px; height: 72px; }
+img.thumb.battlebacks { width: 100%; max-width: 160px; }
+.thumb.music { font-size: 32px; color: var(--accent-2); }
+.resource-preview { background: #0006; border-radius: var(--radius); padding: 8px; margin-bottom: 8px; overflow: auto; }
+.resource-preview img { image-rendering: pixelated; max-width: 100%; }

@@ -339,8 +339,10 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ What a project uses of its library (`content/bundle.ts`): transitive `lib:` references, trimmed library files, used assets
 - ☑ `.brpg` export (project + used library content) and import (installs a missing library version) – project menu; `VITE_PROJECT=<id> npm run build` ships one project with only the used library content
 
-## PJ4 · Importing resources ☐
-- ☐ Drop PNG / music into the editor: copied into the project, registered; sprite sheet layout form
+## PJ4 · Importing resources ☑
+- ☑ Resources screen: charsets, battlers, faces, battle backgrounds, music – the library's (read-only) and the project's own
+- ☑ Import (button or drop): PNG / WAV copied into the project's assets, registered in its graphics.yaml with the layout worked out from the size (ASSETS.md); frame size / floor adjustable; delete
+- ☐ Chipsets (terrain definitions with the sheet) – later
 
 ## PJ5 · Library content in the editor ☐
 - ☐ Library badge, read-only forms, Copy to project (references follow); moving a project to a newer library version

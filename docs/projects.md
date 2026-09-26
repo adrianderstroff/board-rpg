@@ -85,9 +85,14 @@ public/assets/               the runtime's own: system graphics (cursor, highlig
   project, so switching loses nothing.
 - Library content shows in every list with a *library* badge. Its forms are read-only with
   **Copy to project**.
-- **Import resources**: drop a PNG or a music file. It's copied into the project's `assets/` and
-  registered (charset, face, battler, battle background, chipset, music track). For sprite sheets
-  a small form sets the frame size and layout (see public/assets/ASSETS.md).
+- **Resources** screen (the image icon): charsets, battlers, faces, battle backgrounds and music –
+  the project's own first, then the library's (read-only). **Import** (button, or drop files on
+  the list): a PNG is copied into the project's `assets/<kind>/<id>.png` (id from the file name) and
+  registered in its `data/graphics.yaml` with the layout worked out from the size (ASSETS.md: a
+  charset is 3 × 4 frames, a battler a row of square frames – 6 hero or 4 enemy poses, a face
+  48×48, a battle background 480×190 with its floor row); the frame size and floor can be adjusted,
+  and a project's own resource deleted. Music is a WAV in `assets/audio/music/` (a track by its
+  name). Chipsets – a sheet plus its terrain definitions – come later.
 - The editor's file access is per project (`/__editor/files?project=`, `PUT /__editor/file` with
   the project, `GET|POST /__editor/projects`). The library is read only.
 
