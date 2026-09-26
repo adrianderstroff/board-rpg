@@ -126,7 +126,7 @@ entity and enters the map. The normal game build is unaffected.
 - **Axis gizmo:** the lower right of the map view shows where the map's x and y run (two short
   labelled lines); in the iso view it turns with the view.
 - **Strip** (above the canvas): the modes, then the tools as icons (their names in tooltips), a
-  divider and two on/off buttons (pressed when on) for the grid and the decor; the turn buttons and
+  divider and two on/off icons for the grid and the decor (yellow when on, like the selected tool); the turn buttons and
   the view switch (Iso / Top) are on the right.
 - **Top view** (toggle): a flat grid of the same cells for fast painting of large areas; each cell
   shows its terrain's top texture unwarped from the diamond into a square, its height as a number

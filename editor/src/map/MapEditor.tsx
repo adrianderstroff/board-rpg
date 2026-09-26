@@ -482,11 +482,11 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
           </>
         )}
         <span class="sep" />
-        <button class={`toggle ${showGrid ? "on" : ""}`} aria-pressed={showGrid} title="Grid: thin lines around every cell" aria-label="Grid" onClick={() => setShowGrid(!showGrid)}>
-          <Icon name="grid" size={18} />
+        <button class={`icon-button ${showGrid ? "on" : ""}`} aria-pressed={showGrid} title="Grid: thin lines around every cell" aria-label="Grid" onClick={() => setShowGrid(!showGrid)}>
+          <Icon name="grid" />
         </button>
-        <button class={`toggle ${hideDecor ? "" : "on"}`} aria-pressed={!hideDecor} title="Decor: show trees, rocks, furniture…" aria-label="Decor" onClick={() => setHideDecor(!hideDecor)}>
-          <Icon name="decor" size={18} />
+        <button class={`icon-button ${hideDecor ? "" : "on"}`} aria-pressed={!hideDecor} title="Decor: show trees, rocks, furniture…" aria-label="Decor" onClick={() => setHideDecor(!hideDecor)}>
+          <Icon name="decor" />
         </button>
         {mode !== "entity" && tool === "select" && (
           <>
