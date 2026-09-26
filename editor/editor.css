@@ -296,3 +296,21 @@ details.lintel summary { cursor: pointer; color: var(--dim); }
 /* no events yet: the + reads "+ Add event" */
 .page-tabs .add-page.add-first { width: auto; height: 30px; font-size: 13px; padding: 0 12px; }
 .step .row.wrap > select { min-width: 96px; }
+
+/* the project menu (projects.md §6) */
+.project-menu { position: relative; }
+.project-button { font-weight: 600; color: var(--accent); }
+.project-button .caret { color: var(--dim); font-weight: normal; margin-left: 4px; }
+.project-menu .menu {
+  position: absolute; z-index: 20; left: 0; top: calc(100% + 4px); min-width: 260px; display: flex; flex-direction: column;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px; box-shadow: 0 8px 24px #0008;
+}
+.project-menu .menu button { display: flex; justify-content: space-between; gap: 12px; border: none; background: none; text-align: left; padding: 6px 8px; }
+.project-menu .menu button:hover { background: #ffffff10; }
+.project-menu .menu button.on { color: var(--accent); }
+.project-menu .menu hr { border: none; border-top: 1px solid var(--line); margin: 4px 0; width: 100%; }
+.project-menu .pad { padding: 6px 8px; }
+.project-menu .bad, .new-project .bad { color: var(--bad); }
+.new-project { display: flex; flex-direction: column; gap: 4px; padding: 4px; }
+.new-project input, .new-project select { width: 100%; }
+.row.end { justify-content: flex-end; margin-top: 8px; }

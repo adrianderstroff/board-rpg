@@ -6,6 +6,7 @@ import { MapsScreen } from "./screens/MapsScreen";
 import { knownFlags } from "./forms/ConditionEditor";
 import { Icon } from "./icons";
 import { usePersistentState } from "./persist";
+import { ProjectMenu } from "./ProjectMenu";
 
 /** Navigation entries; the ones without a screen yet are shown greyed out (editor-design §12). */
 const SCREENS = [
@@ -93,6 +94,8 @@ export function App({ project }: { project: Project }) {
         ))}
       </datalist>
       <div class="toolbar">
+        <ProjectMenu project={project} />
+        <span class="sep" />
         {/* the main sections, as icons (their names on hover) */}
         <nav class="nav" aria-label="Sections">
           {SCREENS.map((s) => (

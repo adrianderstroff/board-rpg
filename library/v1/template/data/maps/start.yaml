@@ -1,0 +1,24 @@
+# The first map of a new project: a patch of sand to build on.
+name: Start
+kind: peaceful
+chipset: lib:desert
+battleback: lib:desert
+music: lib:village
+
+legend:
+  terrain:
+    s: sand
+
+layers:
+  terrain: |
+    ssssssss
+    ssssssss
+    ssssssss
+    ssssssss
+    ssssssss
+    ssssssss
+    ssssssss
+    ssssssss
+
+spawns:
+  start: { x: 3, y: 3, dir: S }

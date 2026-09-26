@@ -6,8 +6,8 @@ import { arrivalUses, createTeleport, deleteArrival, deleteExit, frontOf, mapFil
 
 /** The real data files in memory. */
 function memoryApi(): FileApi {
-  const { files, roots } = readProject(".");
-  return { load: async () => ({ files, music: [], roots }), save: async () => {} };
+  const { project, files, roots } = readProject(".");
+  return { load: async () => ({ project, files, music: [], roots }), save: async () => {} };
 }
 
 async function project() {

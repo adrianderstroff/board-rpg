@@ -1,7 +1,7 @@
 import { parseDocument, type Document } from "yaml";
 import { layeredRaw } from "../../src/content/raw";
 import type { AssetRoots } from "../../src/core/data/database";
-import type { ProjectFiles } from "./projectFiles";
+import type { ProjectFiles, ProjectInfo } from "./projectFiles";
 
 /** The library's files are read-only in a project (projects.md §6). */
 export const isLibraryFile = (path: string) => path.startsWith("library/");
@@ -55,17 +55,34 @@ export interface FileApi {
   save(path: string, text: string): Promise<void>;
 }
 
-export const httpFileApi: FileApi = {
-  async load() {
-    const r = await fetch("/__editor/files");
-    if (!r.ok) throw new Error(`Loading the data files failed (${r.status}). Is the dev server running?`);
-    return r.json();
-  },
-  async save(path, text) {
-    const r = await fetch("/__editor/file", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path, text }) });
-    if (!r.ok) throw new Error(`Saving ${path} failed: ${await r.text()}`);
-  },
-};
+/** The dev server's file API (editor/vite-plugin-files.ts) for one project. */
+export function httpFileApi(project: string): FileApi {
+  return {
+    async load() {
+      const r = await fetch(`/__editor/files?project=${encodeURIComponent(project)}`);
+      if (!r.ok) throw new Error(`Loading project "${project}" failed (${r.status}: ${await r.text()}). Is the dev server running?`);
+      return r.json();
+    },
+    async save(path, text) {
+      const r = await fetch("/__editor/file", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ project, path, text }) });
+      if (!r.ok) throw new Error(`Saving ${path} failed: ${await r.text()}`);
+    },
+  };
+}
+
+/** The projects on disk (projects.md §6). */
+export async function fetchProjects(): Promise<ProjectInfo[]> {
+  const r = await fetch("/__editor/projects");
+  if (!r.ok) throw new Error(`Listing the projects failed (${r.status})`);
+  return r.json();
+}
+
+/** Creates a project: a copy of `from`, or the library's empty template. */
+export async function createProject(opts: { id: string; name: string; from?: string }): Promise<ProjectInfo> {
+  const r = await fetch("/__editor/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(opts) });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
 
 export class Project {
   private files = new Map<string, FileEntry>();
@@ -73,6 +90,8 @@ export class Project {
   private redoStack: Change[] = [];
   private listeners = new Set<() => void>();
   private cache?: { version: number; raw: RawContent; db: Database | null; problems: string[] };
+  /** The open project (projects.md). */
+  info: ProjectInfo = { id: "", name: "", library: "" };
   /** Music track ids available (the library's as lib:<name>). */
   music: string[] = [];
   /** Where the library's and the project's assets are (projects.md §4). */
@@ -86,13 +105,14 @@ export class Project {
   private tx?: Change;
 
   constructor(
-    private readonly api: FileApi = httpFileApi,
+    private readonly api: FileApi = httpFileApi("demo"),
     private readonly store: SessionStore | null = browserStorage(),
   ) {}
 
   /** Loads the files from disk, then brings back unsaved work from before a reload. */
   async load() {
-    const { files, music, roots } = await this.api.load();
+    const { project, files, music, roots } = await this.api.load();
+    this.info = project;
     this.roots = roots;
     this.files.clear();
     for (const [path, text] of Object.entries(files)) this.files.set(path, this.entry(text, text));
@@ -109,7 +129,8 @@ export class Project {
     this.dropped = [];
     let s: Session | null = null;
     try {
-      s = JSON.parse(this.store?.getItem(SESSION_KEY) ?? "null") as Session | null;
+      // (before projects there was one session for the demo)
+      s = JSON.parse(this.store?.getItem(this.sessionKey) ?? (this.info.id === "demo" ? this.store?.getItem(SESSION_KEY) : null) ?? "null") as Session | null;
     } catch {
       s = null;
     }
@@ -143,9 +164,10 @@ export class Project {
     const bases: Record<string, string> = {};
     const touched = [...undo, ...redo].flatMap((c) => c.files.map((f) => f.path));
     for (const path of new Set([...Object.keys(files), ...touched])) bases[path] = this.files.get(path)?.saved ?? "";
-    const write = (session: Session) => this.store!.setItem(SESSION_KEY, JSON.stringify(session));
+    const write = (session: Session) => this.store!.setItem(this.sessionKey, JSON.stringify(session));
     try {
-      if (!Object.keys(bases).length) this.store.removeItem(SESSION_KEY);
+      if (this.info.id === "demo") this.store.removeItem(SESSION_KEY); // the old, shared one
+      if (!Object.keys(bases).length) this.store.removeItem(this.sessionKey);
       else write({ v: 2, files, bases, undo, redo });
     } catch {
       // too big for the storage: keep the files at least, without the history
@@ -156,6 +178,11 @@ export class Project {
         // nothing more to do – the work is still in this tab
       }
     }
+  }
+
+  /** Unsaved work is kept per project. */
+  private get sessionKey() {
+    return `${SESSION_KEY}:${this.info.id}`;
   }
 
   private schedulePersist() {

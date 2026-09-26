@@ -332,8 +332,8 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ Content migrated to `lib:` references (validation proves it, now also terrain surfaces and melting); the rules' library needs in `builtins.ts` (validated); tests; save version 2
 - ☑ Tools follow: art / audio generators, e2e, screenshots; editor reads the library read-only
 
-## PJ2 · Projects in the editor ☐
-- ☐ Editor file access on the open project (library read-only); project switcher; New project (empty / copy of the demo)
+## PJ2 · Projects in the editor ☑
+- ☑ Editor file access per project (library read-only); project menu in the toolbar; New project from the library's template (`library/v1/template`) or as a copy; unsaved work kept per project; every project and the template are validated in the tests
 
 ## PJ3 · Export, import, shipping ☐
 - ☐ `.brpg` zip with the used library content; import; `npm run build -- --project <id>` with only the used library files

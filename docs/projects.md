@@ -70,15 +70,19 @@ public/assets/               the runtime's own: system graphics (cursor, highlig
 
 ## 6. Editor
 
-- A **project switcher** (top bar): open, **New project** (empty, or a copy of the demo), and
-  later export and import.
+- A **project menu** (the toolbar's left end, showing the open project's name): switch to another
+  project, **New project** – a name (its folder id follows from it) and what to start from: the
+  library's **template** (`library/v1/template/`: default rules, one sand map, a hero and two
+  potions – valid and playable right away) or a **copy** of an existing project. Later export and
+  import. The open project is remembered (and `?project=<id>` opens one); unsaved work is kept per
+  project, so switching loses nothing.
 - Library content shows in every list with a *library* badge. Its forms are read-only with
   **Copy to project**.
 - **Import resources**: drop a PNG or a music file. It's copied into the project's `assets/` and
   registered (charset, face, battler, battle background, chipset, music track). For sprite sheets
   a small form sets the frame size and layout (see public/assets/ASSETS.md).
-- The editor's file access moves from `data/` to the open project's folder. The library is read
-  only.
+- The editor's file access is per project (`/__editor/files?project=`, `PUT /__editor/file` with
+  the project, `GET|POST /__editor/projects`). The library is read only.
 
 ## 7. Decisions
 

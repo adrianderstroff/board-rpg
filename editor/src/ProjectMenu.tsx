@@ -1,0 +1,139 @@
+import { useEffect, useState } from "preact/hooks";
+import { FloatingWindow } from "./forms/FloatingWindow";
+import { Field } from "./forms/fields";
+import { createProject, fetchProjects, type Project } from "./project";
+import type { ProjectInfo } from "./projectFiles";
+import { writeStored } from "./persist";
+
+/** A folder-safe id from a name ("My Game!" → "my_game"). */
+export const projectIdFor = (name: string) =>
+  name
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "") // accents off the letters
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "") || "project";
+
+/** Opens another project: its unsaved work stays stored with it (projects.md §6). */
+export function openProject(project: Project, id: string) {
+  project.persistNow();
+  writeStored("project", id);
+  const url = new URL(location.href);
+  url.searchParams.set("project", id);
+  location.href = url.href;
+}
+
+/**
+ * The toolbar's project menu (projects.md §6): the open project's name; the list of projects to
+ * switch to and New project.
+ */
+export function ProjectMenu({ project }: { project: Project }) {
+  const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [projects, setProjects] = useState<ProjectInfo[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open && !creating) return;
+    fetchProjects()
+      .then(setProjects)
+      .catch((e: Error) => setError(e.message));
+  }, [open, creating]);
+
+  // a click elsewhere closes the menu
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => !(e.target as HTMLElement).closest(".project-menu") && setOpen(false);
+    addEventListener("mousedown", close);
+    return () => removeEventListener("mousedown", close);
+  }, [open]);
+
+  return (
+    <div class="project-menu">
+      <button class="project-button" title={`Project ${project.info.id} · library ${project.info.library}`} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+        {project.info.name} <span class="caret">▾</span>
+      </button>
+      {open && (
+        <div class="menu" role="menu">
+          {(projects ?? []).map((p) => (
+            <button key={p.id} role="menuitem" class={p.id === project.info.id ? "on" : ""} onClick={() => (p.id === project.info.id ? setOpen(false) : openProject(project, p.id))}>
+              <span>{p.name}</span>
+              <span class="dim">{p.id}</span>
+            </button>
+          ))}
+          {!projects && !error && <div class="dim pad">Loading…</div>}
+          {error && <div class="bad pad">{error}</div>}
+          <hr />
+          <button
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              setCreating(true);
+            }}
+          >
+            New project…
+          </button>
+        </div>
+      )}
+      {creating && <NewProjectWindow project={project} projects={projects ?? []} onClose={() => setCreating(false)} />}
+    </div>
+  );
+}
+
+/** Name, id (from the name) and what to start from: the library's empty template or a copy of a project. */
+function NewProjectWindow({ project, projects, onClose }: { project: Project; projects: ProjectInfo[]; onClose: () => void }) {
+  const [name, setName] = useState("");
+  const [from, setFrom] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const id = projectIdFor(name);
+  const taken = projects.some((p) => p.id === id);
+  const create = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const made = await createProject({ id, name: name.trim(), from: from || undefined });
+      openProject(project, made.id);
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+    }
+  };
+  return (
+    <FloatingWindow id="new-project" title="New project" onClose={onClose} size={{ w: 420, h: 280 }}>
+      <form
+        class="new-project"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (name.trim() && !taken && !busy) void create();
+        }}
+      >
+        <Field label="Name">
+          <input autoFocus value={name} placeholder="My Game" onInput={(e) => setName(e.currentTarget.value)} />
+        </Field>
+        <Field label="Folder" hint={taken ? "A project with this folder exists already" : undefined}>
+          <span class={taken ? "bad" : "dim"}>projects/{id}</span>
+        </Field>
+        <Field label="Start from">
+          <select value={from} onChange={(e) => setFrom(e.currentTarget.value)}>
+            <option value="">Empty (one map)</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                A copy of {p.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        {error && <p class="bad">{error}</p>}
+        <div class="row end">
+          <button type="button" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" class="primary" disabled={!name.trim() || taken || busy}>
+            Create
+          </button>
+        </div>
+      </form>
+    </FloatingWindow>
+  );
+}

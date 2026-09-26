@@ -5,11 +5,11 @@ import { Project, type FileApi } from "./project";
 
 /** The real data files, saved into memory instead of onto disk. */
 function memoryApi(): FileApi & { written: Record<string, string> } {
-  const { files, roots } = readProject(".");
+  const { project, files, roots } = readProject(".");
   const written: Record<string, string> = {};
   return {
     written,
-    load: async () => ({ files, music: ["lib:village", "lib:boss"], roots }),
+    load: async () => ({ project, files, music: ["lib:village", "lib:boss"], roots }),
     save: async (path, text) => void (written[path] = text),
   };
 }
