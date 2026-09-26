@@ -11,8 +11,10 @@ const paths: Record<string, string> = {
   dialogs: "M4 5h16v11H9l-5 4z M8 9h8 M8 12h5",
   shops: "M4 9l2-5h12l2 5 M4 9h16v11H4z M4 9c0 2 2 3 4 3s4-1 4-3c0 2 2 3 4 3s4-1 4-3 M10 20v-5h4v5",
   // event pages
-  moveLeft: "M15 5l-7 7 7 7",
-  moveRight: "M9 5l7 7-7 7",
+  pageFirst: "M7 5v14 M18 5l-7 7 7 7",
+  pagePrev: "M15 5l-7 7 7 7",
+  pageNext: "M9 5l7 7-7 7",
+  pageLast: "M17 5v14 M6 5l7 7-7 7",
   copy: "M9 9h11v11H9z M5 15H4V4h11v1",
   trash: "M4 7h16 M10 11v6 M14 11v6 M6 7l1 13h10l1-13 M9 7V4h6v3",
   // map editor tools and view toggles

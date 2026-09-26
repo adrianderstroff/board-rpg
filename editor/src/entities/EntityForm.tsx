@@ -244,6 +244,9 @@ function EventForm({ project, mapId, index, db }: { project: Project; mapId: str
   const [perPage, setPerPage] = useState(false);
   const [picking, setPicking] = useState(false);
   const activeTab = useRef<HTMLButtonElement>(null);
+  // dragging a page tab onto another moves the page there
+  const dragFrom = useRef<number | null>(null);
+  const [dropAt, setDropAt] = useState<number | null>(null);
   // the selected page's tab scrolls into view – in its strip only (scrollIntoView would move the form too)
   useEffect(() => {
     const tab = activeTab.current;
@@ -259,6 +262,13 @@ function EventForm({ project, mapId, index, db }: { project: Project; mapId: str
   const page = pages[p];
   const chip = db.chipsets.get(map.chipset);
   const setPages = (next: EventPageDef[], label: string) => setIn(["events", index, "pages"], next, label);
+  const movePage = (from: number, to: number) => {
+    if (from === to) return;
+    const next = pages.filter((_, i) => i !== from);
+    next.splice(to, 0, pages[from]);
+    setPages(next, "Move page");
+    setPageNo(to);
+  };
   const shared = pages.every((pg) => sameLook(pg, pages[0]));
   const linked = shared && !perPage;
   /** Sets look fields on the given pages – one undo step. */
@@ -359,9 +369,33 @@ function EventForm({ project, mapId, index, db }: { project: Project; mapId: str
       <h3>Events</h3>
       <div class="pages">
         <div class="page-tabs">
-          <div class="page-tabs-scroll" title="The last page whose condition holds is the active one." onWheel={(e) => (e.currentTarget.scrollLeft += e.deltaY)}>
+          <div class="page-tabs-scroll" title="The last page whose condition holds is the active one. Drag a tab to move its page." onWheel={(e) => (e.currentTarget.scrollLeft += e.deltaY)}>
             {pages.map((_, i) => (
-              <button key={i} ref={i === p ? activeTab : undefined} class={i === p ? "on" : ""} onClick={() => setPageNo(i)}>
+              <button
+                key={i}
+                ref={i === p ? activeTab : undefined}
+                class={`${i === p ? "on" : ""} ${dropAt === i ? "drop" : ""}`}
+                draggable
+                onClick={() => setPageNo(i)}
+                onDragStart={(e) => {
+                  dragFrom.current = i;
+                  e.dataTransfer?.setData("text/plain", String(i));
+                }}
+                onDragOver={(e) => {
+                  if (dragFrom.current === null) return;
+                  e.preventDefault();
+                  setDropAt(i);
+                }}
+                onDragLeave={() => setDropAt(null)}
+                onDragEnd={() => ((dragFrom.current = null), setDropAt(null))}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const from = dragFrom.current;
+                  dragFrom.current = null;
+                  setDropAt(null);
+                  if (from !== null) movePage(from, i);
+                }}
+              >
                 Page {i + 1}
               </button>
             ))}
@@ -376,12 +410,19 @@ function EventForm({ project, mapId, index, db }: { project: Project; mapId: str
         </div>
         <div class="page-box">
           <div class="page-tools">
-            <button class="icon-button" disabled={p === 0} title="Move the page earlier" onClick={() => (setPages(pages.map((x, i) => (i === p - 1 ? pages[p] : i === p ? pages[p - 1] : x)), "Move page"), setPageNo(p - 1))}>
-              <Icon name="moveLeft" size={18} />
+            <button class="icon-button" disabled={p === 0} title="First page" onClick={() => setPageNo(0)}>
+              <Icon name="pageFirst" size={18} />
             </button>
-            <button class="icon-button" disabled={p === pages.length - 1} title="Move the page later" onClick={() => (setPages(pages.map((x, i) => (i === p + 1 ? pages[p] : i === p ? pages[p + 1] : x)), "Move page"), setPageNo(p + 1))}>
-              <Icon name="moveRight" size={18} />
+            <button class="icon-button" disabled={p === 0} title="Previous page" onClick={() => setPageNo(p - 1)}>
+              <Icon name="pagePrev" size={18} />
             </button>
+            <button class="icon-button" disabled={p === pages.length - 1} title="Next page" onClick={() => setPageNo(p + 1)}>
+              <Icon name="pageNext" size={18} />
+            </button>
+            <button class="icon-button" disabled={p === pages.length - 1} title="Last page" onClick={() => setPageNo(pages.length - 1)}>
+              <Icon name="pageLast" size={18} />
+            </button>
+            <span class="sep" />
             <button class="icon-button" title="Duplicate the page" onClick={() => (setPages([...pages.slice(0, p + 1), structuredClone(pages[p]), ...pages.slice(p + 1)], "Duplicate page"), setPageNo(p + 1))}>
               <Icon name="copy" size={18} />
             </button>

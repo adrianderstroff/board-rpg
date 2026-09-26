@@ -216,8 +216,9 @@ and opens its form. An event's form has two parts:
   (N / E / S / W) shows in the preview and on the map. The look
   is stored per page; while every page looks the same the appearance is edited on all of them
   ("every page"), otherwise on the selected page (a chest closed on one page, open on the next).
-- **Events** – the pages as folder tabs (scrolling sideways, + at the end) over the page's box: icon
-  buttons to move the page earlier / later, duplicate or delete it, then its condition, trigger,
+- **Events** – the pages as folder tabs (scrolling sideways, + at the end) over the page's box (drag a tab onto
+  another to move its page there): icon buttons to go to the first / previous / next / last page,
+  to duplicate or delete it, then its condition, trigger,
   dialog, options and actions. Only this box scrolls; the rest of the form stays in place.
 
 Below every entity's form a bar stays at the bottom: back to the list, **duplicate** (the copy

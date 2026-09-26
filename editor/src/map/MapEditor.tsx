@@ -536,11 +536,11 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
         <span class="spacer" />
         {view === "iso" && (
           <>
-            <button class="icon-button" onClick={() => setRotation((r) => (r + 3) % 4)} title="Turn the view left (Q)" aria-label="Turn left">
-              <Icon name="turnLeft" />
-            </button>
             <button class="icon-button" onClick={() => setRotation((r) => (r + 1) % 4)} title="Turn the view right (E)" aria-label="Turn right">
               <Icon name="turnRight" />
+            </button>
+            <button class="icon-button" onClick={() => setRotation((r) => (r + 3) % 4)} title="Turn the view left (Q)" aria-label="Turn left">
+              <Icon name="turnLeft" />
             </button>
           </>
         )}
