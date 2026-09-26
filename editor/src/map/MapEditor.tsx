@@ -5,7 +5,7 @@ import type { Corner, MapDef } from "../../../src/core/data/types";
 import type { Dir, Pos } from "../../../src/core/util/grid";
 import { K } from "../../../src/game/keys";
 import { addEntity, deleteEntity, entitiesAt, entityPath, listEntities, moveEntity, sameRef, type EntityKind, type EntityRef } from "../entities/model";
-import { entitySprites } from "../entities/visuals";
+import { entitySprites, placingSprite } from "../entities/visuals";
 import type { Project } from "../project";
 import { GridCanvas } from "./GridCanvas";
 import { IsoCanvas, type CanvasHandlers, type Ghost, type Marker } from "./IsoCanvas";
@@ -416,8 +416,10 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
   const sprites = useMemo(() => {
     if (!db) return [];
     const all = entitySprites(db, mapData, rotation, entities.selected, mode === "entity");
-    return mode === "entity" ? all : all.filter((e) => e.texture && !e.editorOnly).map((e) => ({ ...e, label: undefined }));
-  }, [db, mapData, rotation, entities.selected, mode]);
+    if (mode !== "entity") return all.filter((e) => e.texture && !e.editorOnly).map((e) => ({ ...e, label: undefined }));
+    // placing: what the click adds follows the cursor
+    return entities.placing && hover ? [...all, placingSprite(entities.placing, hover)] : all;
+  }, [db, mapData, rotation, entities.selected, mode, entities.placing, hover?.x, hover?.y]);
   // what the next click places, see-through under the cursor: a terrain block or a decor object
   // the rectangle being dragged (not while erasing) or the area the fill would reach; else the hovered cell
   const ghostCells: Pos[] | undefined = useMemo(() => {

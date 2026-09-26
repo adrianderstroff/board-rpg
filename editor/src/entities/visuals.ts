@@ -2,6 +2,7 @@ import type { Database } from "../../../src/core/data/database";
 import type { MapDef } from "../../../src/core/data/types";
 import { DIR_VEC, dirFromStep, type Dir } from "../../../src/core/util/grid";
 import { EXIT_FRAME, K } from "../../../src/game/keys";
+import { markerKey } from "./icons";
 import { listEntities, sameRef, type EntityKind, type EntityRef } from "./model";
 
 /** How an entity is drawn on the editor canvas (a sprite from the game's sheets, or a label). */
@@ -20,6 +21,8 @@ export interface EntitySprite {
   label?: string;
   editorOnly?: boolean;
   selected?: boolean;
+  /** What placing one would add, see-through under the cursor. */
+  preview?: boolean;
 }
 
 /** Charset frame of a character standing idle, facing down-right (row 0, column 1). */
@@ -48,7 +51,8 @@ export function entitySprites(db: Database, map: MapDef, rotation: number, selec
         const tex = npc ? charset(db.npcs.get(npc)?.charset) : undefined;
         if (tex) out.push({ ...base, texture: tex, frame: IDLE_FRONT, originY: 1, label: labels ? ev.id : undefined });
         if (page?.decor) out.push({ ...base, texture: K.decor(map.chipset), frame: decorFrame(page.decor), originY: decorOrigin, label: labels && !tex ? ev.id : undefined });
-        if (!tex && !page?.decor) out.push({ ...base, label: `✦ ${ev.id}`, editorOnly: true });
+        // nothing to show yet: a flat marker tile with the event icon
+        if (!tex && !page?.decor) out.push({ ...base, texture: markerKey("event"), flat: true, label: labels ? ev.id : undefined, editorOnly: true });
         break;
       }
       case "enemy": {
@@ -75,12 +79,17 @@ export function entitySprites(db: Database, map: MapDef, rotation: number, selec
         if (labels) out.push({ ...base, label: `sign: ${e.label}` });
         break;
       case "spawn":
-        out.push({ ...base, label: `⚑ ${e.label}`, editorOnly: true });
+        out.push({ ...base, texture: markerKey("spawn"), flat: true, label: labels ? e.label : undefined, editorOnly: true });
         break;
       case "quickplay":
-        out.push({ ...base, label: "▶ Quick Play", editorOnly: true });
+        out.push({ ...base, texture: markerKey("quickplay"), flat: true, label: labels ? "Quick Play" : undefined, editorOnly: true });
         break;
     }
   }
   return out;
+}
+
+/** The placing preview: the kind's marker tile on the hovered cell. */
+export function placingSprite(kind: EntityKind, at: { x: number; y: number }): EntitySprite {
+  return { ref: { kind, key: "preview" }, kind, x: at.x, y: at.y, texture: markerKey(kind), flat: true, editorOnly: true, preview: true };
 }

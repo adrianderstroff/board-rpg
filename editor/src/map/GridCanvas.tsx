@@ -5,6 +5,7 @@ import type { Database } from "../../../src/core/data/database";
 import type { Pos } from "../../../src/core/util/grid";
 import { CORNERS } from "../../../src/game/board/mapSource";
 import type { EntitySprite } from "../entities/visuals";
+import { drawEntityIcon } from "../entities/icons";
 import type { CanvasHandlers, Ghost, Marker } from "./IsoCanvas";
 import { loadImage, terrainTops } from "./sprites";
 
@@ -179,6 +180,16 @@ export function GridCanvas({ db, mapId, hideDecor, focus, markers, entities, gho
     const drawn = new Set<string>();
     g.font = `bold ${Math.round(S * 0.42)}px sans-serif`;
     for (const e of entities) {
+      if (e.preview) {
+        // placing: the cell it goes on, with the kind's icon
+        const [px, py] = at(e.x, e.y);
+        g.fillStyle = "rgba(44,232,245,0.25)";
+        g.fillRect(px, py, S, S);
+        g.strokeStyle = "#2ce8f5";
+        g.strokeRect(px + 0.5, py + 0.5, S - 1, S - 1);
+        drawEntityIcon(g, e.kind, px + S / 2, py + S / 2, S * 0.6, "#ffffff");
+        continue;
+      }
       const k = `${e.x},${e.y},${e.kind}`;
       if (drawn.has(k)) continue;
       drawn.add(k);

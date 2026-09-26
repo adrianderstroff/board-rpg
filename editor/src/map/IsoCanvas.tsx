@@ -4,6 +4,7 @@ import { getGrid } from "../../../src/core/board/grid";
 import type { Database } from "../../../src/core/data/database";
 import type { Pos } from "../../../src/core/util/grid";
 import { AxisGizmo, isoAxes } from "./Gizmo";
+import { isMarker, markerCanvas, markerKind } from "../entities/icons";
 import { loadSheet } from "../../../src/engine/assets";
 import { isoToScreen, LAYER } from "../../../src/engine/iso";
 import { IsoMapView, type IsoMapSource } from "../../../src/engine/iso/IsoMapView";
@@ -49,6 +50,9 @@ export interface Ghost {
   /** The cells it covers (a rectangle being dragged, the area a fill reaches); default: the hovered cell. */
   cells?: Pos[];
 }
+
+/** Marker tiles are drawn this many times the tile size and shown scaled down (smooth icons). */
+const MARKER_RES = 4;
 
 /** Duration (ms) of a quarter turn of the view – eased like the game's board rotation. */
 const TURN_MS = 650;
@@ -360,13 +364,17 @@ class MapScene extends Phaser.Scene {
     for (const e of this.props.entities) {
       if (!view.hasCell(e.x, e.y)) continue;
       const top = view.cellTop(e.x, e.y);
-      if (e.texture && e.frame !== undefined && this.textures.exists(e.texture)) {
-        const img = this.add.image(top.x, top.y + (e.flat ? 0 : 3), e.texture, e.frame);
+      const marker = isMarker(e.texture);
+      if (marker) this.ensureMarker(e.texture!);
+      if (e.texture && (e.frame !== undefined || marker) && this.textures.exists(e.texture)) {
+        const img = this.add.image(top.x, top.y + (e.flat ? 0 : 3), e.texture, marker ? undefined : e.frame);
+        if (marker) img.setScale(1 / MARKER_RES);
         img.setOrigin(0.5, e.flat ? (e.texture === K.fieldEffects ? 16 / 24 : 0.5) : (e.originY ?? 1));
         img.setDepth(view.depthOf(e.x, e.y, e.flat ? LAYER.overlay + 1 : LAYER.char, 0.5));
         if (e.editorOnly) img.setAlpha(0.8);
         // outside Entity mode they are greyed out like the other layers not being edited
         if (this.props.focus !== "entity") img.setTint(0x8a8aa0).setAlpha(0.7);
+        if (e.preview) img.setAlpha(0.6);
         this.entityObjects.push(img);
       }
       if (e.label) {
@@ -384,6 +392,14 @@ class MapScene extends Phaser.Scene {
         this.entityObjects.push(t);
       }
     }
+  }
+
+  /** Creates an entity kind's marker tile texture (at MARKER_RES × the tile size, smooth). */
+  private ensureMarker(key: string) {
+    if (this.textures.exists(key)) return;
+    const chip = getGrid(this.props.db, this.props.mapId).chipset;
+    this.textures.addCanvas(key, markerCanvas(markerKind(key), chip.tileWidth, chip.tileHeight, MARKER_RES));
+    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
   }
 
   /** The next placement, see-through, on the hovered cell. */

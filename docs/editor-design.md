@@ -187,15 +187,21 @@ Like RPG Maker's events, but every kind maps onto a list the game already has.
 
 | Entity | Stored in | Marker in the editor | In the game |
 |---|---|---|---|
-| **Event** (NPC, object, trigger) | `events[]` | its NPC / decor graphic, or a ✦ if invisible | as its active page says |
+| **Event** (NPC, object, trigger) | `events[]` | its NPC / decor graphic, or a marker tile (✦) if invisible | as its active page says |
 | **Exit / teleport** | `exits[]` | arrow + target map name | exit arrow (none for doors) |
-| **Spawn point** | `spawns{}` | flag + id | invisible |
+| **Spawn point** | `spawns{}` | marker tile with a flag + id | invisible |
 | **Enemy** | `enemies[]` | the enemy's charset (+ party size) | the enemy piece |
 | **Gate** | `gates[]` | bars + its condition / linked switches | bars while closed |
 | **Floor switch** | `switches[]` | plate + lines to the gates it opens | the plate |
 | **Hidden trap** | `traps[]` | trap icon | hidden until found |
 | **Wall sign** | `wallDecor[]` | the sign on its wall face | the painted sign |
-| **Quick Play** (editor only) | `editor.quickPlay` in the map file | play icon | nothing (ignored by the game) |
+| **Quick Play** (editor only) | `editor.quickPlay` in the map file | marker tile with a play icon | nothing (ignored by the game) |
+
+A **marker tile** is a flat tile on the cell with the kind's icon (the same icons in the top view).
+**Entity panel** (Edit tab in Entity mode): the kinds as buttons (three rows; the tooltip explains
+each), and below them the map's entities as a table – ID, type, position; a row click selects one
+and opens its form. Choosing a kind to place shows its marker tile see-through under the cursor
+until a cell is clicked.
 
 Editor-only markers (spawns, invisible events, traps, the Quick Play entity, gate–switch links) are
 drawn on an overlay of the canvas and never reach the game's rendering.

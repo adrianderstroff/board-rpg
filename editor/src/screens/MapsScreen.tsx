@@ -3,11 +3,11 @@ import { getGrid } from "../../../src/core/board/grid";
 import type { MapDef } from "../../../src/core/data/types";
 import { resize } from "../map/layers";
 import { MapEditor, type Brush, type Mode } from "../map/MapEditor";
-import { BoardPalette, DecorPalette, KeyHints } from "../map/Palettes";
+import { BoardPalette, DecorPalette } from "../map/Palettes";
 import { EntityForm } from "../entities/EntityForm";
 import { deleteEntity, KIND_INFO, listEntities, sameRef, type EntityKind, type EntityRef } from "../entities/model";
 import { ActionEditor } from "../forms/ActionEditor";
-import { Field, fileSetter } from "../forms/fields";
+import { fileSetter } from "../forms/fields";
 import type { Project } from "../project";
 
 const mapPath = (id: string) => `data/maps/${id}.yaml`;
@@ -275,26 +275,13 @@ function EntitiesPanel(props: { project: Project; mapId: string; selected: Entit
   const kinds = Object.keys(KIND_INFO) as EntityKind[];
   return (
     <div class="entities-panel">
-      <Field label="Add">
-        <div class="add-grid">
-          {kinds.map((k) => (
-            <button key={k} class={placing === k ? "on" : ""} title={KIND_INFO[k].hint} onClick={() => setPlacing(placing === k ? null : k)}>
-              {KIND_INFO[k].label}
-            </button>
-          ))}
-        </div>
-      </Field>
-      {placing && <p class="hint">Click a cell on the map to place the {KIND_INFO[placing].label.toLowerCase()}.</p>}
-      {!selected && (
-        <KeyHints
-          items={[
-            ["Click", "select (again: the next one on the cell)"],
-            ["Drag", "move"],
-            ["Right / Del", "delete"],
-            ["A / D", "turn the selected one"],
-          ]}
-        />
-      )}
+      <div class="add-grid">
+        {kinds.map((k) => (
+          <button key={k} class={placing === k ? "on" : ""} title={`${KIND_INFO[k].hint} Click a cell to place it.`} onClick={() => setPlacing(placing === k ? null : k)}>
+            {KIND_INFO[k].label}
+          </button>
+        ))}
+      </div>
       {selected && list.some((e) => sameRef(e, selected)) ? (
         <>
           <EntityForm project={project} mapId={mapId} entity={selected} onSelect={select} />
@@ -311,16 +298,26 @@ function EntitiesPanel(props: { project: Project; mapId: string; selected: Entit
           </button>
         </>
       ) : (
-        <div class="entity-list">
-          {list.map((e) => (
-            <div key={`${e.kind}:${e.key}`} class="item" onClick={() => select({ kind: e.kind, key: e.key })}>
-              <span>{e.label}</span>
-              <small>
-                {KIND_INFO[e.kind].label} · {e.x},{e.y}
-              </small>
-            </div>
-          ))}
-        </div>
+        <table class="entity-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Type</th>
+              <th>Position</th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map((e) => (
+              <tr key={`${e.kind}:${e.key}`} onClick={() => select({ kind: e.kind, key: e.key })}>
+                <td>{e.label}</td>
+                <td>{KIND_INFO[e.kind].label}</td>
+                <td>
+                  {e.x}, {e.y}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
       {selected && (
         <button style={{ marginTop: 8 }} onClick={() => select(null)}>
