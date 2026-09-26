@@ -5,6 +5,7 @@ Web first; desktop (Tauri/Electron) and mobile (Capacitor) later.
 
 - Design: [docs/game-design.md](docs/game-design.md) (sections referenced as §N in code)
 - Work breakdown & status: [docs/packages.md](docs/packages.md) – update statuses when finishing work
+- Ideas designed but not built yet: [docs/todo.md](docs/todo.md) – move an item into the design doc when picking it up
 - Asset sheet layouts: [public/assets/ASSETS.md](public/assets/ASSETS.md)
 
 ## Commands
