@@ -12,6 +12,8 @@ project
   .then(() => {
     root.innerHTML = "";
     render(<App project={project} />, root);
+    // handle for automated browser tests (tools/e2e.mjs), like the game's window.__game
+    (window as unknown as { __editor: object }).__editor = { project };
   })
   .catch((e: Error) => {
     root.innerHTML = "";

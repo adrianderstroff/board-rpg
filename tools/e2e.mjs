@@ -217,21 +217,88 @@ async function d_endParty(d) {
 // ---------------- scenarios ----------------
 
 const scenarios = {
+  /** Editor map canvas (editor-design §5): pencil, rectangle, fill, pick, height, rotation, undo – with the real mouse. */
+  async editorMapPaint(d) {
+    const page = d.page;
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.setViewportSize({ width: 1400, height: 820 });
+    await page.goto(new URL("editor/", url).href);
+    await page.getByText("Sandhollow", { exact: true }).click();
+    await page.waitForFunction(() => window.__editorMap?.view);
+    await page.waitForTimeout(500);
+    const f = "data/maps/sandhollow.yaml";
+    const row = (layer, y) => page.evaluate(([f, layer, y]) => window.__editor.project.data(f).layers[layer].split(/\n/)[y], [f, layer, y]);
+    const at = (x, y) => page.evaluate(([x, y]) => window.__editorMap.cellScreen(x, y), [x, y]);
+    const click = async (x, y) => {
+      const p = await at(x, y);
+      await page.mouse.move(p.x, p.y);
+      await page.mouse.down();
+      await page.mouse.up();
+      await sleep(150);
+    };
+    const drag = async (a, b) => {
+      const p = await at(...a);
+      const q = await at(...b);
+      await page.mouse.move(p.x, p.y);
+      await page.mouse.down();
+      await page.mouse.move(q.x, q.y, { steps: 8 });
+      await page.mouse.up();
+      await sleep(150);
+    };
+    const before = await row("terrain", 7);
+    // pencil: grass (the default brush) on one cell
+    await click(4, 7);
+    d.expect((await row("terrain", 7))[4] === "g", "pencil painted grass");
+    // rectangle of rock over 3x2 cells (rock is 'r' in the legend)
+    await page.getByRole("button", { name: /Rectangle/ }).click();
+    await page.getByRole("button", { name: "rock", exact: true }).click();
+    await drag([5, 8], [7, 9]);
+    d.expect((await row("terrain", 8)).slice(5, 8) === "rrr" && (await row("terrain", 9)).slice(5, 8) === "rrr", "rectangle of rock");
+    // pick takes the brush from a cell, then the pencil paints with it
+    await page.keyboard.press("i");
+    await click(4, 7);
+    await page.keyboard.press("b");
+    await click(9, 9);
+    d.expect((await row("terrain", 9))[9] === "g", "picked grass and painted it");
+    // height: raise twice by painting over the cell in two strokes
+    await page.keyboard.press("2");
+    await click(10, 9);
+    await click(10, 9);
+    d.expect((await row("height", 9))[10] === "2", "raised twice");
+    // after turning the map, clicks still hit the right cell
+    await page.keyboard.press("e");
+    await sleep(400);
+    await click(10, 9);
+    const heights = await page.evaluate(() => window.__editor.project.data("data/maps/sandhollow.yaml").layers.height);
+    d.expect((await row("height", 9))[10] === "3", `picking works rotated:
+${heights}`);
+    await d.shot("painted");
+    // everything undoes back to the file on disk
+    await page.locator(".toolbar .title").click();
+    for (let i = 0; i < 10; i++) await page.keyboard.press("Control+z");
+    d.expect((await row("terrain", 7)) === before, "undo restored the terrain");
+    d.expect(await page.getByRole("button", { name: "Save", exact: true }).isDisabled(), "nothing left to save");
+    d.expect(!errors.length, `no page errors (${errors})`);
+  },
+
   /** Editor (editor-design §4): Quick Play settings → ▶ Quick Play runs the unsaved content on that map. */
   async editorQuickPlay(d) {
     const page = d.page;
     await page.goto(new URL("editor/", url).href);
     await page.getByText("Temple of the Still Sky").click();
+    await page.getByRole("button", { name: "Quick Play", exact: true }).click(); // inspector tab
     await page.getByRole("button", { name: "+ Hero" }).click();
     const party = page.locator(".inspector select").first();
     await party.selectOption("tarek");
     await page.locator(".inspector input[type=number]").nth(3).fill("9"); // level (x, y, gold, level)
     await page.locator(".inspector input[placeholder^='e.g.']").fill("monks_trial");
     // an unsaved edit the play-test must see: other music
-    await page.locator(".content select").nth(3).selectOption("boss");
+    await page.getByRole("button", { name: "Map", exact: true }).click();
+    await page.locator(".inspector select").nth(3).selectOption("boss");
     d.expect(await page.getByRole("button", { name: "Save (1)" }).isVisible(), "the map is marked unsaved");
     await d.shot("editor");
-    const [game] = await Promise.all([page.context().waitForEvent("page"), page.getByRole("button", { name: /Quick Play/ }).click()]);
+    const [game] = await Promise.all([page.context().waitForEvent("page"), page.getByRole("button", { name: /▶ Quick Play/ }).click()]);
     await game.waitForFunction(() => {
       try {
         return window.__game.debug.state().board.mapId === "temple";
@@ -251,6 +318,7 @@ const scenarios = {
     d.expect(st.music === "boss", "unsaved edit reached the game");
     // nothing was written to disk: undo everything
     await page.bringToFront();
+    await page.locator(".toolbar .title").click(); // focus out of the form fields
     for (let i = 0; i < 6; i++) await page.keyboard.press("Control+z");
     d.expect(await page.getByRole("button", { name: "Save", exact: true }).isDisabled(), "undo brought the files back");
   },

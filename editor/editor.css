@@ -88,3 +88,34 @@ input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px s
   .shell { grid-template-columns: 130px 1fr 270px; }
   .split { grid-template-columns: 180px 1fr; }
 }
+
+/* ---------- map editor ---------- */
+.map-editor { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100%; }
+.strip { display: flex; gap: 4px; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.strip .sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 4px; }
+button.on { background: #124e89; border-color: var(--accent-2); color: #fff; }
+.canvas-area { flex: 1; min-height: 0; position: relative; }
+.iso-canvas { position: absolute; inset: 0; }
+.grid-canvas { position: absolute; inset: 0; overflow: auto; padding: 12px; }
+.grid-canvas canvas { image-rendering: pixelated; cursor: crosshair; }
+.status { padding: 4px 10px; border-top: 1px solid var(--line); background: var(--panel); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.status .ok { color: var(--good); }
+.status .no { color: #ffb3b8; }
+.dim { color: var(--dim); }
+.check { display: inline-flex; gap: 5px; align-items: center; color: var(--dim); }
+
+.tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+.tabs button { flex: 1; }
+.layers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin-bottom: 8px; }
+.layers button { padding: 4px 2px; font-size: 12px; }
+.inspector .search { width: 100%; margin-bottom: 6px; }
+.palette { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.palette button { display: flex; gap: 6px; align-items: center; text-align: left; padding: 3px 5px; font-size: 12px; overflow: hidden; white-space: nowrap; }
+.palette .swatch { flex: none; display: inline-block; }
+.palette .swatch.hole { width: 32px; height: 24px; border: 1px dashed var(--line); border-radius: 3px; }
+.palette.shapes { grid-template-columns: 1fr; }
+.stack { display: flex; flex-direction: column; gap: 6px; }
+.stack > label { color: var(--dim); margin-top: 4px; }
+.hint { color: var(--dim); font-size: 12px; margin: 4px 0; }
+.preview-wide { width: 100%; border-radius: 4px; image-rendering: pixelated; }
+.resize { display: flex; flex-direction: column; gap: 6px; }

@@ -1,0 +1,205 @@
+import Phaser from "phaser";
+import { useEffect, useRef } from "preact/hooks";
+import { getGrid } from "../../../src/core/board/grid";
+import type { Database } from "../../../src/core/data/database";
+import type { Pos } from "../../../src/core/util/grid";
+import { loadSheet } from "../../../src/engine/assets";
+import { LAYER } from "../../../src/engine/iso";
+import { IsoMapView, type IsoMapSource } from "../../../src/engine/iso/IsoMapView";
+import { isoMapSource, rotateContinuous, wallDecorSources } from "../../../src/game/board/mapSource";
+import { K } from "../../../src/game/keys";
+
+/**
+ * The map exactly as the game draws it (editor-design §5.1): the engine's IsoMapView fed by the
+ * game's own map source. Left mouse = the tool, right/middle drag = pan, wheel = zoom.
+ */
+
+export interface CanvasHandlers {
+  down(cell: Pos): void;
+  move(cell: Pos | null, buttons: boolean): void;
+  up(cell: Pos | null): void;
+}
+
+export interface Marker {
+  x: number;
+  y: number;
+  /** highlight.png frame: 0 blue, 1 red, 2 green, 3 orange, 4 white, 5 grey. */
+  frame: number;
+}
+
+interface Props {
+  db: Database;
+  mapId: string;
+  rotation: number;
+  hideDecor: boolean;
+  /** Cells to highlight (rect preview, selection…). */
+  markers: Marker[];
+  handlers: CanvasHandlers;
+}
+
+class MapScene extends Phaser.Scene {
+  view?: IsoMapView;
+  props!: Props;
+  private shownMap?: string;
+  private shownRotation = 0;
+  private hover?: Pos | null;
+  private pan?: { x: number; y: number; sx: number; sy: number };
+  private painting = false;
+
+  constructor(private readonly initial: () => Props) {
+    super("editorMap");
+  }
+
+  preload() {
+    this.props = this.initial();
+    this.load.setBaseURL(`${location.origin}/`);
+    for (const c of this.props.db.chipsets.values()) {
+      loadSheet(this, { key: K.chipset(c.id), path: c.image, frameWidth: c.frameWidth, frameHeight: c.frameHeight });
+      loadSheet(this, { key: K.decor(c.id), path: c.decorImage, frameWidth: c.decorFrameWidth, frameHeight: c.decorFrameHeight });
+    }
+    const ws = this.props.db.graphics.wallSigns;
+    if (ws) loadSheet(this, { key: K.wallSigns, path: ws.image, frameWidth: ws.frameWidth, frameHeight: ws.frameHeight });
+    loadSheet(this, { key: K.highlight, path: "system/highlight.png", frameWidth: 32, frameHeight: 16 });
+    loadSheet(this, { key: K.boardCursor, path: "system/board_cursor.png", frameWidth: 32, frameHeight: 24 });
+  }
+
+  /** Page position of a cell's top centre (for automated tests). */
+  cellScreen(x: number, y: number): { x: number; y: number } | null {
+    if (!this.view?.hasCell(x, y)) return null;
+    const w = this.view.cellTop(x, y);
+    const cam = this.cameras.main;
+    const r = this.game.canvas.getBoundingClientRect();
+    return { x: r.left + (w.x - cam.worldView.x) * cam.zoom, y: r.top + (w.y - cam.worldView.y) * cam.zoom };
+  }
+
+  create() {
+    (window as unknown as { __editorMap?: MapScene }).__editorMap = this;
+    this.input.mouse?.disableContextMenu();
+    this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
+      if (p.rightButtonDown() || p.middleButtonDown()) {
+        const cam = this.cameras.main;
+        this.pan = { x: p.x, y: p.y, sx: cam.scrollX, sy: cam.scrollY };
+        return;
+      }
+      const cell = this.cellAt(p);
+      if (cell) {
+        this.painting = true;
+        this.props.handlers.down(cell);
+      }
+    });
+    this.input.on("pointermove", (p: Phaser.Input.Pointer) => {
+      if (this.pan) {
+        const cam = this.cameras.main;
+        cam.setScroll(this.pan.sx - (p.x - this.pan.x) / cam.zoom, this.pan.sy - (p.y - this.pan.y) / cam.zoom);
+        return;
+      }
+      const cell = this.cellAt(p);
+      if (cell?.x !== this.hover?.x || cell?.y !== this.hover?.y) {
+        this.hover = cell;
+        this.drawMarkers();
+        this.props.handlers.move(cell, this.painting);
+      }
+    });
+    const up = (p: Phaser.Input.Pointer) => {
+      if (this.pan) {
+        this.pan = undefined;
+        return;
+      }
+      if (this.painting) {
+        this.painting = false;
+        this.props.handlers.up(this.cellAt(p));
+      }
+    };
+    this.input.on("pointerup", up);
+    this.input.on("pointerupoutside", up);
+    this.input.on("wheel", (p: Phaser.Input.Pointer, _o: unknown, _dx: number, dy: number) => {
+      const cam = this.cameras.main;
+      const before = cam.getWorldPoint(p.x, p.y);
+      cam.setZoom(Phaser.Math.Clamp(cam.zoom * (dy > 0 ? 0.85 : 1 / 0.85), 0.5, 6));
+      const after = cam.getWorldPoint(p.x, p.y);
+      cam.scrollX += before.x - after.x;
+      cam.scrollY += before.y - after.y;
+    });
+    this.show(this.props);
+  }
+
+  private cellAt(p: Phaser.Input.Pointer): Pos | null {
+    const w = this.cameras.main.getWorldPoint(p.x, p.y);
+    return this.view?.cellAt(w.x, w.y) ?? null;
+  }
+
+  /** (Re)draws the map for new content, another map, rotation or layer visibility. */
+  show(props: Props) {
+    this.props = props;
+    const grid = getGrid(props.db, props.mapId);
+    const src: IsoMapSource = isoMapSource(grid);
+    if (props.hideDecor) src.cells = src.cells.map((c) => ({ ...c, decor: undefined, decorViews: undefined }));
+    this.view?.destroy();
+    this.view = new IsoMapView(this, src, (x, y) => rotateContinuous(x, y, props.rotation));
+    if (!props.hideDecor) this.view.setWallDecor(wallDecorSources(props.db, props.db.map(props.mapId), grid));
+    if (this.shownMap !== props.mapId) {
+      this.shownMap = props.mapId;
+      const b = this.view.bounds;
+      const cam = this.cameras.main;
+      cam.setZoom(Phaser.Math.Clamp(Math.min(this.scale.width / (b.width + 40), this.scale.height / (b.height + 40)), 0.5, 3));
+      cam.centerOn(b.centerX, b.centerY);
+    } else if (this.shownRotation !== props.rotation) {
+      // the map turns around the grid origin: keep it in view, at the same zoom
+      const b = this.view.bounds;
+      this.cameras.main.centerOn(b.centerX, b.centerY);
+    }
+    this.shownRotation = props.rotation;
+    this.drawMarkers();
+  }
+
+  drawMarkers() {
+    if (!this.view) return;
+    this.view.setOverlay("markers", K.highlight, this.props.markers, { layer: LAYER.overlay, alpha: 0.75 });
+    // the hovered cell: the game's board cursor, above decor and characters
+    this.view.setOverlay("hover", K.boardCursor, this.hover ? [{ ...this.hover, frame: 0 }] : [], { layer: LAYER.marker, originY: 8 / 24 });
+  }
+}
+
+export function IsoCanvas(props: Props) {
+  const host = useRef<HTMLDivElement>(null);
+  const latest = useRef(props);
+  latest.current = props;
+  const scene = useRef<MapScene | null>(null);
+
+  useEffect(() => {
+    const s = new MapScene(() => latest.current);
+    scene.current = s;
+    const game = new Phaser.Game({
+      type: Phaser.AUTO,
+      parent: host.current!,
+      backgroundColor: "#14161c",
+      pixelArt: true,
+      scale: { mode: Phaser.Scale.RESIZE },
+      input: { mouse: { preventDefaultWheel: true } },
+      scene: s,
+    });
+    return () => {
+      scene.current = null;
+      game.destroy(true);
+    };
+  }, []);
+
+  // redraw when the content, the map, the angle or the visible layers change
+  useEffect(() => {
+    const s = scene.current;
+    if (s?.view) s.show(latest.current);
+  }, [props.db, props.mapId, props.rotation, props.hideDecor]);
+
+  useEffect(() => {
+    const s = scene.current;
+    if (s?.view) {
+      s.props = latest.current;
+      s.drawMarkers();
+    }
+  }, [props.markers]);
+
+  // handlers change every render – keep the scene's copy fresh without redrawing
+  if (scene.current) scene.current.props = { ...scene.current.props, handlers: props.handlers };
+
+  return <div ref={host} class="iso-canvas" />;
+}

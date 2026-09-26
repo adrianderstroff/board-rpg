@@ -293,10 +293,11 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ Game boot hook `?editor=`: content over `postMessage`; play-tests use their own save slots
 - ☑ Play (title → New Game) and Quick Play (current map, Quick Play settings: position, party/levels, items, abilities, flags, gold) – set in the map inspector for now, placed on the canvas with E4
 
-## E3 · Map editor ☐
-- ☐ Canvas: isometric (engine renderer, rotation) and grid view
-- ☐ Layers: terrain, height, decor, decor facing, shape, overhead; tools: pencil, rectangle, fill, eyedropper, height brush, area copy/move, resize
-- ☐ Map properties: name, kind, chipset, battleback, music (with preview), onEnter
+## E3 · Map editor ☑ (except area copy/move)
+- ☑ Canvas: isometric (the game's own map source + engine renderer, rotation, zoom, pan, game board cursor) and a flat grid view
+- ☑ Layers: terrain (incl. holes), height, decor, decor facing, shape, door lintels; tools: pencil, rectangle, fill, pick; height raise/lower/set; resize (placed things move along)
+- ☐ Area select → copy / paste / move across all board layers
+- ☑ Map properties: name, kind, chipset, battleback, music (with preview); onEnter comes with the action builder (E4)
 
 ## E4 · Entities ☐
 - ☐ Events (pages, appearance, triggers, interactions), exits/teleports, spawns, enemies, gates & switches, traps, wall signs, Quick Play
