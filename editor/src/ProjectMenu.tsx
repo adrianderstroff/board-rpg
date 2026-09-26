@@ -1,18 +1,11 @@
 import { useEffect, useState } from "preact/hooks";
 import { FloatingWindow } from "./forms/FloatingWindow";
 import { Field } from "./forms/fields";
-import { createProject, fetchProjects, type Project } from "./project";
-import type { ProjectInfo } from "./projectFiles";
-import { writeStored } from "./persist";
+import { createProject, fetchProjects, importProjectFile, type Project } from "./project";
+import { projectIdFor, type ProjectInfo } from "./projectFiles";
 
-/** A folder-safe id from a name ("My Game!" → "my_game"). */
-export const projectIdFor = (name: string) =>
-  name
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "") // accents off the letters
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "") || "project";
+export { projectIdFor };
+import { writeStored } from "./persist";
 
 /** Opens another project: its unsaved work stays stored with it (projects.md §6). */
 export function openProject(project: Project, id: string) {
@@ -73,6 +66,37 @@ export function ProjectMenu({ project }: { project: Project }) {
           >
             New project…
           </button>
+          <button
+            role="menuitem"
+            title="A .brpg file with this project and the library content it uses – it opens anywhere (saved files only)"
+            onClick={() => {
+              setOpen(false);
+              if (project.dirtyPaths().length && !confirm("The export has the saved files only – export anyway?")) return;
+              const a = document.createElement("a");
+              a.href = `/__editor/export?project=${encodeURIComponent(project.info.id)}`;
+              a.download = `${project.info.id}.brpg`;
+              a.click();
+            }}
+          >
+            Export {project.info.name}…
+          </button>
+          <label role="menuitem" class="menu-file" title="Open a .brpg file as a new project">
+            Import…
+            <input
+              type="file"
+              accept=".brpg,.zip"
+              onChange={async (e) => {
+                const file = e.currentTarget.files?.[0];
+                if (!file) return;
+                try {
+                  const info = await importProjectFile(file);
+                  openProject(project, info.id);
+                } catch (err) {
+                  setError((err as Error).message);
+                }
+              }}
+            />
+          </label>
         </div>
       )}
       {creating && <NewProjectWindow project={project} projects={projects ?? []} onClose={() => setCreating(false)} />}

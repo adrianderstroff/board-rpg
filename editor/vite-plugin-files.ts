@@ -1,8 +1,10 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { strToU8, strFromU8, unzipSync, zipSync } from "fflate";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import type { Plugin } from "vite";
 import { parse, parseDocument } from "yaml";
-import type { ProjectFiles, ProjectInfo } from "./src/projectFiles.ts";
+import { projectIdFor, type ProjectFiles, type ProjectInfo } from "./src/projectFiles.ts";
+import { libraryUsage, trimLibraryFile, usedAssets } from "../src/content/bundle.ts";
 
 /** The project the editor opens when it names none (EDITOR_PROJECT, else the demo). */
 export const editorProject = () => process.env.EDITOR_PROJECT || "demo";
@@ -77,12 +79,80 @@ export function createProject(root: string, opts: { id: string; name: string; fr
   return { id, name, library: String(doc.get("library")) };
 }
 
+/** Every file below `dir` (paths relative to it, with /). */
+const allFiles = (dir: string, base = dir): string[] =>
+  existsSync(dir)
+    ? readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+        const p = join(dir, e.name);
+        return e.isDirectory() ? allFiles(p, base) : e.name === ".gitkeep" ? [] : [relative(base, p).split(sep).join("/")];
+      })
+    : [];
+
+/**
+ * A project as one `.brpg` file (projects.md §5): a zip of project.yaml, data/, assets/ and the
+ * library content it uses (trimmed data files and the used assets, under library/<v>/) – complete
+ * on its own.
+ */
+export function exportProject(root: string, id: string): Uint8Array {
+  const { project, files } = readProject(root, id);
+  const projDir = resolve(root, "projects", id);
+  const libDir = resolve(root, "library", project.library);
+  const lib = Object.entries(files).filter(([p]) => p.startsWith("library/")) as [string, string][];
+  const own = Object.entries(files).filter(([p]) => !p.startsWith("library/")) as [string, string][];
+  const tracks = existsSync(join(libDir, "assets/audio/music")) ? readdirSync(join(libDir, "assets/audio/music")).map((f) => f.replace(/\.wav$/, "")) : [];
+  const usage = libraryUsage(lib, own, tracks);
+  const zip: Record<string, Uint8Array> = {};
+  for (const rel of ["project.yaml", ...allFiles(join(projDir, "data")).map((f) => `data/${f}`), ...allFiles(join(projDir, "assets")).map((f) => `assets/${f}`)]) zip[rel] = readFileSync(join(projDir, rel));
+  const L = `library/${project.library}`;
+  zip[`${L}/library.yaml`] = readFileSync(join(libDir, "library.yaml"));
+  for (const [path, text] of lib) {
+    const trimmed = trimLibraryFile(path, text, usage);
+    if (trimmed !== null) zip[path] = strToU8(trimmed);
+  }
+  for (const a of usedAssets(lib, usage)) if (existsSync(join(libDir, "assets", a))) zip[`${L}/assets/${a}`] = readFileSync(join(libDir, "assets", a));
+  // images and sounds are stored as they are (they hardly compress); the YAML is deflated
+  const entries = Object.fromEntries(Object.entries(zip).map(([p, d]) => [p, [d, { level: /\.(png|wav)$/.test(p) ? 0 : 6 }] as const]));
+  return zipSync(entries as never);
+}
+
+/**
+ * Unpacks a `.brpg` into projects/<id> (the id from its name, made unique). Its library version is
+ * installed from the file when this machine doesn't have it yet (marked `bundled`: only what that
+ * project uses).
+ */
+export function importProject(root: string, bytes: Uint8Array): ProjectInfo {
+  const zip = unzipSync(bytes);
+  if (!zip["project.yaml"]) throw new Error("Not a Board RPG project (no project.yaml)");
+  const def = parse(strFromU8(zip["project.yaml"])) as { name?: string; library?: string };
+  if (!def.library || !PROJECT_ID.test(def.library)) throw new Error("project.yaml names no library version");
+  const base = projectIdFor(def.name ?? "project");
+  let id = base;
+  for (let n = 2; existsSync(resolve(root, "projects", id)); n++) id = `${base}_${n}`;
+  const L = `library/${def.library}/`;
+  const installLibrary = !existsSync(resolve(root, L, "library.yaml"));
+  const put = (abs: string, data: Uint8Array) => {
+    mkdirSync(dirname(abs), { recursive: true });
+    writeFileSync(abs, data);
+  };
+  for (const [path, data] of Object.entries(zip)) {
+    if (path.endsWith("/") || path.split("/").includes("..")) continue; // folders; nothing outside
+    if (path === "project.yaml" || path.startsWith("data/") || path.startsWith("assets/")) put(resolve(root, "projects", id, path), data);
+    else if (path.startsWith(L) && installLibrary) {
+      const text = path === `${L}library.yaml` ? strToU8(strFromU8(data).trimEnd() + "\n# Installed from an exported project: only the content that project uses.\nbundled: true\n") : data;
+      put(resolve(root, path), text);
+    }
+  }
+  return { id, name: def.name ?? id, library: def.library };
+}
+
 /**
  * Dev-server file API for the editor (editor-design §2). Only in `vite serve`, never in a build.
  *   GET  /__editor/projects         → ProjectInfo[]
  *   POST /__editor/projects         ← { id, name, from? } → ProjectInfo (a new project, see createProject)
  *   GET  /__editor/files?project=id → ProjectFiles
  *   PUT  /__editor/file             ← { project, path: "data/…yaml", text } (only a project's own YAML files; the library is read-only)
+ *   GET  /__editor/export?project=id → <id>.brpg (exportProject)
+ *   POST /__editor/import           ← the bytes of a .brpg → ProjectInfo (importProject)
  */
 export function editorFiles(root = process.cwd()): Plugin {
   /** A safe absolute path for one of a project's data files, or null. */
@@ -120,6 +190,29 @@ export function editorFiles(root = process.cwd()): Plugin {
         body(req)
           .then((b) => json(res, createProject(root, b as { id: string; name: string; from?: string })))
           .catch((e) => res.writeHead(400).end((e as Error).message));
+      });
+      server.middlewares.use("/__editor/export", (req, res) => {
+        const project = new URL(req.url ?? "", "http://x").searchParams.get("project") ?? "";
+        try {
+          const zip = exportProject(root, project);
+          res.setHeader("Content-Type", "application/zip");
+          res.setHeader("Content-Disposition", `attachment; filename="${project}.brpg"`);
+          res.end(Buffer.from(zip));
+        } catch (e) {
+          res.writeHead(400).end((e as Error).message);
+        }
+      });
+      server.middlewares.use("/__editor/import", (req, res) => {
+        if (req.method !== "POST") return void res.writeHead(405).end();
+        const chunks: Buffer[] = [];
+        req.on("data", (c: Buffer) => chunks.push(c));
+        req.on("end", () => {
+          try {
+            json(res, importProject(root, new Uint8Array(Buffer.concat(chunks))));
+          } catch (e) {
+            res.writeHead(400).end((e as Error).message);
+          }
+        });
       });
       server.middlewares.use("/__editor/files", (req, res) => {
         if (req.method !== "GET") return void res.writeHead(405).end();

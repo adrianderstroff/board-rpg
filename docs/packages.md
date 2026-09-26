@@ -335,8 +335,9 @@ Layering (see also [architecture](../CLAUDE.md)):
 ## PJ2 · Projects in the editor ☑
 - ☑ Editor file access per project (library read-only); project menu in the toolbar; New project from the library's template (`library/v1/template`) or as a copy; unsaved work kept per project; every project and the template are validated in the tests
 
-## PJ3 · Export, import, shipping ☐
-- ☐ `.brpg` zip with the used library content; import; `npm run build -- --project <id>` with only the used library files
+## PJ3 · Export, import, shipping ☑
+- ☑ What a project uses of its library (`content/bundle.ts`): transitive `lib:` references, trimmed library files, used assets
+- ☑ `.brpg` export (project + used library content) and import (installs a missing library version) – project menu; `VITE_PROJECT=<id> npm run build` ships one project with only the used library content
 
 ## PJ4 · Importing resources ☐
 - ☐ Drop PNG / music into the editor: copied into the project, registered; sprite sheet layout form

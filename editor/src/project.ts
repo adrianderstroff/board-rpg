@@ -77,6 +77,13 @@ export async function fetchProjects(): Promise<ProjectInfo[]> {
   return r.json();
 }
 
+/** Unpacks an exported project (.brpg) as a new project. */
+export async function importProjectFile(file: Blob): Promise<ProjectInfo> {
+  const r = await fetch("/__editor/import", { method: "POST", body: file });
+  if (!r.ok) throw new Error(`Import failed: ${await r.text()}`);
+  return r.json();
+}
+
 /** Creates a project: a copy of `from`, or the library's empty template. */
 export async function createProject(opts: { id: string; name: string; from?: string }): Promise<ProjectInfo> {
   const r = await fetch("/__editor/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(opts) });

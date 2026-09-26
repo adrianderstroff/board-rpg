@@ -62,10 +62,17 @@ public/assets/               the runtime's own: system graphics (cursor, highlig
 - **Export** writes `<project>.brpg`, a zip of `project.yaml`, `data/`, `assets/` **and the
   library content the project uses** (only what it references, under `library/v1/`). The file is
   complete on its own: it plays and opens anywhere, even where that library version is missing.
-- **Import** unpacks a `.brpg` into `projects/<id>/`. A bundled library version that isn't
-  installed yet is installed too.
-- **Shipping** (`npm run build -- --project demo`) builds the game runtime with that one project
-  and the library content it uses into `dist/`. Tauri and Capacitor wrap `dist/` later. Only the
+- **Import** unpacks a `.brpg` into `projects/<id>/` (the id from its name, made unique). A bundled
+  library version that isn't installed yet is installed from the file too, marked `bundled: true`
+  in its library.yaml (it holds only what that project uses).
+- **What's used** (`src/content/bundle.ts`): every `lib:` string in the project's files, plus what
+  the rules rely on (`builtins.ts`), followed through each used entry's own `lib:` references; the
+  graphics and chipsets they name bring their images, `lib:<track>` its music. Library data files
+  are trimmed to the used entries (comments kept); an unused chipset is left out whole.
+- **Shipping** (`VITE_PROJECT=<id> npm run build`, default the demo) builds the game runtime with
+  that one project and the library content it uses into `dist/`: the content glob is narrowed to
+  the project, the library's data files are trimmed, only the used assets are copied (a new project:
+  ~5 MB of library assets instead of 18). Tauri and Capacitor wrap `dist/` later. Only the
   used library content is copied, so a small game stays small.
 
 ## 6. Editor

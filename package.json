@@ -21,6 +21,7 @@
     "yaml": "^2.9.1"
   },
   "devDependencies": {
+    "fflate": "^0.8.3",
     "playwright": "^1.63.0",
     "preact": "^10.29.8",
     "typescript": "^7.0.2",

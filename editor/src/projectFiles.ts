@@ -16,3 +16,12 @@ export interface ProjectFiles {
   /** Where each layer's assets are, from the site root. */
   roots: { library: string; project: string };
 }
+
+/** A folder-safe id from a name ("My Game!" → "my_game"). */
+export const projectIdFor = (name: string) =>
+  name
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "") // accents off the letters
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "") || "project";

@@ -314,3 +314,6 @@ details.lintel summary { cursor: pointer; color: var(--dim); }
 .new-project { display: flex; flex-direction: column; gap: 4px; padding: 4px; }
 .new-project input, .new-project select { width: 100%; }
 .row.end { justify-content: flex-end; margin-top: 8px; }
+.project-menu .menu-file { padding: 6px 8px; cursor: pointer; border-radius: var(--radius); }
+.project-menu .menu-file:hover { background: #ffffff10; }
+.project-menu .menu-file input { display: none; }

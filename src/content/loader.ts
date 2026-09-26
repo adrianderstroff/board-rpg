@@ -37,7 +37,12 @@ export function loadRawContent(sources: Record<string, string> = files, project 
   const def = all.find(([p]) => p === `projects/${project}/project.yaml`);
   if (!def) throw new Error(`No project "${project}" (projects/${project}/project.yaml)`);
   const { library } = read(def[0], def[1]) as ProjectDef;
-  const layer = (prefix: string) => all.filter(([p]) => p.startsWith(`${prefix}/data/`)).map(([p, t]) => [p, read(p, t)] as [string, unknown]);
+  // (an empty file – a library file a build left out, see vite.config.ts – adds nothing)
+  const layer = (prefix: string) =>
+    all
+      .filter(([p]) => p.startsWith(`${prefix}/data/`))
+      .map(([p, t]) => [p, read(p, t)] as [string, unknown])
+      .filter(([, data]) => data != null);
   return layeredRaw(layer(`library/${library}`), layer(`projects/${project}`), { library: `library/${library}/assets/`, project: `projects/${project}/assets/` });
 }
 
