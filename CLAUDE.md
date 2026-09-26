@@ -9,6 +9,7 @@ Web first; desktop (Tauri/Electron) and mobile (Capacitor) later.
 - Editor (content editor + play-testing): [docs/editor-design.md](docs/editor-design.md), packages E1–E9
 - Projects & the library (layout, `lib:` ids, versions, export): [docs/projects.md](docs/projects.md)
 - Distribution (web editor storages, Tauri player, website, releases): [docs/distribution.md](docs/distribution.md)
+- Graphics in the editor (import, tiles, pixel editor, game images per project): [docs/graphics.md](docs/graphics.md)
 - Asset sheet layouts: [public/assets/ASSETS.md](public/assets/ASSETS.md)
 
 ## Commands

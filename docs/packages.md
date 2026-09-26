@@ -444,3 +444,29 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ "Used in": every place an entry is used – the project's and the library's – with links to the map entity or the entry (editor/src/references.ts; NPCs, shops and maps added to content/refs.ts)
 - ☑ Delete protection: Delete waits while anything outside the entry still refers to it (the tooltip says how many; the list shows where)
 - ☐ Later: renaming classes, resources (graphics, music – their files would move too), statuses and patterns
+
+# Graphics (see [graphics.md](graphics.md))
+
+## G1 · Tiles ☐
+- ☐ Graphics screen (Resources renamed): Tiles – a chipset's terrains and decor as thumbnails; terrain rules (walkable, water, surface, freezable, flammable → burns to, animation, fill, sink, ship settings), decor rules (blocks, flammable, cuttable, rotations)
+- ☐ Preview on a small board with the game's renderer, four view rotations; New terrain / decor; Copy chipset to project; import tile sheets; maps pick their chipset
+
+## G2 · Pixel editor ☐
+- ☐ One workspace over the editor: frame grid and strip, zoom / pan, pencil, eraser, fill, line, rectangle, picker, selection (move / copy / paste), mirror, shift; palette (game palette, sheet colours, custom, transparent); own undo; Save writes the PNG; add frames
+- ☐ Edit from Graphics and ✎ where images are used (hero / enemy / NPC graphics, item / ability icons, battle backgrounds, map palette tiles)
+
+## G3 · Characters ☐
+- ☐ Board sprites (walk preview in four directions, onion skin, feet line), battle sprites (poses, idle and attack played, on a battle background), faces (48 / 24 / 14 px, the text box)
+
+## G4 · Tiles and decor drawing ☐
+- ☐ Tile guides (diamond, side faces), live board preview in four rotations, animated terrain; decor anchor and rotation frames; wall signs on a wall; field effects animated on a cell
+
+## G5 · Game images per project ☐
+- ☐ Game: a project's own copies of runtime images (`graphics.yaml` system.images, `assets/system/`), its own icon sheet and names (system.icons) – loaded in play-tests, the player and builds
+- ☐ Editor: icons (grow the sheet, name new icons; items / abilities / statuses pick from them), status markers, title background (title screen preview), window skin (9-slice preview), cursors, highlights, exit arrows, shadow, font (sample text)
+
+## G6 · Backgrounds ☐
+- ☐ Battle backgrounds (the battle scene with the floor line and fighters) and the title image: big-canvas drawing, pan and zoom
+
+## G7 · New sheets ☐
+- ☐ New blank sheet of any kind in its layout, or a copy of a library / game sheet to start from; sheets grow by frames
