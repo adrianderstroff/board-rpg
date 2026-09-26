@@ -457,7 +457,10 @@ export interface TerrainDef {
 export interface DecorDef {
   name: string;
   frame: number;
-  /** Directional objects (a ship's wheel): one frame per quarter turn of the board, from `frame` on. */
+  /**
+   * Directional objects (a ship's wheel): one frame per quarter turn of the board, from `frame` on;
+   * `frame` shows it facing S (grid +y). Maps turn single placements with the `decorDir` layer.
+   */
   views?: number;
   blocks: boolean;
   /** Burns away when set on fire (and passes the fire on, §5.4). */
@@ -588,7 +591,8 @@ export interface MapDef {
    * roof above a door. Terrain chars (legend.terrain) and the level of its top; it starts above a
    * 4-level clearance (a character's height). Purely visual.
    */
-  layers: { terrain: string; height?: string; decor?: string; overhead?: string; overheadHeight?: string; shape?: string };
+  /** `decorDir`: N/E/S/W per cell – which way a directional decor (e.g. a ship's wheel) faces; default S. */
+  layers: { terrain: string; height?: string; decor?: string; overhead?: string; overheadHeight?: string; shape?: string; decorDir?: string };
   /**
    * `shapes`: chars of the `shape` layer → corners cut off along the diagonals (§5.9), e.g.
    * `{ cut: [NW] }` = a half cell, `{ cut: [NW, NE] }` = a point (a ship's bow). Shaped cells are

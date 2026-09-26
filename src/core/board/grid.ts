@@ -1,6 +1,6 @@
 import type { Database } from "../data/database";
 import type { ChipsetDef, Corner, MapDef, TerrainDef } from "../data/types";
-import type { Pos } from "../util/grid";
+import type { Dir, Pos } from "../util/grid";
 import { key } from "../util/grid";
 
 export interface Cell {
@@ -17,6 +17,8 @@ export interface Cell {
   overhead?: { terrain: string; top: number };
   /** Corners cut off along the diagonals (§5.9): a half cell or a point – purely visual, not walkable. */
   cut?: Corner[];
+  /** Which way a directional decor faces (map layer `decorDir`, default S). */
+  decorDir?: Dir;
 }
 
 /** Levels of open space under an overhead structure (a doorway ≈ a character's height, 4 × 8 px). */
@@ -51,6 +53,7 @@ export class BoardGrid implements GridView {
     const overRows = splitRows(map.layers.overhead ?? "");
     const overHeightRows = splitRows(map.layers.overheadHeight ?? "");
     const shapeRows = splitRows(map.layers.shape ?? "");
+    const dirRows = splitRows(map.layers.decorDir ?? "");
     this.height = terrainRows.length;
     this.width = Math.max(0, ...terrainRows.map((r) => r.length));
 
@@ -71,6 +74,8 @@ export class BoardGrid implements GridView {
         const shapeCh = shapeRows[y]?.[x];
         const shape = shapeCh && shapeCh !== "." ? map.legend.shapes?.[shapeCh] : undefined;
         if (shapeCh && shapeCh !== "." && !shape) throw new Error(`Map ${map.id}: unknown shape "${shapeCh}" at ${x},${y}`);
+        const dirCh = dirRows[y]?.[x];
+        if (dirCh && dirCh !== "." && !"NESW".includes(dirCh)) throw new Error(`Map ${map.id}: decorDir must be N/E/S/W, got "${dirCh}" at ${x},${y}`);
         this.cells.set(key({ x, y }), {
           x,
           y,
@@ -81,6 +86,7 @@ export class BoardGrid implements GridView {
           walkable: terrain.walkable && !decor?.blocks && !shape,
           surface: terrain.surface,
           ...(shape ? { cut: shape.cut } : {}),
+          ...(dirCh && dirCh !== "." ? { decorDir: dirCh as Dir } : {}),
         });
       }
     }

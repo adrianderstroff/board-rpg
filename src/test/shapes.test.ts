@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { coversSide, cutSquare, flareMiters, flareOffset } from "../engine/iso/shapes";
+import { coversSide, cutSquare, flareMiters, flareOffset, viewFrames } from "../engine/iso/shapes";
 import { grid } from "../core/board/board";
 import { Game } from "../core/game";
 import { testDb } from "./helpers";
@@ -32,5 +32,26 @@ describe("shaped blocks (§5.9)", () => {
     expect(grid(game.ctx).cell({ x: 2, y: 1 })?.cut).toEqual(["NW", "NE"]);
     expect(grid(game.ctx).cell({ x: 2, y: 1 })?.walkable).toBe(false);
     expect(grid(game.ctx).cell({ x: 2, y: 2 })?.walkable).toBe(true);
+  });
+
+  it("directional decor: the view follows the board's rotation, turned by the placement's facing", () => {
+    const frames = [64, 65, 66, 67];
+    expect(viewFrames(frames, 0)).toEqual([64, 65, 66, 67]); // facing S: one view per quarter turn
+    expect(viewFrames(frames, 2)).toEqual([66, 67, 64, 65]); // facing N looks like S after two turns
+    const db = testDb({
+      deck: {
+        name: "Deck",
+        kind: "peaceful",
+        chipset: "desert",
+        battleback: "harbor",
+        legend: { terrain: { s: "sand" }, decor: { H: "ship_wheel" } },
+        layers: { terrain: "sss", decor: "H.H", decorDir: "N.." },
+        spawns: { start: { x: 1, y: 0 } },
+      },
+    });
+    const game = new Game(db, newGameState(db, 1));
+    game.enter("deck", "start");
+    expect(grid(game.ctx).cell({ x: 0, y: 0 })?.decorDir).toBe("N");
+    expect(grid(game.ctx).cell({ x: 2, y: 0 })?.decorDir).toBeUndefined(); // default S
   });
 });

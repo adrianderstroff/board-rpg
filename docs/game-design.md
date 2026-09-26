@@ -166,7 +166,7 @@ Single cells marked with an **arrow pointing outwards**. Moving a hero onto an e
 Blocks are cubes by default. For things that shouldn't look blocky – a ship – two shape tools exist; both are purely visual and turn with the board like every block:
 - **Diagonal pieces**: a map's `shape` layer marks cells whose corners are cut off along the diagonals (`legend.shapes`, e.g. `{ cut: [NW] }` = a half cell, `{ cut: [NW, NE] }` = a point). A ship's bow is a point in front of two half cells. Shaped cells are not walkable.
 - **Hull flare**: a terrain with `flare` leans its outer sides inward toward the bottom, so the deck overhangs the hull; `underlay` draws the water under it, and `bulwark` adds a low wall along the outer edges – open where a walkable non-hull cell joins (the gangplank). Sides between two hull cells stay hidden, so a hull of many cells reads as one.
-- **Directional decor** (`views: 4`): objects that look different from each side (the ship's wheel) have one frame per quarter turn; the board shows the one for its rotation and switches half-way through a spin, like the characters.
+- **Directional decor** (`views: 4`): objects that look different from each side (the ship's wheel) have one frame per quarter turn; the board shows the one for its rotation and switches half-way through a spin, like the characters. The first frame faces S (grid +y); a map turns single placements with its `decorDir` layer (N/E/S/W per cell), so one object can be placed facing any way.
 
 ## 6. Patterns (movement, abilities, items)
 

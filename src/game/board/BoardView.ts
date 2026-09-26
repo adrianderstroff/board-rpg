@@ -7,7 +7,7 @@ import type { Piece } from "../../core/state/types";
 import { DIR_VEC, dirFromStep, type Dir, type Pos } from "../../core/util/grid";
 import { LAYER } from "../../engine/iso";
 import { IsoMapView, type IsoCellSource, type OverlayCell } from "../../engine/iso/IsoMapView";
-import { cutSquare } from "../../engine/iso/shapes";
+import { cutSquare, viewFrames } from "../../engine/iso/shapes";
 import type { Corner, TerrainDef } from "../../core/data/types";
 import { CharSprite } from "../../engine/sprites/CharSprite";
 import { CURSOR_KEY, ICONS_KEY, UI_DEPTH } from "../../engine/ui/widgets";
@@ -76,9 +76,13 @@ function gangways(g: ReturnType<typeof grid>, cell: Pos): number[] {
   });
 }
 
-/** Frames of a directional decor, one per quarter turn. */
-function decorViews(d: { frame: number; views?: number }): number[] {
-  return Array.from({ length: d.views ?? 1 }, (_, i) => d.frame + i);
+/** Quarter turns from the default facing S (the board turns S → W → N → E). */
+const FACING_TURNS: Record<Dir, number> = { S: 0, W: 1, N: 2, E: 3 };
+
+/** Frames of a directional decor per board rotation, turned to face `dir`. */
+function decorViews(d: { frame: number; views?: number }, dir: Dir = "S"): number[] {
+  const frames = Array.from({ length: d.views ?? 1 }, (_, i) => d.frame + i);
+  return viewFrames(frames, FACING_TURNS[dir] * (frames.length / 4));
 }
 
 /** The flat surface (sea) drawn under a hull at height 0. */
@@ -231,7 +235,7 @@ export class BoardView {
         fill: t.fill ?? t.frame,
         sink: t.sink ?? (t.frames ? 2 : 0),
         decor: cell.decor ? chip.decor[cell.decor].frame : undefined,
-        ...(cell.decor && chip.decor[cell.decor].views ? { decorViews: decorViews(chip.decor[cell.decor]) } : {}),
+        ...(cell.decor && chip.decor[cell.decor].views ? { decorViews: decorViews(chip.decor[cell.decor], cell.decorDir) } : {}),
         ...(cell.overhead ? { overhead: overheadSource(chip, cell) } : {}),
         ...(cell.cut ? { outline: cutSquare(cell.cut.map((k) => CORNERS[k])) } : {}),
         ...(t.flare ? { flare: t.flare } : {}),

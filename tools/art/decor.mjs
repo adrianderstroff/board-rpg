@@ -1387,10 +1387,13 @@ D.ship_wheel = () => {
     m.add(capsule(hub, [hub[0] + c * 5.2, hub[1] + sn * 5.2, hub[2]], 0.35), s(WOOD, 0.1), 'spoke');
     m.add(roundCone([hub[0] + c * 5.6, hub[1] + sn * 5.6, hub[2]], [hub[0] + c * 7.4, hub[1] + sn * 7.4, hub[2]], 0.55, 0.4), s(WOOD, 0.25), 'handle');
   }
-  return m;
+  // built with the wheel in front of the post along +z (grid +x); turn it to face grid +y (S)
+  return m.transform(rotY(Math.PI / 2), [0, 0, 0], [0, 0, 0]);
 };
-// directional: the same wheel seen after one, two, three quarter turns of the board
-for (let k = 1; k <= 3; k++) D[`ship_wheel_r${k}`] = () => D.ship_wheel().transform(rotY((-k * Math.PI) / 2), [0, 0, 0], [0, 0, 0]);
+// Directional decor: frame k shows the object after k quarter turns of the board. World axes vs
+// the grid (camera yaw 45deg): grid +x = world +z, grid +y = world +x. The board turns grid
+// directions (x, y) -> (-y, x), which is world (x, z) -> (z, -x) = rotY(+90deg).
+for (let k = 1; k <= 3; k++) D[`ship_wheel_r${k}`] = () => D.ship_wheel().transform(rotY((k * Math.PI) / 2), [0, 0, 0], [0, 0, 0]);
 
 function sparkle() {
   const c = new Canvas(DECOR_W, DECOR_H);

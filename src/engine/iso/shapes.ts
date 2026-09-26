@@ -138,3 +138,13 @@ export function flareMiters(cells: FlareCell[]): Map<string, Pt> {
 export function flareOffset(miters: Map<string, Pt>, wx: number, wy: number): Pt {
   return miters.get(vkey(wx, wy)) ?? [0, 0];
 }
+
+/**
+ * Frames of a directional object for each board rotation (index = quarter turns, as the view's
+ * transform turns grid directions (x, y) -> (-y, x)). `frames[k]` shows the object after k such
+ * turns in its default facing; an object placed turned by `facing` quarter turns starts there.
+ */
+export function viewFrames(frames: number[], facing: number): number[] {
+  const n = frames.length;
+  return frames.map((_, q) => frames[(((facing + q) % n) + n) % n]);
+}
