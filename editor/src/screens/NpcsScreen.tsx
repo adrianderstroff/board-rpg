@@ -10,6 +10,7 @@ import { PatternField } from "../forms/PatternField";
 import { Box, Section } from "../forms/Section";
 import { usePersistentState } from "../persist";
 import type { Project } from "../project";
+import type { EntityRef } from "../entities/model";
 import { ChanceList, CharsetThumb } from "./EnemiesScreen";
 
 /**
@@ -20,7 +21,7 @@ import { ChanceList, CharsetThumb } from "./EnemiesScreen";
 const DEFAULT_STATS: Stats = { maxHp: 20, maxMp: 0, str: 5, def: 5, mag: 5, mdef: 5, spd: 5 };
 const filled = (v: Partial<Stats>): Stats => Object.fromEntries(STAT_KEYS.map((k) => [k, v[k] ?? 0])) as Stats;
 
-export function NpcsScreen({ project, openMap }: { project: Project; openMap: (map: string, entity: number) => void }) {
+export function NpcsScreen({ project, openMap }: { project: Project; openMap: (map: string, entity: EntityRef) => void }) {
   const [selected, select] = usePersistentState<string | null>("npcs.selected", null);
   const raw = project.content.raw;
   const npcs = raw.npcs as Record<string, Npc>;
@@ -76,7 +77,7 @@ function NpcCard({ project, id, onSelect }: { project: Project; id: string; onSe
   );
 }
 
-function NpcForm({ project, id, openMap }: { project: Project; id: string; openMap: (map: string, entity: number) => void }) {
+function NpcForm({ project, id, openMap }: { project: Project; id: string; openMap: (map: string, entity: EntityRef) => void }) {
   const raw = project.content.raw;
   const n = raw.npcs[id] as Npc;
   const write = (next: Npc, label: string, group?: string) => writeEntry(project, NPCS_FILE, id, n, next, `${n.name}: ${label}`, group);
@@ -138,7 +139,7 @@ function NpcForm({ project, id, openMap }: { project: Project; id: string; openM
           <ul class="placements">
             {placements.map((p) => (
               <li key={`${p.map}/${p.entity}`}>
-                <button class="link" title="Open the map with this entity selected" onClick={() => openMap(p.map, p.index)}>
+                <button class="link" title="Open the map with this entity selected" onClick={() => openMap(p.map, { kind: "event", key: p.index })}>
                   {raw.maps[p.map]?.name ?? p.map}
                 </button>{" "}
                 <span class="dim">entity {p.entity}</span>

@@ -491,3 +491,18 @@ table.stat-table tr.on td { color: var(--accent); }
 .placements { margin: 0; padding-left: 18px; }
 .placements li { margin: 3px 0; }
 button.link { border: 0; background: none; padding: 0; color: var(--accent-2); text-decoration: underline; cursor: pointer; }
+
+/* ---------- abilities, shops, settings (editor-design §10) ---------- */
+.card-heading { margin: 12px 0 4px; font-size: 11px; font-weight: normal; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dim); }
+.shop-window { background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; }
+.shop-title { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; color: var(--accent); }
+.shop-row { display: grid; grid-template-columns: 16px 1fr auto; gap: 8px; align-items: center; padding: 2px 0; }
+.shop-price { white-space: nowrap; font-size: 12px; }
+.settings .item-form { max-width: 820px; }
+.music-grid, .chance-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 10px; }
+.music-grid label, .chance-grid label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--dim); }
+.chance-grid .row { color: var(--text); font-size: 13px; }
+.exp-chart svg { width: 100%; height: 120px; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; margin: 6px 0; }
+.damage-example { margin-top: 6px; padding: 6px 10px; background: var(--bg); border-radius: var(--radius); }
+.damage-example p { margin: 6px 0 2px; }
+.damage-example .row > select { flex: none; width: auto; }

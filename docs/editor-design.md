@@ -482,11 +482,18 @@ actions and read them with conditions.
 - **Dialogs**: a list of nodes – *say* (speaker picker with face preview, text with the game's
   markup and a live preview in the game's font), *choice* (options with conditions and actions),
   *if* (condition → dialog), *do* (actions), *go to*, *end*. A graph view shows how dialogs link.
-- **Shops**: name, sign type, item list (picker, drag to reorder).
-- **Abilities**: name, type/group, MP, icon, description, battle use and board use – the same
-  target and effect editors as items.
-- **Settings**: `config.yaml` – title, the real start (map + spawn picker, party, gold, items,
-  first quest), level curve (with a chart), damage formula constants, party size, default music.
+- **Shops**: name, sign type, item list (picker, reorder); the inspector shows the goods as the
+  shop window lists them (icon, name, price) and the entities that open the shop, with links.
+- **Abilities**: name, type (the menu it is listed under: Magic, Sword Art …) and group, MP, icon,
+  description, offensive (automatic from the effects, or set), battle use and board use – the
+  same boxes as items (target, effects; swallow and summon for enemy skills). The inspector says
+  what it does and who has it: the classes that learn it (at which level), the items that grant or
+  teach it, the enemies that use it. A `special` ability (join / leave party) is shown, not edited.
+- **Settings**: `config.yaml` as one form of boxes – the game (title, music), the start (where it
+  is: the Game start entity, with a link to it – it is moved on the map, not typed in; party,
+  gold, items, first quest), levels (max level, party size, the EXP curve with a chart), battle
+  (the damage formula's constants with a worked example, hit / critical / first strike / ambush
+  chances), shops and inn (inn price, sell ratio) and the board (burn floor, exploration round).
 
 Statuses, field effects, patterns, chipsets and graphics sheets are read-only lists at first (see
 §11).

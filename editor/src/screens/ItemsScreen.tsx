@@ -1,17 +1,15 @@
 import { useState } from "preact/hooks";
 import type { RawContent } from "../../../src/core/data/database";
 import { ELEMENTS, STAT_KEYS, type BattleUse, type BoardUse, type EquipDef, type ItemCategory, type StatKey } from "../../../src/core/data/types";
-import iconIndex from "../../../public/assets/system/icons.json";
 import { copyEntryToProject } from "../copyToProject";
-import { EffectList, optionsOf } from "../forms/EffectList";
+import { optionsOf } from "../forms/EffectList";
 import { Check, Field, MultiPick, Num, Percent, Select, Text } from "../forms/fields";
-import { FloatingWindow } from "../forms/FloatingWindow";
+import { IconPicker, ItemIcon } from "../forms/IconPicker";
+import { BattleUseFields, BoardUseFields } from "../forms/UseFields";
 import { writeEntry } from "../forms/entries";
 import { ContentList, EntryActions } from "../forms/ContentList";
 import { Section } from "../forms/Section";
-import { PatternField } from "../forms/PatternField";
-import { BATTLE_TARGETS, BOARD_TARGETS, CATEGORIES, EMPTY_ITEM, ITEMS_FILE, PRESETS, SLOTS, addItem, categoryIsAuto, categoryLabel, deleteItem, deriveCategory, itemSummary, withChange, type Item } from "../items/model";
-import { frameStyle } from "../map/sprites";
+import { CATEGORIES, EMPTY_ITEM, ITEMS_FILE, PRESETS, SLOTS, addItem, categoryIsAuto, categoryLabel, deleteItem, deriveCategory, itemSummary, withChange, type Item } from "../items/model";
 import { usePersistentState } from "../persist";
 import type { Project } from "../project";
 
@@ -20,15 +18,8 @@ import type { Project } from "../project";
  * box per section in the middle, the item as the game shows it in the inspector.
  */
 
-const ICONS = iconIndex as Record<string, number>;
 const STAT_LABEL: Record<StatKey, string> = { maxHp: "HP", maxMp: "MP", str: "STR", def: "DEF", mag: "MAG", mdef: "MDEF", spd: "SPD" };
 
-/** A 16px icon of the game's icon sheet (system/icons.png), scaled. */
-export function ItemIcon({ icon, scale = 2 }: { icon?: string; scale?: number }) {
-  const frame = icon === undefined ? undefined : ICONS[icon];
-  if (frame === undefined) return <span class="item-icon none" style={{ width: 16 * scale, height: 16 * scale }} />;
-  return <span class="item-icon" style={frameStyle("system/icons.png", 16, 16, 16, frame, scale)} />;
-}
 
 export function ItemsScreen({ project }: { project: Project }) {
   const [selected, select] = usePersistentState<string | null>("items.selected", null);
@@ -243,45 +234,11 @@ function ItemForm({ project, id }: { project: Project; id: string }) {
         </Section>
 
         <Section title="Use in battle" on={!!battle} hint="Used from the Item menu in battle" onToggle={(on) => change({ ...item, battle: on ? { target: "ally", effects: [] } : undefined }, on ? "battle use" : "no battle use")}>
-          {battle && (
-            <>
-              <Field label="Target">
-                <Select value={battle.target} options={BATTLE_TARGETS} onChange={(v) => setBattle({ ...battle, target: (v ?? "ally") as BattleUse["target"] }, "battle target")} />
-              </Field>
-              <Field label="Effects">
-                <EffectList value={battle.effects ?? []} raw={raw} onChange={(v) => setBattle({ ...battle, effects: v }, "battle effects", "battle.effects")} />
-              </Field>
-            </>
-          )}
+          {battle && <BattleUseFields use={battle} raw={raw} onChange={setBattle} />}
         </Section>
 
         <Section title="Use on the board" on={!!board} hint="Used on the board, on a cell in range" onToggle={(on) => change({ ...item, board: on ? { range: "lib:adjacent", targets: ["hero"], effects: [] } : undefined }, on ? "board use" : "no board use")}>
-          {board && (
-            <>
-              <Field label="Range">
-                <PatternField value={board.range} project={project} onChange={(v) => setBoard({ ...board, range: v ?? "lib:adjacent" }, "range")} />
-              </Field>
-              <Field label="Area">
-                <PatternField value={board.area} project={project} empty="the target cell" onChange={(v) => setBoard({ ...board, area: v }, "area")} />
-              </Field>
-              <Field label="Targets">
-                <div class="row wrap">
-                  {BOARD_TARGETS.map(([t, label]) => (
-                    <Check
-                      key={t}
-                      label={label}
-                      value={(board.targets ?? []).includes(t)}
-                      onChange={(v) => setBoard({ ...board, targets: v ? [...(board.targets ?? []), t] : (board.targets ?? []).filter((x) => x !== t) }, "targets")}
-                    />
-                  ))}
-                </div>
-                <Check value={board.wildOnly} label="Only on wild boards" onChange={(v) => setBoard({ ...board, wildOnly: v }, "wild boards only")} />
-              </Field>
-              <Field label="Effects">
-                <EffectList value={board.effects ?? []} raw={raw} onChange={(v) => setBoard({ ...board, effects: v }, "board effects", "board.effects")} />
-              </Field>
-            </>
-          )}
+          {board && <BoardUseFields use={board} project={project} onChange={setBoard} />}
         </Section>
 
         <Section title="Teaches an ability" on={!!item.learn} hint="A scroll: using it teaches an ability" onToggle={(on) => change({ ...item, learn: on ? { ability: "", classes: [] } : undefined }, on ? "teaches" : "teaches nothing")}>
@@ -311,22 +268,4 @@ function ItemForm({ project, id }: { project: Project; id: string }) {
   );
 }
 
-/** The game's icons (system/icons.png) to pick from; status and sign icons last. */
-function IconPicker({ value, onPick, onClose }: { value?: string; onPick: (icon: string | undefined) => void; onClose: () => void }) {
-  const names = Object.keys(ICONS).sort((a, b) => Number(/^(status|type|sign)_/.test(a)) - Number(/^(status|type|sign)_/.test(b)) || ICONS[a] - ICONS[b]);
-  return (
-    <FloatingWindow id="icon-picker" title="Pick an icon" onClose={onClose} size={{ w: 420, h: 380 }}>
-      <div class="icon-grid">
-        <button class={value ? "" : "on"} title="No icon" onClick={() => onPick(undefined)}>
-          <ItemIcon scale={2} />
-        </button>
-        {names.map((n) => (
-          <button key={n} class={value === n ? "on" : ""} title={n} onClick={() => onPick(n)}>
-            <ItemIcon icon={n} scale={2} />
-          </button>
-        ))}
-      </div>
-    </FloatingWindow>
-  );
-}
 

@@ -8,7 +8,11 @@ import { ItemsScreen } from "./screens/ItemsScreen";
 import { HeroesScreen } from "./screens/HeroesScreen";
 import { EnemiesScreen } from "./screens/EnemiesScreen";
 import { NpcsScreen } from "./screens/NpcsScreen";
+import { AbilitiesScreen } from "./screens/AbilitiesScreen";
+import { ShopsScreen } from "./screens/ShopsScreen";
+import { SettingsScreen } from "./screens/SettingsScreen";
 import { knownFlags } from "./forms/ConditionEditor";
+import type { EntityRef } from "./entities/model";
 import { Icon } from "./icons";
 import { usePersistentState, writeStored } from "./persist";
 import { IssuesButton, ProjectMenu } from "./ProjectMenu";
@@ -21,11 +25,11 @@ const SCREENS = [
   { id: "enemies", label: "Enemies" },
   { id: "npcs", label: "NPCs" },
   { id: "items", label: "Items" },
-  { id: "abilities", label: "Abilities", pkg: "E8" },
+  { id: "abilities", label: "Abilities" },
   { id: "quests", label: "Quests", pkg: "E7" },
   { id: "dialogs", label: "Dialogs", pkg: "E7" },
-  { id: "shops", label: "Shops", pkg: "E8" },
-  { id: "settings", label: "Settings", pkg: "E8" },
+  { id: "shops", label: "Shops" },
+  { id: "settings", label: "Settings" },
 ] as const;
 
 type ScreenId = (typeof SCREENS)[number]["id"];
@@ -87,6 +91,15 @@ export function App({ project }: { project: Project }) {
     return () => window.removeEventListener("pagehide", onHide);
   }, [project]);
 
+
+  /** Shows a map in Entity mode with one entity selected (MapsScreen reads these when it opens). */
+  const openMap = (m: string, entity: EntityRef) => {
+    writeStored("maps.mode", "entity");
+    writeStored("maps.tab", "edit");
+    writeStored("maps.selected", entity);
+    setMap(m);
+    setScreen("maps");
+  };
 
   const flags = knownFlags(project.content.raw);
   return (
@@ -155,15 +168,14 @@ export function App({ project }: { project: Project }) {
       ) : screen === "npcs" ? (
         <NpcsScreen
           project={project}
-          openMap={(m, entity) => {
-            // the map in Entity mode with the entity selected (MapsScreen reads these when it opens)
-            writeStored("maps.mode", "entity");
-            writeStored("maps.tab", "edit");
-            writeStored("maps.selected", { kind: "event", key: entity });
-            setMap(m);
-            setScreen("maps");
-          }}
+          openMap={openMap}
         />
+      ) : screen === "abilities" ? (
+        <AbilitiesScreen project={project} />
+      ) : screen === "shops" ? (
+        <ShopsScreen project={project} openMap={openMap} />
+      ) : screen === "settings" ? (
+        <SettingsScreen project={project} openMap={openMap} />
       ) : screen === "items" ? (
         <ItemsScreen project={project} />
       ) : (

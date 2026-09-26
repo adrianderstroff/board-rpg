@@ -4,7 +4,7 @@ import {
   elementMultiplier,
 } from "../chars/character";
 import type { Ctx } from "../context";
-import type { Element } from "../data/types";
+import type { ConfigDef, Element } from "../data/types";
 import type { Character } from "../state/types";
 import { clamp } from "../util/misc";
 
@@ -15,9 +15,14 @@ export interface DamageRoll {
   multiplier: number;
 }
 
+/** Damage per point of attack against a defense (§12.3): defenseScale / (defenseScale + DEF) × damageFactor. */
+export function damageScale(config: Pick<ConfigDef, "defenseScale" | "damageFactor">, defense: number): number {
+  const s = config.defenseScale;
+  return (s / (s + Math.max(0, defense))) * config.damageFactor;
+}
+
 function defenseFactor(ctx: Ctx, defense: number) {
-  const s = ctx.db.config.defenseScale;
-  return (s / (s + Math.max(0, defense))) * ctx.db.config.damageFactor;
+  return damageScale(ctx.db.config, defense);
 }
 
 function hitChance(ctx: Ctx, user: Character, scope: "board" | "battle") {

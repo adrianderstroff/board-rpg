@@ -433,8 +433,9 @@ Layering (see also [architecture](../CLAUDE.md)):
 ## E7 · Quests & dialogs ☐
 - ☐ Quest steps/endings with condition/action builders, flow view; dialog node editor with markup preview
 
-## E8 · Abilities, shops, settings ☐
-- ☐ Ability form (shared target/effect editors), shops, `config.yaml` (real start, level curve, formula constants)
-
+## E8 · Abilities, shops, settings ☑
+- ☑ Abilities: list by menu, New ▾ (empty or a preset), one form (icon, menu and group, MP, offensive automatic or set, the special rule shown), the battle and board boxes shared with items (swallow / summon for enemy skills); the inspector says what it does and who has it (classes by level, items granting / teaching, enemies)
+- ☑ Shops: name, sign, goods (with price and category); the inspector shows the shop window and the entities that open it, with links
+- ☑ Settings (config.yaml): title and music; the start (shown with a link to the Game start entity), party, gold, items, first quest; max level, party size, the EXP curve with a chart; the damage formula with a worked example, chances; inn price, sell ratio; burn floor, exploration round
 ## E9 · References ☐
 - ☐ Rename id everywhere, "where used", delete protection

@@ -1,4 +1,4 @@
-import type { BattleTarget, BoardTargetFilter, EffectDef, EquipSlot, ItemCategory, ItemDef } from "../../../src/core/data/types";
+import type { BattleTarget, BattleUse, BoardTargetFilter, BoardUse, EffectDef, EquipSlot, ItemCategory, ItemDef } from "../../../src/core/data/types";
 import type { Project } from "../project";
 import { addEntry, deleteEntry } from "../forms/entries";
 
@@ -241,10 +241,25 @@ export function effectText(e: EffectDef): string {
   }
 }
 
+/** A battle use and a board use in words ("Battle: one ally – heal 50 HP"). */
+export function useSummary(battle: BattleUse | undefined, board: BoardUse | undefined): string[] {
+  const out: string[] = [];
+  const effects = (list: EffectDef[] = []) => (list.length ? list.map(effectText).join(", ") : "no effect");
+  if (battle) {
+    const extra = [battle.swallow ? "swallows" : "", battle.summon ? `summons ${battle.summon.enemies.map(plain).join(", ")}` : ""].filter(Boolean);
+    const what = (battle.effects ?? []).length || !extra.length ? [effects(battle.effects), ...extra] : extra;
+    out.push(`Battle: ${BATTLE_TARGETS.find(([t]) => t === battle.target)?.[1] ?? battle.target} – ${what.join(", ")}`);
+  }
+  if (board) {
+    const who = (board.targets ?? []).map((t) => BOARD_TARGETS.find(([id]) => id === t)?.[1] ?? t).join(" / ");
+    out.push(`Board: ${who}${board.wildOnly ? " (wild boards)" : ""} – ${effects(board.effects)}`);
+  }
+  return out;
+}
+
 /** What the item does, one line per section ("Battle: one ally – heal 50 HP"). */
 export function itemSummary(item: Item, name: (collection: "abilities" | "classes" | "statuses", id: string) => string = (_, id) => plain(id)): string[] {
   const out: string[] = [];
-  const effects = (list: EffectDef[] = []) => (list.length ? list.map(effectText).join(", ") : "no effect");
   if (item.equip) {
     const e = item.equip;
     const stats = Object.entries(e.stats ?? {}).map(([k, v]) => `${k.toUpperCase()} ${v! >= 0 ? "+" : ""}${v}`);
@@ -257,11 +272,7 @@ export function itemSummary(item: Item, name: (collection: "abilities" | "classe
     ].filter(Boolean);
     out.push(`Equip (${e.slot}, ${e.kind})${extra.length ? `: ${extra.join(", ")}` : ""}`);
   }
-  if (item.battle) out.push(`Battle: ${BATTLE_TARGETS.find(([t]) => t === item.battle!.target)?.[1] ?? item.battle.target} – ${effects(item.battle.effects)}`);
-  if (item.board) {
-    const who = (item.board.targets ?? []).map((t) => BOARD_TARGETS.find(([id]) => id === t)?.[1] ?? t).join(" / ");
-    out.push(`Board: ${who}${item.board.wildOnly ? " (wild boards)" : ""} – ${effects(item.board.effects)}`);
-  }
+  out.push(...useSummary(item.battle, item.board));
   if (item.learn) out.push(`Teaches ${item.learn.ability ? name("abilities", item.learn.ability) : "(no ability yet)"}${item.learn.classes?.length ? ` to ${item.learn.classes.map((c) => name("classes", c)).join(", ")}` : ""}`);
   if (!out.length) out.push(item.category === "key" ? "A quest item – no use of its own." : "No use yet.");
   return out;
