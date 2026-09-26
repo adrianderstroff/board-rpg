@@ -12,6 +12,16 @@ Ideas that are designed but not built yet. When one is picked up, move its desig
   second list.
 - **Open question:** where the toggle lives (the Save window, or the entity form itself).
 
+## Prefabs: picking entity inputs on the map
+- **What:** when a placed prefab asks for an entity (the gate a lever opens), choose it by clicking
+  it on the map. Today the placing window offers a list of the map's entities (editor-design §6.5).
+- **Design:** the input's field gets a "pick on the map" button: the window steps aside, the map
+  highlights the entities that fit (events with states for a state reference, enemies for an
+  enemy …), a click fills the field and brings the window back; Esc returns without a choice. The
+  list stays as the fallback.
+- **Open question:** whether entities placed by the same prefab in this placement can be picked
+  too (they don't exist yet while the window is open).
+
 ## Prefabs: linked copies
 - **What:** placed copies that follow their prefab – change the prefab (a better trap), every
   placed copy changes too. Today placing makes an independent copy.
