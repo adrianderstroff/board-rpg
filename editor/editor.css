@@ -300,7 +300,9 @@ details.lintel summary { cursor: pointer; color: var(--dim); }
 /* the project menu (projects.md §6) */
 .project-menu { position: relative; }
 /* a long name ends in "…" (the full one on hover); the arrow always stays next to it */
-.project-button { font-weight: 600; color: var(--accent); display: inline-flex; align-items: center; max-width: 220px; }
+.project-button { font-weight: 600; color: var(--accent); display: inline-flex; align-items: center; max-width: 220px; background: none; border: none; padding: 4px 2px; }
+.project-button:hover .name, .project-button[aria-expanded="true"] .name { color: #fff; }
+.project-button:hover .caret, .project-button[aria-expanded="true"] .caret { color: var(--accent); }
 .project-button .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .project-button .caret { flex: none; color: var(--dim); font-weight: normal; margin-left: 4px; }
 .project-menu .menu {
