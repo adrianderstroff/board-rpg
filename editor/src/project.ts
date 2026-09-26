@@ -10,6 +10,7 @@ import { validateContent } from "../../src/core/data/validate";
 import { browserStorage, SESSION_KEY } from "./persist";
 import { formatYaml } from "./yamlFormat";
 import { refreshAssets, storage } from "./storage";
+import { assetChanged } from "./assetVersions";
 
 /**
  * The content being edited (editor-design §2): one YAML document per data file – edited in place so
@@ -78,6 +79,7 @@ export const fetchProjects = (): Promise<ProjectInfo[]> => storage().store.listP
 export async function putAsset(project: string, path: string, file: Blob | null): Promise<void> {
   await storage().store.putAsset(project, path, file ? new Uint8Array(await file.arrayBuffer()) : null);
   await refreshAssets(project);
+  assetChanged(`projects/${project}/assets/${path}`);
 }
 
 /** Unpacks an exported project (.brpg) as a new project. */

@@ -23,7 +23,7 @@ import { IssuesButton, ProjectMenu } from "./ProjectMenu";
 /** Navigation entries; the ones without a screen yet are shown greyed out (editor-design §12). */
 const SCREENS = [
   { id: "maps", label: "Maps" },
-  { id: "resources", label: "Resources" },
+  { id: "resources", label: "Graphics & music" },
   { id: "heroes", label: "Heroes" },
   { id: "enemies", label: "Enemies" },
   { id: "npcs", label: "NPCs" },

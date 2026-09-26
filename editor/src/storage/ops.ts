@@ -8,7 +8,7 @@ import { readText, safePath, writeText, type FileTree } from "./tree";
 export const PROJECT_ID = /^[a-z0-9][a-z0-9_-]*$/;
 
 /** The asset files a project may hold (projects.md §6): graphics sheets and music, by kind folder. */
-export const ASSET_PATH = /^(charsets|battlers|faces|battlebacks)\/[a-z0-9][a-z0-9_-]*\.png$|^audio\/music\/[a-z0-9][a-z0-9_-]*\.wav$/;
+export const ASSET_PATH = /^(charsets|battlers|faces|battlebacks|chipsets|signs|system)\/[a-z0-9][a-z0-9_-]*\.png$|^audio\/music\/[a-z0-9][a-z0-9_-]*\.wav$/;
 
 export interface LibraryInfo {
   id: string;
@@ -111,7 +111,7 @@ export class ProjectStore {
   /** Writes (bytes) or deletes (null) one of a project's asset files. */
   async putAsset(id: string, path: string, bytes: Uint8Array | null) {
     await this.projectDef(id);
-    if (!ASSET_PATH.test(path)) throw new Error(`"${path}" can't be a project asset (charsets|battlers|faces|battlebacks/<id>.png, audio/music/<id>.wav)`);
+    if (!ASSET_PATH.test(path)) throw new Error(`"${path}" can't be a project asset (charsets|battlers|faces|battlebacks|chipsets|signs|system/<id>.png, audio/music/<id>.wav)`);
     await this.tree.write(`projects/${id}/assets/${path}`, bytes);
   }
 

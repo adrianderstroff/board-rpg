@@ -447,9 +447,10 @@ Layering (see also [architecture](../CLAUDE.md)):
 
 # Graphics (see [graphics.md](graphics.md))
 
-## G1 · Tiles ☐
-- ☐ Graphics screen (Resources renamed): Tiles – a chipset's terrains and decor as thumbnails; terrain rules (walkable, water, surface, freezable, flammable → burns to, animation, fill, sink, ship settings), decor rules (blocks, flammable, cuttable, rotations)
-- ☐ Preview on a small board with the game's renderer, four view rotations; New terrain / decor; Copy chipset to project; import tile sheets; maps pick their chipset
+## G1 · Tiles ☑
+- ☑ Graphics & music screen (Resources renamed): Tiles – a chipset's terrains and decor as thumbnails with tags (blocks, water, surface); terrain rules (walkable, water, surface, freezable, flammable → burns to, frames, fill, animation, sink, ship hull), decor rules (blocks, flammable, cuttable, rotations); what uses a piece, Delete when unused
+- ☑ Preview on a small board with the game's renderer (a flat patch and a raised step; decor standing), turned through the four view rotations; New terrain / decor (a copy of the selected, its picture in a new frame of the sheet); Copy chipset to project (both sheets, the maps follow); import a tile sheet as a new chipset; maps pick their chipset (Info tab)
+- ☑ Changed images reach every view: asset versions bust the caches (editor URLs, the dev server, the map canvases)
 
 ## G2 · Pixel editor ☐
 - ☐ One workspace over the editor: frame grid and strip, zoom / pan, pencil, eraser, fill, line, rectangle, picker, selection (move / copy / paste), mirror, shift; palette (game palette, sheet colours, custom, transparent); own undo; Save writes the PNG; add frames

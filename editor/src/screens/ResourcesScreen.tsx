@@ -8,6 +8,7 @@ import { putAsset, type Project } from "../project";
 import { RESOURCE_KINDS, resourceId, resourcesOf, sheetFor, type ResourceKind } from "../resources";
 import { MusicPreview } from "./MapsScreen";
 import { copyResourceToProject } from "../copyToProject";
+import { TilesInspector, TilesMain, useTilesState } from "../graphics/TilesView";
 
 /** The project's own graphics (projects.md §6). */
 const GRAPHICS_FILE = "data/graphics.yaml";
@@ -21,13 +22,21 @@ type Sheet = { image: string; frameWidth?: number; frameHeight?: number; frames?
  * project: copied into its assets/ and registered in its graphics.yaml.
  */
 export function ResourcesScreen({ project }: { project: Project }) {
-  const [kind, setKind] = usePersistentState<ResourceKind>("resources.kind", "charsets");
+  const [storedKind, setKind] = usePersistentState<ResourceKind | "tiles">("resources.kind", "charsets");
+  const tiles = useTilesState();
   const [selected, setSelected] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; bad?: boolean } | null>(null);
   const [dragging, setDragging] = useState(false);
   const db = project.content.db;
+  const kind: ResourceKind = storedKind === "tiles" ? "charsets" : storedKind;
   const list = db ? resourcesOf(db, project.music, kind) : [];
   const info = RESOURCE_KINDS.find((k) => k.id === kind)!;
+  // the kinds in the list: Tiles sits before Music
+  const kinds: { id: ResourceKind | "tiles"; label: string; count: number | string }[] = [
+    ...RESOURCE_KINDS.filter((k) => k.id !== "music").map((k) => ({ id: k.id, label: k.label, count: db ? resourcesOf(db, project.music, k.id).length : "" })),
+    { id: "tiles", label: "Tiles", count: Object.keys(project.content.raw.chipsets).length },
+    { id: "music", label: "Music", count: db ? resourcesOf(db, project.music, "music").length : "" },
+  ];
 
   /** Copies the files into the project and registers them; one message for all of them. */
   const importFiles = async (files: File[]) => {
@@ -71,10 +80,10 @@ export function ResourcesScreen({ project }: { project: Project }) {
       <main class="main">
         <div class="split">
           <div class="list">
-            {RESOURCE_KINDS.map((k) => (
+            {kinds.map((k) => (
               <div
                 key={k.id}
-                class={`item ${kind === k.id ? "active" : ""}`}
+                class={`item ${storedKind === k.id ? "active" : ""}`}
                 onClick={() => {
                   setKind(k.id);
                   setSelected(null);
@@ -82,11 +91,11 @@ export function ResourcesScreen({ project }: { project: Project }) {
                 }}
               >
                 <span>{k.label}</span>
-                <small>{db ? resourcesOf(db, project.music, k.id).length : ""}</small>
+                <small>{k.count}</small>
               </div>
             ))}
           </div>
-          <div
+          {storedKind === "tiles" ? <TilesMain project={project} state={tiles} /> : <div
             class={`resources ${dragging ? "drop" : ""}`}
             onDragOver={(e) => {
               e.preventDefault();
@@ -117,11 +126,11 @@ export function ResourcesScreen({ project }: { project: Project }) {
                   </button>
                 ))}
             </div>
-          </div>
+          </div>}
         </div>
       </main>
       <aside class="inspector">
-        {db && selected && list.some((r) => r.id === selected) ? (
+        {storedKind === "tiles" ? <TilesInspector project={project} state={tiles} /> : db && selected && list.some((r) => r.id === selected) ? (
           <ResourceForm project={project} kind={kind} id={selected} onDeleted={() => setSelected(null)} onCopied={(id) => setSelected(id)} />
         ) : (
           <p class="hint">Select a resource, or import files: {info.hint}</p>

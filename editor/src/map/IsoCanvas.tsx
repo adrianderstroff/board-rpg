@@ -65,7 +65,7 @@ interface Props {
   hideDecor: boolean;
   /** Grey one layer out so the other stands out: the terrain in decor mode, the decor in board mode. */
   /** The layer being edited; the others (board, decor, entities) are greyed out. */
-  focus: "board" | "decor" | "entity";
+  focus: "board" | "decor" | "entity" | "all";
   /** Cells to highlight (rect preview, selection…). */
   markers: Marker[];
   /** Events, exits, enemies… placed on the map (editor-design §6). */
@@ -287,8 +287,8 @@ class MapScene extends Phaser.Scene {
       this.cameras.main.centerOn(b.centerX, b.centerY);
     }
     this.shownRotation = props.rotation;
-    this.view.setBlockTint(props.focus !== "board" ? 0x6f7086 : null);
-    this.view.setDecorTint(props.focus !== "decor" ? 0x8a8aa0 : null);
+    this.view.setBlockTint(props.focus !== "board" && props.focus !== "all" ? 0x6f7086 : null);
+    this.view.setDecorTint(props.focus !== "decor" && props.focus !== "all" ? 0x8a8aa0 : null);
     this.drawMarkers();
     this.drawEntities();
     this.drawGhost();

@@ -1,5 +1,6 @@
 import { setAssetResolver } from "../../../src/engine/assets";
 import { readStored, writeStored } from "../persist";
+import { assetVersion } from "../assetVersions";
 import { ProjectStore } from "./ops";
 import { BundledLibraryTree, bundledAssetUrl, bundledAssetUrls, bundledDemo, canOpenFolders, FolderTree, HttpTree, IdbTree, recall, remember } from "./trees";
 import { LayeredTree, MemoryTree, type FileTree } from "./tree";
@@ -94,7 +95,12 @@ const blobs = new Map<string, string>();
 
 /** Where a content path (library/…, projects/…) is served – undefined: as it is (the dev server has it). */
 export function contentUrl(path: string): string | undefined {
-  if (!current || current.kind === "dev") return undefined;
+  if (!current) return undefined;
+  // the dev server serves the files themselves: a changed one gets its version (no stale cache)
+  if (current.kind === "dev") {
+    const v = assetVersion(path);
+    return v ? `${path}?v=${v}` : undefined;
+  }
   return blobs.get(path) ?? bundledAssetUrl(path);
 }
 

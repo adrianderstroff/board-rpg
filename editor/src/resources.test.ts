@@ -21,8 +21,9 @@ describe("importing resources (projects.md §6)", () => {
   });
 
   it("only takes graphics and music into a project's assets", () => {
-    for (const ok of ["charsets/a.png", "faces/b_2.png", "battlebacks/sky.png", "audio/music/theme.wav"]) expect(ASSET_PATH.test(ok)).toBe(true);
-    for (const bad of ["../x.png", "charsets/../../x.png", "system/font.png", "charsets/a.gif", "audio/sfx/a.wav", "charsets/A.png"]) expect(ASSET_PATH.test(bad)).toBe(false);
+    // tile sheets, wall signs and the project's copies of game images too (graphics.md §2, §4)
+    for (const ok of ["charsets/a.png", "faces/b_2.png", "battlebacks/sky.png", "audio/music/theme.wav", "chipsets/town.png", "chipsets/town_decor.png", "signs/shop.png", "system/font.png"]) expect(ASSET_PATH.test(ok)).toBe(true);
+    for (const bad of ["../x.png", "charsets/../../x.png", "maps/x.png", "charsets/a.gif", "audio/sfx/a.wav", "charsets/A.png"]) expect(ASSET_PATH.test(bad)).toBe(false);
   });
 
   it("registers into a new graphics file as block YAML", () => {
