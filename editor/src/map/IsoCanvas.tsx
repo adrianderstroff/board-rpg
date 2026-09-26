@@ -62,6 +62,8 @@ interface Props {
   /** Events, exits, enemies… placed on the map (editor-design §6). */
   entities: EntitySprite[];
   ghost: Ghost | null;
+  /** Thin grid lines on every cell's top (empty cells at ground level). */
+  showGrid: boolean;
   handlers: CanvasHandlers;
 }
 
@@ -79,8 +81,11 @@ class MapScene extends Phaser.Scene {
   private ghostView?: IsoMapView;
   /** The cell whose own blocks are hidden while the ghost stands in for them. */
   private replaced?: Pos;
-  /** A faint white grid on the empty cells inside the map's size (holes, where nothing is placed). */
-  private holeGrid: Phaser.GameObjects.Graphics[] = [];
+  /**
+   * Grid lines: one thin, smooth outline per cell (holes at ground level) – drawn in the cell's place
+   * in the drawing order, so blocks in front cover them; kept up to date while the view turns.
+   */
+  private gridLines: { x: number; y: number; hole: boolean; g: Phaser.GameObjects.Graphics }[] = [];
   private space = false;
   /** A running view turn (the blocks spin as one solid, like in the game). */
   private spin?: Phaser.Tweens.Tween;
@@ -178,6 +183,7 @@ class MapScene extends Phaser.Scene {
       const after = cam.getWorldPoint(p.x, p.y);
       cam.scrollX += before.x - after.x;
       cam.scrollY += before.y - after.y;
+      this.drawGrid(); // lines stay one screen pixel wide
     });
     this.show(this.initial()); // the latest props: the map may have changed while loading
   }
@@ -228,26 +234,37 @@ class MapScene extends Phaser.Scene {
     this.drawMarkers();
     this.drawEntities();
     this.drawGhost();
-    this.drawHoleGrid();
+    this.buildGrid();
   }
 
-  drawHoleGrid() {
-    for (const g of this.holeGrid) g.destroy();
-    this.holeGrid = [];
-    const view = this.view;
-    if (!view || this.spin) return;
+  /** (Re)creates the grid lines for the current map. */
+  buildGrid() {
+    for (const l of this.gridLines) l.g.destroy();
+    this.gridLines = [];
     const grid = getGrid(this.props.db, this.props.mapId);
-    const hw = grid.chipset.tileWidth / 2;
-    const hh = grid.chipset.tileHeight / 2;
-    for (let y = 0; y < grid.height; y++)
-      for (let x = 0; x < grid.width; x++) {
-        if (grid.has({ x, y })) continue;
-        const c = view.cellTop(x, y);
-        const g = this.add.graphics().setDepth(view.depthOf(x, y, LAYER.block, 0));
-        g.lineStyle(1, 0xffffff, 0.28);
-        g.strokePoints([new Phaser.Math.Vector2(c.x, c.y - hh), new Phaser.Math.Vector2(c.x + hw, c.y), new Phaser.Math.Vector2(c.x, c.y + hh), new Phaser.Math.Vector2(c.x - hw, c.y)], true, true);
-        this.holeGrid.push(g);
+    for (let y = 0; y < grid.height; y++) for (let x = 0; x < grid.width; x++) this.gridLines.push({ x, y, hole: !grid.has({ x, y }), g: this.add.graphics() });
+    this.drawGrid();
+  }
+
+  /** Draws the grid lines where the cells are now (also every frame of a turn): 1 screen pixel wide. */
+  drawGrid() {
+    const view = this.view;
+    if (!view) return;
+    const width = 1 / this.cameras.main.zoom;
+    for (const l of this.gridLines) {
+      l.g.clear();
+      l.g.setVisible(this.props.showGrid);
+      if (!this.props.showGrid) continue;
+      l.g.setDepth(view.depthOf(l.x, l.y, LAYER.block, 0.9));
+      // a light line on a slightly wider dark one: readable on bright sand and dark stone alike
+      const pts = view.topCorners(l.x, l.y).map((c) => new Phaser.Math.Vector2(c.x, c.y));
+      if (!l.hole) {
+        l.g.lineStyle(width * 2.5, 0x000000, 0.22);
+        l.g.strokePoints(pts, true, true);
       }
+      l.g.lineStyle(width, 0xffffff, l.hole ? 0.35 : 0.4);
+      l.g.strokePoints(pts, true, true);
+    }
   }
 
   /**
@@ -274,7 +291,6 @@ class MapScene extends Phaser.Scene {
     this.ghostImage?.setVisible(false);
     this.ghostView?.destroy();
     this.ghostView = undefined;
-    for (const g of this.holeGrid) g.setVisible(false);
     view.clearOverlay("hover");
     view.beginSpin();
     this.spin = this.tweens.addCounter({
@@ -289,6 +305,7 @@ class MapScene extends Phaser.Scene {
         view.relayout();
         const c = view.cellTop(pivot.x, pivot.y);
         cam.centerOn(c.x + offset.x, c.y + offset.y);
+        this.drawGrid(); // the grid turns with the map
       },
       onComplete: () => {
         this.spin = undefined;
@@ -457,6 +474,14 @@ export function IsoCanvas(props: Props) {
       s.drawGhost();
     }
   }, [props.ghost]);
+
+  useEffect(() => {
+    const s = scene.current;
+    if (s?.view) {
+      s.props = latest.current;
+      s.drawGrid();
+    }
+  }, [props.showGrid]);
 
   // handlers change every render – keep the scene's copy fresh without redrawing
   if (scene.current) scene.current.props = { ...scene.current.props, handlers: props.handlers };

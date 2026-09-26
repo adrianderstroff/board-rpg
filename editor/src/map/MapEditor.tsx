@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { Icon } from "../icons";
 import { getGrid } from "../../../src/core/board/grid";
 import type { Corner, MapDef } from "../../../src/core/data/types";
 import type { Dir, Pos } from "../../../src/core/util/grid";
@@ -25,11 +26,11 @@ export const MODES: { id: Mode; label: string; key: string; title: string }[] = 
   { id: "entity", label: "Entity", key: "3", title: "Entity (3): events, exits, spawns, enemies, gates…" },
 ];
 const TOOLS: { id: Tool; label: string; key: string; title: string }[] = [
-  { id: "pencil", label: "✎ Pencil", key: "b", title: "Paint cell by cell (B)" },
-  { id: "rect", label: "▭ Rectangle", key: "r", title: "Drag a rectangle (R)" },
-  { id: "fill", label: "◍ Fill", key: "g", title: "Fill the connected area of the same kind (G)" },
-  { id: "pick", label: "⌖ Pick", key: "i", title: "Take the brush from a cell (I)" },
-  { id: "select", label: "⬚ Select", key: "m", title: "Select an area (M): drag inside it to move it, Ctrl+C / Ctrl+V to copy, Delete to clear" },
+  { id: "pencil", label: "Pencil", key: "b", title: "Pencil (B): paint cell by cell" },
+  { id: "rect", label: "Rectangle", key: "r", title: "Rectangle (R): drag a rectangle" },
+  { id: "fill", label: "Fill", key: "g", title: "Fill (G): the connected area of the same kind" },
+  { id: "pick", label: "Pick", key: "i", title: "Pick (I): take the brush from a cell" },
+  { id: "select", label: "Select", key: "m", title: "Select (M): drag inside the area to move it, Ctrl+C / Ctrl+V to copy, Delete to clear" },
 ];
 
 /** Copied cells – kept across maps, so areas can be copied from one map into another. */
@@ -71,6 +72,7 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
   const [view, setView] = useState<"iso" | "grid">("iso");
   const [rotation, setRotation] = useState(0);
   const [hideDecor, setHideDecor] = useState(false);
+  const [showGrid, setShowGrid] = useState(true);
   const [hover, setHoverState] = useState<Pos | null>(null);
   const hoverRef = useRef<Pos | null>(null);
   const setHover = (p: Pos | null) => {
@@ -432,7 +434,7 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
   const grid = getGrid(db, mapId);
   const cell = hover ? grid.cell(hover) : undefined;
   const dim: "board" | "decor" | null = mode === "decor" ? "board" : mode === "board" ? "decor" : null;
-  const canvasProps = { db, mapId, hideDecor, dim, markers, entities: sprites, ghost, handlers };
+  const canvasProps = { db, mapId, hideDecor, dim, markers, entities: sprites, ghost, showGrid, handlers };
   // the flat view marks entities with letters – only useful in entity mode
   const gridProps = { ...canvasProps, entities: mode === "entity" ? sprites : [] };
 
@@ -463,12 +465,19 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
           <>
             <span class="sep" />
             {TOOLS.map((t) => (
-              <button key={t.id} class={tool === t.id ? "on" : ""} title={t.title} onClick={() => setTool(t.id)}>
-                {t.label}
+              <button key={t.id} class={`icon-button ${tool === t.id ? "on" : ""}`} title={t.title} aria-label={t.label} onClick={() => setTool(t.id)}>
+                <Icon name={t.id} />
               </button>
             ))}
           </>
         )}
+        <span class="sep" />
+        <button class={`toggle ${showGrid ? "on" : ""}`} aria-pressed={showGrid} title="Grid: thin lines around every cell" aria-label="Grid" onClick={() => setShowGrid(!showGrid)}>
+          <Icon name="grid" size={18} />
+        </button>
+        <button class={`toggle ${hideDecor ? "" : "on"}`} aria-pressed={!hideDecor} title="Decor: show trees, rocks, furniture…" aria-label="Decor" onClick={() => setHideDecor(!hideDecor)}>
+          <Icon name="decor" size={18} />
+        </button>
         {mode !== "entity" && tool === "select" && (
           <>
             <span class="sep" />
@@ -502,17 +511,14 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
         </div>
         {view === "iso" && (
           <>
-            <button onClick={() => setRotation((r) => (r + 3) % 4)} title="Turn the view left (Q)">
-              ⟲
+            <button class="icon-button" onClick={() => setRotation((r) => (r + 3) % 4)} title="Turn the view left (Q)" aria-label="Turn left">
+              <Icon name="turnLeft" />
             </button>
-            <button onClick={() => setRotation((r) => (r + 1) % 4)} title="Turn the view right (E)">
-              ⟳
+            <button class="icon-button" onClick={() => setRotation((r) => (r + 1) % 4)} title="Turn the view right (E)" aria-label="Turn right">
+              <Icon name="turnRight" />
             </button>
           </>
         )}
-        <label class="check" title="Show decor">
-          <input type="checkbox" checked={!hideDecor} onChange={(e) => setHideDecor(!e.currentTarget.checked)} /> decor
-        </label>
       </div>
       <div class="canvas-area">{view === "iso" ? <IsoCanvas {...canvasProps} rotation={rotation} /> : <GridCanvas {...gridProps} />}</div>
       <div class="status">

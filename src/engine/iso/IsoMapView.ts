@@ -356,6 +356,15 @@ export class IsoMapView {
     return isoToScreen(this.source.metrics, v.x, v.y, this.heightAt(x, y));
   }
 
+  /** Camera-world corners of a (source) cell's top face – follows the transform, also mid-spin. */
+  topCorners(x: number, y: number): { x: number; y: number }[] {
+    const h = this.heightAt(x, y);
+    return UNIT_SQUARE.map((p) => {
+      const v = this.transform(x + p[0], y + p[1]);
+      return isoToScreen(this.source.metrics, v.x, v.y, h);
+    });
+  }
+
   /** Draw order value of a (source) cell for a layer – for sprites placed by others. */
   depthOf(x: number, y: number, layer: number, sub = 0): number {
     const v = this.transform(x, y);
@@ -378,16 +387,20 @@ export class IsoMapView {
       const d = v.x + v.y;
       if (!best || d > best.d) best = { x: p.x, y: p.y, d };
     }
-    for (const key of this.heights.keys()) {
+    // the column actually drawn under the point: its top diamond plus its sides down to the ground;
+    // the front-most one wins (a tall wall in front hides the cells behind it)
+    const hw = m.tileWidth / 2;
+    const hh = m.tileHeight / 2;
+    for (const [key, h] of this.heights) {
       const [x, y] = key.split(",").map(Number);
       const p = this.cellTop(x, y);
-      const dx = Math.abs(wx - p.x) / (m.tileWidth / 2);
-      const dy = Math.abs(wy - p.y) / (m.tileHeight / 2);
-      if (dx + dy <= 1) {
-        const v = this.transform(x, y);
-        const d = v.x + v.y; // front-most wins
-        if (!best || d > best.d) best = { x, y, d };
-      }
+      const ax = Math.abs(wx - p.x) / hw;
+      if (ax > 1) continue;
+      const half = hh * (1 - ax);
+      if (wy < p.y - half || wy > p.y + h * m.blockHeight + half) continue;
+      const v = this.transform(x, y);
+      const d = v.x + v.y;
+      if (!best || d > best.d) best = { x, y, d };
     }
     return best ? { x: best.x, y: best.y } : null;
   }

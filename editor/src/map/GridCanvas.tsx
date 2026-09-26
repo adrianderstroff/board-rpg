@@ -31,6 +31,7 @@ interface Props {
   markers: Marker[];
   entities: EntitySprite[];
   ghost: Ghost | null;
+  showGrid: boolean;
   handlers: CanvasHandlers;
 }
 
@@ -46,7 +47,7 @@ interface Camera {
  * square, height number, decor thumbnail, piece shape, facing; blocked cells darker. Wheel zooms
  * (around the cursor), middle drag or Space + drag pans; right mouse = the tool's eraser.
  */
-export function GridCanvas({ db, mapId, hideDecor, dim, markers, entities, ghost, handlers }: Props) {
+export function GridCanvas({ db, mapId, hideDecor, dim, markers, entities, ghost, showGrid, handlers }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const [cam, setCam] = useState<Camera | null>(null);
@@ -119,8 +120,10 @@ export function GridCanvas({ db, mapId, hideDecor, dim, markers, entities, ghost
         if (px > size.w || py > size.h || px + S < 0 || py + S < 0) continue;
         if (!c) {
           // an empty cell of the map: a faint white grid
-          g.strokeStyle = "rgba(255,255,255,0.22)";
-          g.strokeRect(px + 0.5, py + 0.5, S - 1, S - 1);
+          if (showGrid) {
+            g.strokeStyle = "rgba(255,255,255,0.3)";
+            g.strokeRect(px + 0.5, py + 0.5, S - 1, S - 1);
+          }
           continue;
         }
         g.save();
@@ -164,8 +167,10 @@ export function GridCanvas({ db, mapId, hideDecor, dim, markers, entities, ghost
           g.font = `${Math.round(S * 0.32)}px monospace`;
           g.fillText(String(c.height), px + 2, py + S * 0.32);
         }
-        g.strokeStyle = "rgba(0,0,0,0.25)";
-        g.strokeRect(px + 0.5, py + 0.5, S - 1, S - 1);
+        if (showGrid) {
+          g.strokeStyle = "rgba(255,255,255,0.16)";
+          g.strokeRect(px + 0.5, py + 0.5, S - 1, S - 1);
+        }
       }
     // entities: one mark per kind and cell, in the cell's lower right
     const drawn = new Set<string>();
@@ -230,7 +235,7 @@ export function GridCanvas({ db, mapId, hideDecor, dim, markers, entities, ghost
       g.strokeRect(px + 1, py + 1, S - 2, S - 2);
       g.lineWidth = 1;
     }
-  }, [grid, tops, decorImg, cam, size, hover, markers, hideDecor, dim, entities, ghost]);
+  }, [grid, tops, decorImg, cam, size, hover, markers, hideDecor, dim, entities, ghost, showGrid]);
 
   const cellOf = (e: MouseEvent): Pos | null => {
     if (!cam) return null;

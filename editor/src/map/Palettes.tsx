@@ -60,16 +60,16 @@ export function BoardPalette({ chip, brush, setBrush }: { chip: ChipsetDef; brus
           </button>
         ))}
       </div>
-      <div class="row brush-height">
-        <span class="dim">Height</span>
-        <b>{brush.height === null ? "keep the cell's" : brush.height}</b>
-        <span class="dim">(W / S)</span>
-        {brush.height !== null && (
+      {brush.height !== null && (
+        // only once W/S set one: then the brush paints this height until reset
+        <div class="row brush-height">
+          <span class="dim">Height</span>
+          <b>{brush.height}</b>
           <button onClick={() => setBrush({ ...brush, height: null })} title="Paint without changing heights">
-            keep
+            keep the cells'
           </button>
-        )}
-      </div>
+        </div>
+      )}
       <input class="search" placeholder="Search terrain…" value={filter} onInput={(e) => setFilter(e.currentTarget.value)} />
       <div class="palette">
         {terrains.map(([id, t]) => (

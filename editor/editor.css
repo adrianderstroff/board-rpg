@@ -42,7 +42,11 @@ input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px s
 /* section icons: no frame – dim, white on hover, the selected one yellow with a soft glow */
 .icon-button { display: inline-grid; place-items: center; width: 32px; height: 30px; padding: 0; background: none; border: 0; color: var(--dim); transition: color 0.12s, filter 0.12s; }
 .icon-button:hover:not(:disabled) { color: #fff; }
-.icon-button.on, .icon-button.on:hover:not(:disabled) { color: var(--accent); filter: drop-shadow(0 0 4px rgba(254, 174, 52, 0.55)); }
+.icon-button.on, .icon-button.on:hover:not(:disabled) { background: none; border: 0; color: var(--accent); filter: drop-shadow(0 0 4px rgba(254, 174, 52, 0.55)); }
+/* on/off switches (map grid, decor): a raised button when off, pressed in when on */
+button.toggle { display: inline-grid; place-items: center; width: 30px; height: 28px; padding: 0; color: var(--dim); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 1px 0 rgba(0, 0, 0, 0.45); }
+button.toggle:hover:not(:disabled) { color: #fff; }
+button.toggle.on, button.toggle.on:hover:not(:disabled) { background: #11131b; border-color: var(--line); color: var(--accent); box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6); }
 .icon-button:focus-visible { outline: 1px dotted var(--dim); outline-offset: -2px; }
 .main { overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
 .inspector { background: var(--panel); border-left: 1px solid var(--line); overflow: auto; padding: 10px; }

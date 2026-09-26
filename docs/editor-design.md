@@ -117,8 +117,15 @@ entity and enters the map. The normal game build is unaffected.
 - **Isometric view** (default): the map exactly as the game draws it (same renderer, heights,
   shaped blocks, animated water), with the game's board cursor and zoom (wheel). Q / E turn the view
   smoothly like the game (the blocks spin as one solid, eased, around the map's centre). Middle drag
-  or Space + drag pans. Clicking picks cells the same way the game does; empty cells (holes) inside
-  the map's size show a faint white grid and can be painted.
+  or Space + drag pans. The cursor picks the column actually drawn under the mouse (its top and its
+  sides, the front-most wins), so pointing at a tall wall's side selects that wall. Empty cells
+  (holes) inside the map's size can be painted.
+- **Grid:** thin smooth lines (one screen pixel, not pixel art) outline every cell's top – holes at
+  ground level – in both views; in the iso view they sit in the drawing order (blocks in front cover
+  them) and turn with the map.
+- **Strip** (above the canvas): the modes, then the tools as icons (their names in tooltips), a
+  divider and two on/off buttons (pressed when on) for the grid and the decor; the view switch
+  (Iso / Top) and the turn buttons are on the right.
 - **Top view** (toggle): a flat grid of the same cells for fast painting of large areas; each cell
   shows its terrain's top texture unwarped from the diamond into a square, its height as a number
   and its decor as a thumbnail. Centred on the map at first; wheel zooms around the cursor, middle
@@ -142,7 +149,7 @@ replacing the cell's own block; in
 Decor mode the object facing its way; the other layer is greyed out (decor while painting the board,
 the board while placing decor). While the preview shows, W / S set the brush's height and A / D turn
 the brush's piece or object; a left click applies them, and they stay for the next cells and other
-terrains (the brush height can be reset to "keep the cell's"). With the select, fill or pick tool
+terrains (once set, the brush shows its height with a button to go back to keeping the cells'). With the select, fill or pick tool
 the keys act on the map instead: the hovered cell, or the selected area while the cursor is in it.
 Heights have no menu of their own: W / S are the height tool. Pieces (full block, half, point) are
 chosen at the top of the Board brush and painted together with the terrain. The per-map **legend** (character → terrain id) is
