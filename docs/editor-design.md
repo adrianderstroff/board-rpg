@@ -137,20 +137,20 @@ entity and enters the map. The normal game build is unaffected.
   the game's own grid, so blocked cells are shown as the game sees them), or the current key hints.
 
 ### 5.2 Modes
-The canvas has three modes (keys 1 / 2 / 3); each shows only its own tools and brushes.
+The canvas has three modes (keys 1 / 2 / 3); each shows only its own tools and brushes, and the
+layers it doesn't edit – of board, decor and entities – are greyed out.
 
 | Mode | Paints | Left / right mouse | W / S | A / D |
 |---|---|---|---|---|
 | **Board** | terrain (`layers.terrain`), pieces (`layers.shape`, §5.9), door lintels (`layers.overhead`) | paint / holes (no cell), full block, remove lintel | raise / lower | turn a piece |
-| **Decor** | objects (`layers.decor`; facing in `layers.decorDir`) – the board is greyed out and the object to place follows the cursor see-through | place / remove | raise / lower | turn a directional object (or the brush) |
+| **Decor** | objects (`layers.decor`; facing in `layers.decorDir`) – the object to place follows the cursor see-through | place / remove | raise / lower | turn a directional object (or the brush) |
 | **Entity** | events, exits, spawns, enemies, gates, switches, traps, signs, the Quick Play start (§6) | select, drag / delete | – | turn the selected one |
 
 **Preview:** with the pencil, the rectangle or the fill, what the next click places follows the cursor
 (the rectangle shows it over the whole dragged area, the fill over the area it would reach)
 – in Board mode the terrain block, cut to the brush's piece at the height it will get, temporarily
 replacing the cell's own block; in
-Decor mode the object facing its way; the other layer is greyed out (decor while painting the board,
-the board while placing decor). While the preview shows, W / S set the brush's height and A / D turn
+Decor mode the object facing its way. While the preview shows, W / S set the brush's height and A / D turn
 the brush's piece or object; a left click applies them, and they stay for the next cells and other
 terrains (once set, the brush shows its height with a button to go back to keeping the cells'). With the select or pick tool
 the keys act on the map instead: the hovered cell, or the selected area while the cursor is in it.

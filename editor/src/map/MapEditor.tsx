@@ -441,10 +441,11 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
   if (!db) return <div class="placeholder">The content has errors – fix them to see the map (see the problems badge).</div>;
   const grid = getGrid(db, mapId);
   const cell = hover ? grid.cell(hover) : undefined;
-  const dim: "board" | "decor" | null = mode === "decor" ? "board" : mode === "board" ? "decor" : null;
+  // the layers the mode doesn't edit are greyed out
+  const focus = mode;
   // the Info tab's pending resize, previewed on the canvas
   const resizeTo = resizeBy.x || resizeBy.y ? { w: grid.width + resizeBy.x, h: grid.height + resizeBy.y } : null;
-  const canvasProps = { db, mapId, hideDecor, dim, markers, entities: sprites, ghost, showGrid, resizeTo, handlers };
+  const canvasProps = { db, mapId, hideDecor, focus, markers, entities: sprites, ghost, showGrid, resizeTo, handlers };
   // the flat view marks entities with letters – only useful in entity mode
   const gridProps = { ...canvasProps, entities: mode === "entity" ? sprites : [] };
 

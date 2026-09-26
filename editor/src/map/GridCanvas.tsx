@@ -28,7 +28,8 @@ interface Props {
   db: Database;
   mapId: string;
   hideDecor: boolean;
-  dim: "board" | "decor" | null;
+  /** The layer being edited; the others are greyed out. */
+  focus: "board" | "decor" | "entity";
   markers: Marker[];
   entities: EntitySprite[];
   ghost: Ghost | null;
@@ -49,7 +50,7 @@ interface Camera {
  * square, height number, decor thumbnail, piece shape, facing; blocked cells darker. Wheel zooms
  * (around the cursor), middle drag or Space + drag pans; right mouse = the tool's eraser.
  */
-export function GridCanvas({ db, mapId, hideDecor, dim, markers, entities, ghost, showGrid, resizeTo, handlers }: Props) {
+export function GridCanvas({ db, mapId, hideDecor, focus, markers, entities, ghost, showGrid, resizeTo, handlers }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const [cam, setCam] = useState<Camera | null>(null);
@@ -149,13 +150,13 @@ export function GridCanvas({ db, mapId, hideDecor, dim, markers, entities, ghost
         // higher cells lighter, so heights read at a glance
         g.fillStyle = `rgba(255,255,255,${Math.min(0.3, c.height * 0.025)})`;
         g.fillRect(px, py, S, S);
-        if (!c.walkable || dim === "board") {
-          g.fillStyle = dim === "board" ? "rgba(20,22,28,0.55)" : "rgba(0,0,0,0.25)";
+        if (!c.walkable || focus !== "board") {
+          g.fillStyle = focus !== "board" ? "rgba(20,22,28,0.55)" : "rgba(0,0,0,0.25)";
           g.fillRect(px, py, S, S);
         }
         g.restore();
         if (c.decor && !hideDecor) {
-          decorOf(c.decor, px, py, dim === "decor" ? 0.45 : 1);
+          decorOf(c.decor, px, py, focus !== "decor" ? 0.45 : 1);
           if (c.decorDir) {
             g.fillStyle = "#feae34";
             g.font = `bold ${Math.round(S * 0.45)}px sans-serif`;
@@ -252,7 +253,7 @@ export function GridCanvas({ db, mapId, hideDecor, dim, markers, entities, ghost
       g.strokeRect(px + 1, py + 1, S - 2, S - 2);
       g.lineWidth = 1;
     }
-  }, [grid, tops, decorImg, cam, size, hover, markers, hideDecor, dim, entities, ghost, showGrid, resizeTo?.w, resizeTo?.h]);
+  }, [grid, tops, decorImg, cam, size, hover, markers, hideDecor, focus, entities, ghost, showGrid, resizeTo?.w, resizeTo?.h]);
 
   const cellOf = (e: MouseEvent): Pos | null => {
     if (!cam) return null;

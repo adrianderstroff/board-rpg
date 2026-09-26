@@ -59,7 +59,8 @@ interface Props {
   rotation: number;
   hideDecor: boolean;
   /** Grey one layer out so the other stands out: the terrain in decor mode, the decor in board mode. */
-  dim: "board" | "decor" | null;
+  /** The layer being edited; the others (board, decor, entities) are greyed out. */
+  focus: "board" | "decor" | "entity";
   /** Cells to highlight (rect preview, selection…). */
   markers: Marker[];
   /** Events, exits, enemies… placed on the map (editor-design §6). */
@@ -236,8 +237,8 @@ class MapScene extends Phaser.Scene {
       this.cameras.main.centerOn(b.centerX, b.centerY);
     }
     this.shownRotation = props.rotation;
-    this.view.setBlockTint(props.dim === "board" ? 0x6f7086 : null);
-    this.view.setDecorTint(props.dim === "decor" ? 0x8a8aa0 : null);
+    this.view.setBlockTint(props.focus !== "board" ? 0x6f7086 : null);
+    this.view.setDecorTint(props.focus !== "decor" ? 0x8a8aa0 : null);
     this.drawMarkers();
     this.drawEntities();
     this.drawGhost();
@@ -364,6 +365,8 @@ class MapScene extends Phaser.Scene {
         img.setOrigin(0.5, e.flat ? (e.texture === K.fieldEffects ? 16 / 24 : 0.5) : (e.originY ?? 1));
         img.setDepth(view.depthOf(e.x, e.y, e.flat ? LAYER.overlay + 1 : LAYER.char, 0.5));
         if (e.editorOnly) img.setAlpha(0.8);
+        // outside Entity mode they are greyed out like the other layers not being edited
+        if (this.props.focus !== "entity") img.setTint(0x8a8aa0).setAlpha(0.7);
         this.entityObjects.push(img);
       }
       if (e.label) {
@@ -470,16 +473,16 @@ export function IsoCanvas(props: Props) {
   }, []);
 
   // redraw when the content, the map or the visible layers change; a new angle alone turns smoothly
-  const shown = useRef({ db: props.db, mapId: props.mapId, hideDecor: props.hideDecor, dim: props.dim, rotation: props.rotation });
+  const shown = useRef({ db: props.db, mapId: props.mapId, hideDecor: props.hideDecor, focus: props.focus, rotation: props.rotation });
   useEffect(() => {
     const s = scene.current;
     const prev = shown.current;
-    shown.current = { db: props.db, mapId: props.mapId, hideDecor: props.hideDecor, dim: props.dim, rotation: props.rotation };
+    shown.current = { db: props.db, mapId: props.mapId, hideDecor: props.hideDecor, focus: props.focus, rotation: props.rotation };
     if (!s?.view) return;
-    const onlyTurned = prev.db === props.db && prev.mapId === props.mapId && prev.hideDecor === props.hideDecor && prev.dim === props.dim && prev.rotation !== props.rotation;
+    const onlyTurned = prev.db === props.db && prev.mapId === props.mapId && prev.hideDecor === props.hideDecor && prev.focus === props.focus && prev.rotation !== props.rotation;
     if (onlyTurned) s.turnTo(props.rotation, latest.current);
     else s.show(latest.current);
-  }, [props.db, props.mapId, props.rotation, props.hideDecor, props.dim]);
+  }, [props.db, props.mapId, props.rotation, props.hideDecor, props.focus]);
 
   useEffect(() => {
     const s = scene.current;
