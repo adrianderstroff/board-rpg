@@ -1,6 +1,8 @@
 import type Phaser from "phaser";
 import type { Ctx } from "../../core/context";
 import type { UiRequest } from "../../core/script/actions";
+import type { GameEvent } from "../../core/events";
+import { wait } from "../../engine/tween";
 import { DialogRunner } from "../../core/script/dialog";
 import { parseMarkup } from "../../core/script/markup";
 import type { InputRouter } from "../../engine/input";
@@ -39,6 +41,8 @@ export function textTokens(ctx: Ctx, text: string): RichTextToken[] {
 /** Presentation hooks for requests that come out of scripts. */
 export interface RequestHandler {
   handle(req: UiRequest): Promise<void>;
+  /** Plays what a script's actions did (items gained, pieces changed…). */
+  play?(events: GameEvent[]): Promise<void>;
 }
 
 /** Plays a dialog graph in a text box; nested UI requests go to `handler`. */
@@ -68,7 +72,8 @@ export async function playDialog(
       box?.destroy();
       box = null;
       await handler.handle(step.request);
-    }
+    } else if (step.type === "events") await handler.play?.(step.events);
+    else if (step.type === "wait") await wait(scene, step.ms);
   }
   box?.destroy();
 }

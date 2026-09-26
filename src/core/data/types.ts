@@ -371,15 +371,38 @@ export type Action =
 
 // ---------- dialogs (§9) ----------
 
-export type DialogNode =
-  | { say: string; speaker?: string; face?: string }
-  | { choice: { text: string; goto?: string; when?: Condition; do?: Action[] }[] }
-  | { do: Action[] }
-  | { if: Condition; then?: string; else?: string }
-  | { goto: string }
-  | { end: true };
+/** An option of a question: its text (and icon), when it is offered, what it does and where it leads. */
+export interface ChoiceOption {
+  text: string;
+  /** Item / ability icon shown before the text. */
+  icon?: string;
+  when?: Condition;
+  do?: Script;
+  /** Continue in this dialog. */
+  goto?: string;
+}
 
-export type DialogDef = DialogNode[];
+/**
+ * One step of a script (§10.2): an action, or a block shaping the flow – a line of text, a question,
+ * a branch (`then` / `else` as nested steps, or a dialog to continue in), a pause, the end.
+ */
+export type Step =
+  | Action
+  | { say: string; speaker?: string; face?: string }
+  | { choice: ChoiceOption[] }
+  | { do: Script }
+  | { if: Condition; then?: string | Script; else?: string | Script }
+  | { goto: string }
+  | { end: true }
+  | { wait: number }
+  | { stop: true };
+
+/** Steps run one after another: events, dialogs, quests and map entry share this language. */
+export type Script = Step[];
+
+export type DialogNode = Step;
+
+export type DialogDef = Script;
 
 // ---------- quests (§10.4) ----------
 
@@ -388,15 +411,15 @@ export interface QuestStepDef {
   objective: string;
   done: Condition;
   lock?: boolean;
-  onStart?: Action[];
-  onComplete?: Action[];
+  onStart?: Script;
+  onComplete?: Script;
 }
 
 export interface QuestEndingDef {
   id: string;
   when: Condition;
   hidden?: boolean;
-  onComplete?: Action[];
+  onComplete?: Script;
 }
 
 export interface QuestDef {
@@ -408,7 +431,7 @@ export interface QuestDef {
   steps: QuestStepDef[];
   /** Default: a single ending "done" when all steps are completed. */
   endings?: QuestEndingDef[];
-  onStart?: Action[];
+  onStart?: Script;
 }
 
 // ---------- graphics definitions ----------
@@ -514,7 +537,7 @@ export type Interaction =
   | { type: "shop"; shop: string; label?: string }
   /** `wakeAt`: where the party wakes up after resting (e.g. the inn's upper floor); `dir` = which way it faces (default: the spawn's). */
   | { type: "inn"; price?: number; label?: string; wakeAt?: { map: string; spawn: string; dir?: Dir } }
-  | { type: "examine"; dialog?: string; actions?: Action[]; label?: string };
+  | { type: "examine"; dialog?: string; actions?: Script; label?: string };
 
 export interface EventPageDef {
   when?: Condition;
@@ -529,7 +552,7 @@ export interface EventPageDef {
   /** Shortcut: talk interaction. */
   dialog?: string;
   interactions?: Interaction[];
-  actions?: Action[];
+  actions?: Script;
   /** Show a shop sign icon above. */
   sign?: string;
   /** Auto/step triggers run once by default. */
@@ -639,7 +662,7 @@ export interface MapDef {
   /** Editor-only data (editor-design §6.3) – the game only reads it for Quick Play. */
   editor?: { quickPlay?: QuickPlayDef };
   /** Actions when the map is entered. */
-  onEnter?: Action[];
+  onEnter?: Script;
 }
 
 // ---------- config ----------

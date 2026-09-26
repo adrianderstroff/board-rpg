@@ -37,7 +37,7 @@ import { BoardView } from "../board/BoardView";
 import { Hud } from "../board/Hud";
 import { faceKey, HL, icon, K, miniStatusIconsOf } from "../keys";
 import { getSession, ROTATE_MS_BY_SPEED } from "../session";
-import { playDialog, showMessage, type RequestHandler } from "../ui/dialog";
+import { playDialog, showMessage, speakerFor, type RequestHandler } from "../ui/dialog";
 import { pickAbility } from "../ui/abilityMenu";
 import { CLOSE_UP, CloseUp } from "../ui/closeUp";
 import { openMainMenu } from "../ui/mainMenu";
@@ -419,8 +419,25 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
         await wait(this, 400);
         break;
       case "dialog":
-        await this.dialog(req.id);
+        await this.dialog(req.id, req.speaker);
         break;
+      case "say": {
+        this.hud.cellInfo(null);
+        const sp = speakerFor(this.ctx, req.speaker);
+        if (req.face) sp.face = K.face(req.face);
+        await showMessage(this, this.router, this.ctx, req.text, sp);
+        break;
+      }
+      case "wait":
+        await wait(this, req.ms);
+        break;
+      case "choice": {
+        // a script's question: the answer runs the rest of the script
+        this.hud.cellInfo(null);
+        const r = await pick(this, this.router, req.options.map((o) => ({ label: o.text, icon: icon(o.icon) })), { x: 8, y: 8 });
+        await this.handleResult(req.resume(req.options[r ?? 0]?.index ?? 0));
+        break;
+      }
       case "shop":
         this.hud.cellInfo(null);
         await openShop(this, this.router, this.ctx, req.id);

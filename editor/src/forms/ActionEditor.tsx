@@ -2,10 +2,22 @@ import { TeleportTarget } from "../entities/TeleportTarget";
 import { cleanupArrival, ensureArrival } from "../entities/teleports";
 import { useProjectContext } from "../projectContext";
 import type { Database } from "../../../src/core/data/database";
-import type { Action } from "../../../src/core/data/types";
+import type { Action, ChoiceOption, Condition, Script, Step } from "../../../src/core/data/types";
+import { ConditionEditor } from "./ConditionEditor";
 import { ListEditor, Num, Select, Text } from "./fields";
 
-/** Builder for the game's actions (editor-design §6.2) – what events, dialogs and quests do. */
+/**
+ * Script editor (editor-design §6.2, game-design §10.2): what events, dialogs and quests do – the
+ * game's actions plus blocks: a line of text, a question with options (each with its own steps), a
+ * branch (if / else; an if inside else reads as "else if") and a pause.
+ */
+
+const BLOCKS: [string, string][] = [
+  ["say", "Say a line"],
+  ["choice", "Ask a question"],
+  ["if", "If … then … else"],
+  ["wait", "Wait"],
+];
 
 const KINDS: [string, string][] = [
   ["setFlag", "Set flag"],
@@ -30,9 +42,21 @@ const KINDS: [string, string][] = [
   ["reveal", "Reveal a hidden event"],
 ];
 
-export const actionKind = (a: Action) => Object.keys(a)[0];
+/** A step's kind: its first key (blocks are recognised by their defining key). */
+export const actionKind = (a: Step) => {
+  for (const k of ["say", "choice", "if", "wait", "goto", "end", "stop", "do"]) if (k in a) return k;
+  return Object.keys(a)[0];
+};
 
-function defaultFor(kind: string, db: Database, mapId?: string): Action {
+function defaultFor(kind: string, db: Database, mapId?: string): Step {
+  if (kind === "say") return { say: "" };
+  if (kind === "wait") return { wait: 500 };
+  if (kind === "if") return { if: { flag: "" }, then: [], else: [] };
+  if (kind === "choice") return { choice: [{ text: "Yes", do: [] }, { text: "No", do: [] }] };
+  return defaultAction(kind, db, mapId);
+}
+
+function defaultAction(kind: string, db: Database, mapId?: string): Action {
   const first = <T,>(m: Map<string, T>) => [...m.keys()][0] ?? "";
   switch (kind) {
     case "setVar":
@@ -68,7 +92,7 @@ function defaultFor(kind: string, db: Database, mapId?: string): Action {
   }
 }
 
-export function ActionEditor({ value, onChange, db, mapId }: { value: Action[] | undefined; onChange: (a: Action[]) => void; db: Database; mapId?: string }) {
+export function ActionEditor({ value, onChange, db, mapId }: { value: Script | undefined; onChange: (a: Script) => void; db: Database; mapId?: string }) {
   const project = useProjectContext();
   const map = mapId ? db.maps.get(mapId) : undefined;
   const ids = <T,>(m: Map<string, T>, name?: (t: T) => string) => [...m.entries()].map(([id, t]) => [id, name ? `${name(t)} (${id})` : id] as [string, string]);
@@ -77,12 +101,79 @@ export function ActionEditor({ value, onChange, db, mapId }: { value: Action[] |
       items={value ?? []}
       onChange={onChange}
       add={() => ({ setFlag: "" })}
-      addLabel="+ Action"
+      addLabel="+ Step"
       render={(a, set) => {
         const kind = actionKind(a);
         const v = (a as Record<string, unknown>)[kind];
+        const nested = (steps: Script | string | undefined, write: (s: Script) => void) =>
+          typeof steps === "string" ? (
+            <span class="dim">continues in dialog {steps}</span>
+          ) : (
+            <ActionEditor value={steps} onChange={write} db={db} mapId={mapId} />
+          );
         const body = () => {
           switch (kind) {
+            case "say": {
+              const o = a as Extract<Step, { say: string }>;
+              const speakers: [string, string][] = [...[...db.npcs.entries()].map(([id, n]) => [id, n.name] as [string, string]), ...[...db.heroes.entries()].map(([id, h]) => [id, h.name] as [string, string])];
+              return (
+                <div class="block">
+                  <Select value={o.speaker} options={speakers} empty="(the event's own / narrator)" onChange={(x) => set({ ...o, speaker: x })} />
+                  <textarea rows={2} value={o.say} placeholder="What is said (markup: *bold*, {hero}…)" onInput={(e) => set({ ...o, say: e.currentTarget.value })} />
+                </div>
+              );
+            }
+            case "wait":
+              return (
+                <div class="row">
+                  <Num value={v as number} min={0} width={70} onChange={(n) => set({ wait: n ?? 0 })} /> ms
+                </div>
+              );
+            case "if": {
+              const o = a as Extract<Step, { if: Condition }>;
+              return (
+                <div class="block">
+                  <ConditionEditor value={o.if} onChange={(c) => set({ ...o, if: c ?? { always: true } })} db={db} flags={[]} />
+                  <div class="branch">
+                    <span class="branch-label">then</span>
+                    {nested(o.then, (s) => set({ ...o, then: s }))}
+                  </div>
+                  <div class="branch">
+                    <span class="branch-label">else</span>
+                    {nested(o.else, (s) => set({ ...o, else: s }))}
+                  </div>
+                </div>
+              );
+            }
+            case "choice": {
+              const o = a as Extract<Step, { choice: ChoiceOption[] }>;
+              return (
+                <div class="block">
+                  <ListEditor
+                    items={o.choice}
+                    onChange={(l) => set({ choice: l })}
+                    add={() => ({ text: "", do: [] })}
+                    addLabel="+ Option"
+                    render={(c, setC) => (
+                      <div class="block">
+                        <div class="row">
+                          <Text value={c.text} placeholder="option text" onChange={(x) => setC({ ...c, text: x ?? "" })} />
+                          <Text value={c.icon} placeholder="icon" onChange={(x) => setC({ ...c, icon: x || undefined })} />
+                        </div>
+                        <div class="branch">
+                          <span class="branch-label">shown when</span>
+                          <ConditionEditor value={c.when} onChange={(w) => setC({ ...c, when: w })} db={db} flags={[]} />
+                        </div>
+                        <div class="branch">
+                          <span class="branch-label">then</span>
+                          {nested(c.do, (s) => setC({ ...c, do: s }))}
+                        </div>
+                      </div>
+                    )}
+                  />
+                </div>
+              );
+            }
             case "setFlag":
             case "clearFlag":
               return <Text value={v as string} list="known-flags" placeholder="flag name" onChange={(x) => set({ [kind]: x ?? "" } as Action)} />;
@@ -171,13 +262,22 @@ export function ActionEditor({ value, onChange, db, mapId }: { value: Action[] |
           }
         };
         return (
-          <div class="row wrap">
+          <div class="row wrap step">
             <select value={kind} onChange={(e) => set(defaultFor(e.currentTarget.value, db, mapId))}>
-              {KINDS.map(([k, label]) => (
-                <option key={k} value={k}>
-                  {label}
-                </option>
-              ))}
+              <optgroup label="Blocks">
+                {BLOCKS.map(([k, label]) => (
+                  <option key={k} value={k}>
+                    {label}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Actions">
+                {KINDS.map(([k, label]) => (
+                  <option key={k} value={k}>
+                    {label}
+                  </option>
+                ))}
+              </optgroup>
             </select>
             {body()}
           </div>

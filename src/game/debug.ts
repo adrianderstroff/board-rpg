@@ -93,6 +93,13 @@ export function installDebug(game: Phaser.Game) {
       const p = s.view.cellTop({ x, y });
       return { x: p.x - s.cameras.main.scrollX, y: p.y - s.cameras.main.scrollY };
     },
+    /** Is the centre of a cell's top face visible – does a click there pick that cell (not a wall in front)? */
+    pickable(x: number, y: number) {
+      const s = game.scene.getScene("board") as unknown as { view: { cellTop(p: { x: number; y: number }): { x: number; y: number }; cellAt(wx: number, wy: number): { x: number; y: number } | null } };
+      const t = s.view.cellTop({ x, y });
+      const c = s.view.cellAt(t.x, t.y);
+      return !!c && c.x === x && c.y === y;
+    },
     /** Skips the journey inland: main quest active, party in Sandhollow (the original demo start). */
     skipPrologue() {
       runActions(ctx(), [{ completeQuest: "into_the_desert" }, { startQuest: { id: "road_to_oasis", activate: true } }]);

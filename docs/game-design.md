@@ -340,8 +340,22 @@ While **no living enemy is on the board** (peaceful maps, or a wild map once eve
 ### 10.1 Conditions (shared mini-language)
 YAML objects: `flag`, `not`, `all`, `any`, `item {id,count}`, `gold`, `var {name, op, value}`, `talkedTo`, `defeated {enemy|piece, count}`, `defeatedAllOn {map}`, `onMap`, `questActive`, `questDone`, `questStep`, `partyHas`, `level`.
 
-### 10.2 Actions
-`setFlag`, `clearFlag`, `setVar`, `addVar`, `giveItem`, `takeItem`, `giveGold`, `takeGold`, `startQuest`, `completeQuest`, `setQuestStep`, `dialog`, `shop`, `inn`, `healParty`, `spawnEnemy`, `removeEvent`, `teleport`, `message`.
+### 10.2 Actions and scripts
+`setFlag`, `clearFlag`, `setVar`, `addVar`, `giveItem`, `takeItem`, `giveGold`, `takeGold`, `startQuest`, `completeQuest`, `setQuestStep`, `dialog`, `shop`, `inn`, `healParty`, `spawnEnemy`, `removeEvent`, `teleport`, `message`, `reveal`.
+
+Wherever actions go – event pages, close-up options, map entry, quest steps, dialogs – they form a
+**script**: steps run one after another. Besides actions a step can be a block:
+- `say` (a line of text; `speaker`, `face`),
+- `choice` (a question: options with `text`, optional `icon`, `when`, their own steps in `do`, or
+  `goto` another dialog),
+- `if` (a condition; `then` / `else` hold nested steps – an `if` inside `else` is an "else if" – or,
+  in dialogs, the dialog to continue in),
+- `wait` (ms), `stop` (ends the whole script), and in dialogs `goto` / `end`.
+
+A dialog is such a script (§9); `{ dialog: id }` inside a script plays that dialog. State changes
+happen as each step is reached; text, shops, teleports are shown in order. A question pauses the
+script until it is answered, then the chosen option's steps run, then the rest. Scripts run to their
+end within the scene – the game is saved before or after one, never in the middle (like dialogs).
 
 ### 10.3 Map events (RPG-Maker style)
 An event is an object on a cell with **pages**. The last page whose condition holds is active and defines graphic, facing, movement behavior, trigger (`interact`, `step`, `auto` on map enter) and the interaction list. Used for NPCs, shopkeepers, chests, signs, hidden items and triggers.
@@ -685,3 +699,5 @@ Where the rough ideas were incomplete or conflicting, these rules were chosen:
 38. **Teleports** (user decision): arrivals (`spawns`) are never placed by themselves – they come with the exit or teleport action that leads there and go with the last one; exits are one-way by default, "way back" creates the return exit, and every arrival lies one cell in front of an exit so the party can't bounce back and forth (RPG Maker style). The game start and the Quick Play start are arrivals with a role (§5.3).
 39. **Entities with states and handlers** instead of pages and special kinds (user direction): gates, floor switches and hidden traps become entity presets; wall signs become decor; exits, arrivals and enemies stay kinds of their own (§10.3).
 40. **One entity per cell** in the editor: placing a new one or a copy only works on a free cell.
+41. **One script language** (R3): actions and dialog nodes are steps of one kind of script, with if / else, questions (with icons), text and pauses; existing dialogs and action lists stay valid as they are. Scripts aren't saved half-way – a save waits until one has ended (§10.2).
+42. **Clicks pick what is drawn** (user request, made for the editor – the game shares the renderer): the cell under the pointer is the front-most column drawn there, so a wall in front hides the cells behind it instead of passing the click through.

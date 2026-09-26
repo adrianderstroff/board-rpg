@@ -1140,10 +1140,17 @@ const scenarios = {
     d.expect((await d.dbg(`d.rotation()`)) === 1, "map rotated a quarter turn");
     await d.shot("rotated");
     await d.startMove();
-    await d.clickCell(4, 4);
+    // a cell two steps away whose top is visible in this view (the houses in front hide some – clicks pick what is drawn)
+    let target = [4, 4];
+    for (const [x, y] of [[4, 4], [5, 4], [4, 5], [6, 2], [5, 3], [4, 3]])
+      if (await d.dbg(`d.pickable(${x}, ${y})`)) {
+        target = [x, y];
+        break;
+      }
+    await d.clickCell(target[0], target[1]);
     await sleep(900);
     const moved = await d.dbg(`(p => [p.x, p.y])(Object.values(d.state().board.pieces).find(p => p.members.includes("${actor}")))`);
-    d.expect(moved[0] === 4 && moved[1] === 4, `clicking a cell on the rotated map moved there (${moved})`);
+    d.expect(moved[0] === target[0] && moved[1] === target[1], `clicking a cell on the rotated map moved there (${moved}, target ${target})`);
     await d.key("q", 1, 1200);
     d.expect((await d.dbg(`d.rotation()`)) === 0, "rotated back");
   },

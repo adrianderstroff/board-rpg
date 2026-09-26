@@ -1,6 +1,6 @@
 import { BoardGrid } from "../board/grid";
 import type { Database } from "./database";
-import type { Action, BattleUse, BoardUse, Condition, DialogNode, EffectDef, GraphicsRef, PatternRef } from "./types";
+import type { Action, BattleUse, BoardUse, Condition, DialogNode, EffectDef, GraphicsRef, PatternRef, Script } from "./types";
 
 /**
  * Cross-reference check of all content. Returns human readable problems (empty = OK).
@@ -61,8 +61,32 @@ export function validateContent(db: Database): string[] {
       else if (!q.steps.some((s) => s.id === c.questStep.step)) err(where, `quest ${q.id} has no step "${c.questStep.step}"`);
     } else if ("partyHas" in c) has(db.heroes, c.partyHas, where, "hero");
   };
-  const actions = (list: Action[] | undefined, where: string) => {
-    for (const a of list ?? []) {
+  /** Checks a script: its actions and, inside blocks, the branches, options and jumps. */
+  const actions = (list: Script | undefined, where: string) => {
+    for (const step of list ?? []) {
+      if ("say" in step || "wait" in step || "end" in step || "stop" in step) continue;
+      if ("goto" in step) {
+        has(db.dialogs, step.goto, where, "dialog");
+        continue;
+      }
+      if ("do" in step) {
+        actions(step.do, where);
+        continue;
+      }
+      if ("if" in step) {
+        condition(step.if, where);
+        for (const b of [step.then, step.else]) typeof b === "string" ? has(db.dialogs, b, where, "dialog") : actions(b, where);
+        continue;
+      }
+      if ("choice" in step) {
+        for (const c of step.choice) {
+          if (c.goto) has(db.dialogs, c.goto, where, "dialog");
+          condition(c.when, where);
+          actions(c.do, where);
+        }
+        continue;
+      }
+      const a = step as Action;
       if ("giveItem" in a) itemRef(a.giveItem, where);
       else if ("takeItem" in a) itemRef(a.takeItem, where);
       else if ("startQuest" in a) has(db.quests, typeof a.startQuest === "string" ? a.startQuest : a.startQuest.id, where, "quest");
@@ -140,21 +164,7 @@ export function validateContent(db: Database): string[] {
   // dialogs
   for (const [id, nodes] of db.dialogs) {
     const w = `dialog ${id}`;
-    for (const n of nodes as DialogNode[]) {
-      if ("goto" in n) has(db.dialogs, n.goto, w, "dialog");
-      if ("if" in n) {
-        condition(n.if, w);
-        if (n.then) has(db.dialogs, n.then, w, "dialog");
-        if (n.else) has(db.dialogs, n.else, w, "dialog");
-      }
-      if ("do" in n) actions(n.do, w);
-      if ("choice" in n)
-        for (const c of n.choice) {
-          if (c.goto) has(db.dialogs, c.goto, w, "dialog");
-          condition(c.when, w);
-          actions(c.do, w);
-        }
-    }
+    actions(nodes as DialogNode[], w);
   }
   // quests
   for (const q of db.quests.values()) {

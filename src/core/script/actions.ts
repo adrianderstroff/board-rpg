@@ -1,16 +1,21 @@
 import { computeStats, isAlive } from "../chars/character";
 import type { Ctx } from "../context";
-import type { Action } from "../data/types";
+import type { Action, Script } from "../data/types";
 import type { GameEvent } from "../events";
 import { addItem, removeItem } from "../items/inventory";
-import { board, mapMemory, reconcile, spawnMapEnemy, syncEvents } from "../board/board";
-import { completeQuest, evaluateQuests, setQuestStep, startQuest } from "./quests";
+import { board, mapMemory, reconcile, spawnMapEnemy } from "../board/board";
+import { completeQuest, setQuestStep, startQuest } from "./quests";
+import { ScriptRunner } from "./runner";
 
 import type { Dir } from "../util/grid";
 
 /** Things only the presentation layer can do; returned to it in order. */
 export type UiRequest =
-  | { type: "dialog"; id: string }
+  | { type: "dialog"; id: string; speaker?: string }
+  | { type: "say"; text: string; speaker?: string; face?: string }
+  | { type: "wait"; ms: number }
+  /** A question in a script: the script goes on with `resume(the chosen option)`. */
+  | { type: "choice"; options: { text: string; icon?: string; index: number }[]; resume: (index: number) => ScriptResult }
   | { type: "shop"; id: string }
   | { type: "inn"; price: number; wakeAt?: { map: string; spawn: string; dir?: Dir } }
   | { type: "message"; text: string }
@@ -31,18 +36,34 @@ export function merge(into: ScriptResult, from: ScriptResult): ScriptResult {
 
 const idCount = (v: string | { id: string; count?: number }) => (typeof v === "string" ? { id: v, count: 1 } : { id: v.id, count: v.count ?? 1 });
 
-/** §10.2 – executes actions; state changes happen immediately, UI work is returned as requests. */
-export function runActions(ctx: Ctx, actions: Action[] | undefined): ScriptResult {
+/**
+ * §10.2 – runs a script as far as it can go without the player: state changes happen at once, what
+ * the presentation shows (text, dialogs, shops…) comes back as requests in order. A question stops
+ * it; its request resumes the script with the answer.
+ */
+export function runActions(ctx: Ctx, script: Script | undefined, speaker?: string): ScriptResult {
+  return drive(new ScriptRunner(ctx, script ?? [], speaker, true));
+}
+
+function drive(runner: ScriptRunner, choice?: number): ScriptResult {
   const out = emptyResult();
-  for (const a of actions ?? []) merge(out, runAction(ctx, a));
-  if (actions?.length && ctx.state.board) {
-    out.events.push(...syncEvents(ctx));
-    merge(out, evaluateQuests(ctx));
+  for (let c = choice; ; c = undefined) {
+    const s = runner.next(c);
+    if (s.type === "end") break;
+    if (s.type === "events") out.events.push(...s.events);
+    else if (s.type === "request") out.requests.push(s.request);
+    else if (s.type === "say") out.requests.push({ type: "say", text: s.text, speaker: s.speaker, face: s.face });
+    else if (s.type === "wait") out.requests.push({ type: "wait", ms: s.ms });
+    else {
+      out.requests.push({ type: "choice", options: s.options, resume: (index) => drive(runner, index) });
+      break;
+    }
   }
   return out;
 }
 
-function runAction(ctx: Ctx, a: Action): ScriptResult {
+/** One action (§10.2); the runner calls it as the script reaches it. */
+export function runAction(ctx: Ctx, a: Action): ScriptResult {
   const s = ctx.state;
   const out = emptyResult();
   if ("setFlag" in a) s.flags[a.setFlag] = true;
@@ -67,6 +88,7 @@ function runAction(ctx: Ctx, a: Action): ScriptResult {
     merge(out, completeQuest(ctx, id, ending ?? "done"));
   } else if ("setQuestStep" in a) merge(out, setQuestStep(ctx, a.setQuestStep.quest, a.setQuestStep.step));
   else if ("dialog" in a) out.requests.push({ type: "dialog", id: a.dialog });
+  else if ("say" in a || "choice" in a || "if" in a) throw new Error("Script blocks run in a ScriptRunner");
   else if ("shop" in a) out.requests.push({ type: "shop", id: a.shop });
   else if ("inn" in a) out.requests.push({ type: "inn", price: a.inn });
   else if ("message" in a) out.requests.push({ type: "message", text: a.message });

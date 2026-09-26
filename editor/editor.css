@@ -169,6 +169,19 @@ select.bad, input.bad { border-color: var(--bad); }
 .list-body { flex: 1; min-width: 0; }
 .list-tools { display: flex; gap: 2px; }
 .list-tools button { padding: 2px 6px; }
+/* script blocks: nested steps under their branch */
+.step > .block { flex: 1 0 100%; display: flex; flex-direction: column; gap: 4px; }
+.block .block { display: flex; flex-direction: column; gap: 4px; }
+.block textarea { width: 100%; resize: vertical; }
+/* inputs claim ~150px of intrinsic width: let block rows shrink to the panel instead */
+.step > .block, .block .block, .block .list-editor, .block .list-row { min-width: 0; }
+.block .row { flex-wrap: nowrap; min-width: 0; }
+.block .row > input { flex: 1 1 0; width: 0; min-width: 0; }
+.block .row > input[placeholder="icon"] { flex: 0 0 64px; width: 64px; }
+.block .list-body { min-width: 0; }
+.block select { min-width: 0; max-width: 100%; }
+.branch { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 6px; align-items: start; border-left: 2px solid var(--line); padding-left: 6px; }
+.branch-label { color: var(--dim); font-size: 12px; padding-top: 5px; }
 .add-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin-bottom: 10px; }
 .add-grid button { font-size: 12px; padding: 4px 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* the entities on the map: click a row to select one */

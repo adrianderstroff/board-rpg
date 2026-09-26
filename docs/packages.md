@@ -295,8 +295,10 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ Signs placed on a block face in Decor mode (face with A / D, block with W / S); no Wall sign entity
 - ☑ See-through preview on the chosen side (replacing a sign there); pick takes a sign; "faces away" note
 
-## R3 · Script runner ☐
-- ☐ Sequential scripts with if / elif / else, choice (icons), wait, call, stop; pausable and saved (save games, undo); dialogs run as scripts
+## R3 · Script runner ☑
+- ☑ Sequential scripts with if / elif / else, choice (icons), say, wait, dialog call, stop; a question pauses the script and the answer resumes it; dialogs run as scripts (existing content unchanged); not saved half-way (decision 41)
+- ☑ Script editor: blocks (say, question with options, if / else, wait) with nested steps
+- ☑ Game: text, pauses and questions (icons) from scripts; effects inside dialogs are played
 
 ## R4 · Entity states ☐
 - ☐ States (look, passability, hidden) saved per map; set state action, "in state" condition; pages → states + a map-loaded handler

@@ -247,9 +247,12 @@ are shared by quests, dialogs, map events and exits (§10). The editor exposes e
 - **Condition builder**: a tree of the game's conditions (flag, item, gold, variable compare,
   talked to, defeated, all defeated on a map, on map, quest active / done / step, level,
   party has, all / any / not). Each leaf is a small form with pickers.
-- **Action builder**: an ordered list of the game's actions (set/clear flag, set/add variable,
-  give/take item, give/take gold, start/complete quest, set quest step, dialog, shop, inn, heal
-  party, remove event, spawn enemy, teleport, message, reveal) – each with pickers.
+- **Script editor** (the action builder): an ordered list of steps – the game's actions (set/clear
+  flag, set/add variable, give/take item, give/take gold, start/complete quest, set quest step,
+  dialog, shop, inn, heal party, remove event, spawn enemy, teleport, message, reveal) each with
+  pickers, and blocks (game-design §10.2): *Say a line* (speaker + text), *Ask a question* (options
+  with text, icon, "shown when" and their own steps), *If … then … else* (condition, nested steps;
+  an if inside else is an else-if), *Wait*.
 - **Teleport shortcut**: an Exit entity is the simple case (walk onto it → another map). For a
   scripted teleport (after a dialog, a choice) the action builder's *Teleport* picks map + spawn
   on a mini map.
