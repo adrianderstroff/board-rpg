@@ -111,7 +111,7 @@ button.on { background: #124e89; border-color: var(--accent-2); color: #fff; }
 .check { display: inline-flex; gap: 5px; align-items: center; color: var(--dim); }
 
 /* folder tabs across the whole inspector: the active one opens into the panel below (no bottom line) */
-.tabs { display: flex; gap: 4px; margin: -10px -10px 10px; padding: 8px 8px 0; border-bottom: 1px solid var(--line); background: var(--bg); }
+.tabs { display: flex; margin: -10px -10px 10px; padding: 8px 0 0; border-bottom: 1px solid var(--line); background: var(--bg); }
 .tabs button { flex: 1; margin-bottom: -1px; background: none; border: 1px solid transparent; border-radius: var(--radius) var(--radius) 0 0; color: var(--dim); }
 .tabs button:hover:not(:disabled) { border-color: transparent; color: #fff; }
 .tabs button.on, .tabs button.on:hover:not(:disabled) { background: var(--panel); border-color: var(--line) var(--line) var(--panel); color: var(--text); }
