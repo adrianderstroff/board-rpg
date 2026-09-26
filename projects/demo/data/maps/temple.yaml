@@ -1,0 +1,119 @@
+# Temple of the Still Sky (§18.8): three monks meditate on cushions; sitting on the free cushion
+# facing them starts the conversation. The hidden door behind them opens once the tokens are back.
+name: Temple of the Still Sky
+kind: peaceful
+chipset: lib:desert
+battleback: lib:temple
+music: lib:temple
+
+legend:
+  terrain:
+    W: temple_wall
+    t: tatami
+    f: floorboards
+    O: doorway
+  decor:
+    B: buddha_statue
+    I: incense_burner
+    L: stone_lantern
+    p: pillow
+
+layers:
+  terrain: |
+    WWWWWWWWOW
+    Wttttttttt
+    Wttttttttt
+    Wttttttttt
+    Wttttttttt
+    Wttttttttt
+    Wttttttttt
+    Wfffffffff
+    WffffOffff
+  overhead: |
+    ........W.
+    ..........
+    ..........
+    ..........
+    ..........
+    ..........
+    ..........
+    ..........
+    ..........
+  overheadHeight: |
+    ........5.
+    ..........
+    ..........
+    ..........
+    ..........
+    ..........
+    ..........
+    ..........
+    ..........
+  height: |
+    5555555505
+    5000000000
+    5000000000
+    5000000000
+    5000000000
+    5000000000
+    5000000000
+    5000000000
+    5000000000
+  decor: |
+    ..........
+    .L.I.B.I.L
+    ..........
+    ...p.p.p..
+    ..........
+    .....p....
+    .I........
+    ..........
+    ..........
+
+spawns:
+  from_mountain: { x: 5, y: 7, dir: N }
+  from_hall: { x: 8, y: 1, dir: S }
+
+exits:
+  - { x: 5, y: 8, dir: S, to: temple_mountain, spawn: from_temple, label: Temple Mountain, door: true }
+  - { x: 8, y: 0, dir: N, to: hall_of_fears, spawn: from_temple, label: Hall of Fears, door: true }
+
+events:
+  - id: abbot
+    x: 5
+    y: 3
+    states:
+      idle: { npc: monk_old, dir: S }
+    on:
+      - { on: interact, options: [{ type: talk, dialog: abbot_talk }] }
+  - id: monk_left
+    x: 3
+    y: 3
+    states:
+      idle: { npc: monk_a, dir: S }
+    on:
+      - { on: interact, options: [{ type: talk, dialog: monk_a_talk }] }
+  - id: monk_right
+    x: 7
+    y: 3
+    states:
+      idle: { npc: monk_b, dir: S }
+    on:
+      - { on: interact, options: [{ type: talk, dialog: monk_b_talk }] }
+  # the free cushion facing the monks
+  - id: free_cushion
+    x: 5
+    y: 5
+    states:
+      idle: {}
+    on:
+      - { on: enter, do: [{ dialog: monks_talk }] }
+  - id: hidden_door
+    x: 8
+    y: 0
+    states:
+      closed: { decor: gate_bars, pass: solid }
+      open: { pass: walk }
+    on:
+      - { on: becomes, when: { flag: tokens_returned }, do: [{ setState: { event: hidden_door, state: open } }] }
+      - { on: becomes, when: { all: [{ not: { flag: tokens_returned } }, { state: { event: hidden_door, is: open } }] }, do: [{ setState: { event: hidden_door, state: closed } }] }

@@ -1,0 +1,73 @@
+# Sandhollow's inn, ground floor (§18): talk to Dara across the counter; the stairs lead up to the beds.
+name: The Sleeping Camel
+kind: peaceful
+chipset: lib:desert
+battleback: lib:interior
+music: lib:village
+
+legend:
+  terrain:
+    W: plaster_wall
+    f: floorboards
+    r: rug
+    O: doorway
+  decor:
+    B: bookshelf
+    t: table
+    b: bed
+    C: counter
+    U: stairs_up
+    D: stairs_down
+    s: scroll_shelf
+
+layers:
+  terrain: |
+    WWWWWWW
+    Wffffff
+    Wffffff
+    Wffffff
+    Wfrrrff
+    Wfrrrff
+    WffOfff
+  height: |
+    3333333
+    3000000
+    3000000
+    3000000
+    3000000
+    3000000
+    3000000
+  decor: |
+    .......
+    ...B..U
+    .CC....
+    .....t.
+    .......
+    .......
+    .......
+
+spawns:
+  from_town: { x: 3, y: 5, dir: N }
+  from_upper: { x: 5, y: 1, dir: W }
+
+exits:
+  - { x: 3, y: 6, dir: S, to: sandhollow, spawn: from_inn, label: Sandhollow, door: true }
+  - { x: 6, y: 1, dir: N, to: sandhollow_inn_upper, spawn: from_stairs, label: Upstairs, door: true }
+
+events:
+  - id: innkeeper
+    x: 1
+    y: 1
+    states:
+      idle: { npc: innkeeper, dir: S }
+
+  - id: inn_counter
+    x: 3
+    y: 2
+    states:
+      idle: { keeper: innkeeper, decor: counter, sign: sign_inn }
+    on:
+      - on: interact
+        options:
+          - { type: inn, label: Rest, wakeAt: { map: sandhollow_inn_upper, spawn: bed } }
+          - { type: talk, dialog: inn_talk }

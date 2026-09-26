@@ -1,17 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { readProject } from "../../vite-plugin-files";
 import type { MapDef } from "../../../src/core/data/types";
 import { Project, type FileApi } from "../project";
 import { arrivalUses, createTeleport, deleteArrival, deleteExit, frontOf, mapFile, placeStart, renameArrival, retargetExit } from "./teleports";
 
 /** The real data files in memory. */
 function memoryApi(): FileApi {
-  const files: Record<string, string> = {};
-  const walk = (dir: string): string[] =>
-    readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(dir, e.name)) : e.name.endsWith(".yaml") ? [join(dir, e.name)] : []));
-  for (const abs of walk("data")) files[relative(".", abs).split(sep).join("/")] = readFileSync(abs, "utf8");
-  return { load: async () => ({ files, music: [] }), save: async () => {} };
+  const { files, roots } = readProject(".");
+  return { load: async () => ({ files, music: [], roots }), save: async () => {} };
 }
 
 async function project() {

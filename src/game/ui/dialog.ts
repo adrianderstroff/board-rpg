@@ -20,7 +20,7 @@ export function speakerFor(ctx: Ctx, id: string | undefined): Speaker {
   const hero = ctx.db.heroes.get(id);
   if (hero) return { name: hero.name, face: hero.face ? K.face(hero.face) : undefined };
   const npc = ctx.db.npcs.get(id);
-  if (npc) return { name: npc.name, face: K.face(npc.face ?? "generic") };
+  if (npc) return { name: npc.name, face: npc.face ? K.face(npc.face) : undefined };
   return { name: id };
 }
 

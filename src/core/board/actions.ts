@@ -42,6 +42,7 @@ function shock(ctx: Ctx, user: Character, target: Pos, power: number, reach?: nu
   return events;
 }
 import { abilityUsed, markAbilityUsed } from "./turns";
+import { BUILTIN } from "../data/builtins";
 
 // ---------- targeting ----------
 
@@ -289,5 +290,5 @@ export function canStealFromNpc(ctx: Ctx, actorId: string, npcPieceId: string): 
   const npc = board(ctx).pieces[npcPieceId];
   const npcChar = npc?.members[0] ? getChar(ctx, npc.members[0]) : undefined;
   if (!npcChar || npcChar.looted || !ctx.db.npc(npcChar.def).steal?.length) return false;
-  return knownAbilities(ctx.db, getChar(ctx, actorId)).includes("steal") && !abilityUsed(ctx, actorId);
+  return knownAbilities(ctx.db, getChar(ctx, actorId)).includes(BUILTIN.steal) && !abilityUsed(ctx, actorId);
 }

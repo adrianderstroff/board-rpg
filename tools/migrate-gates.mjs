@@ -3,7 +3,7 @@
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { parseDocument, isSeq } from "yaml";
 
-const dir = "data/maps";
+const dir = "projects/demo/data/maps";
 for (const file of readdirSync(dir).filter((f) => f.endsWith(".yaml"))) {
   const path = `${dir}/${file}`;
   const text = readFileSync(path, "utf8");

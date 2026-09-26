@@ -1,6 +1,6 @@
 # Audio (generated)
 
-`npm run audio` (`node tools/audio/generate.mjs`) generates every WAV file in this folder. Do not edit the files by hand. Change the generator in `tools/audio/` and run it again. The output is deterministic because all noise is seeded, so the same code always writes the same bytes.
+`npm run audio` (`node tools/audio/generate.mjs`) generates every WAV file: the sound effects here (`sfx/`, the runtime's own) and the music into the library (`library/v1/assets/audio/music/`, docs/projects.md). Do not edit the files by hand. Change the generator in `tools/audio/` and run it again. The output is deterministic because all noise is seeded, so the same code always writes the same bytes.
 
 - Format: RIFF WAV, 16-bit PCM, mono, **22050 Hz**.
 - SFX peak at **-3 dBFS** and have 5 ms fade-in/out. Four small UI and ambient sounds are quieter on purpose: `cursor` -9, `dialog_blip` -12 and `step` -15 dBFS. The `sleep` jingle peaks at -6 dBFS so it stays gentle over a black screen.

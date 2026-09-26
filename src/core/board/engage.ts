@@ -7,6 +7,7 @@ import type { Pos } from "../util/grid";
 import { key } from "../util/grid";
 import { aliveMembers, board, isGameOver, isHidden, mustPieceOf, piecesAt, reconcile } from "./board";
 import { markMoved, movePiece, moveOptions } from "./moves";
+import { BUILTIN } from "../data/builtins";
 
 /**
  * Battle type when `attacker` engages (§8.4): heroes may get a First Strike (always when hidden),
@@ -83,7 +84,7 @@ export function resolveEngagement(ctx: Ctx, result: BattleState): GameEvent[] {
   }
   if (attackerNow) {
     // Engaging reveals the attacker.
-    for (const c of aliveMembers(ctx, attackerNow)) removeStatus(c, "hidden");
+    for (const c of aliveMembers(ctx, attackerNow)) removeStatus(c, BUILTIN.hidden);
   }
   if (isGameOver(ctx)) events.push({ type: "message", text: "gameover" });
   return events;

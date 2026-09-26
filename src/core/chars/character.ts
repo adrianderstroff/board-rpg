@@ -3,6 +3,7 @@ import type { Database } from "../data/database";
 import type { Element, EquipSlot, GraphicsRef, Stats, StatKey } from "../data/types";
 import { STAT_KEYS } from "../data/types";
 import type { Character } from "../state/types";
+import { BUILTIN } from "../data/builtins";
 
 // ---------- creation ----------
 
@@ -92,7 +93,7 @@ export function descriptionOf(db: Database, c: Character): string {
 export function movePatternOf(db: Database, c: Character): string {
   if (c.kind === "hero") return db.cls(c.classId!).move;
   if (c.kind === "enemy") return db.enemy(c.def).move;
-  return db.npc(c.def).move ?? "walk1";
+  return db.npc(c.def).move ?? BUILTIN.npcMove;
 }
 
 // ---------- stats (§3.1) ----------

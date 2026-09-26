@@ -1,0 +1,42 @@
+# Global rules and the new-game setup. See docs/game-design.md.
+title: Board RPG
+
+start:
+  map: saltmere_harbor
+  spawn: start
+  party: [lib:aldric, lib:mira, lib:kit, lib:tarek]
+  gold: 300
+  items:
+    lib:potion: 3
+    lib:antidote: 2
+    lib:phoenix_feather: 1
+    lib:fire_bomb: 1
+  quest: into_the_desert
+
+maxLevel: 50
+maxPartySize: 4
+
+# EXP needed to reach level L = floor(expBase * (L-1)^expExponent)
+expBase: 12
+expExponent: 2.1
+
+# Damage = ATK * power * damageFactor * defenseScale / (defenseScale + DEF)   (§12.3)
+defenseScale: 24
+damageFactor: 1.4
+critChance: 0.05
+hitChance: 0.95
+
+firstStrikeChance: 0.25
+ambushChance: 0.25
+
+innPricePerHero: 10
+
+# Music tracks (lib:<name> = library/v1/assets/audio/music/<name>.wav). Maps choose their own via `music:`.
+music:
+  title: lib:title
+  battle: lib:battle
+  boss: lib:boss
+sellRatio: 0.5
+boardBurnMinHp: 1
+# Free exploration (no enemies): field effects (fire spreading, ice melting) advance by time.
+exploreRoundMs: 1500

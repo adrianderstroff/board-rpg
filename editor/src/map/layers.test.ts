@@ -94,7 +94,7 @@ describe("map layers (editor-design §5.2)", () => {
 describe("wall signs (Decor mode)", () => {
   it("paints a sign on one side of a block, replacing that side's sign; right click removes the cell's signs", async () => {
     const { setWallSigns } = await import("./layers");
-    const doc = parseDocument(readFileSync("data/maps/sandhollow.yaml", "utf8"));
+    const doc = parseDocument(readFileSync("projects/demo/data/maps/sandhollow.yaml", "utf8"));
     const map = () => doc.toJS() as MapDef;
     const before = map().wallDecor!.length;
     setWallSigns(doc, map(), [{ x: 4, y: 4 }], "magic", "E", 3);

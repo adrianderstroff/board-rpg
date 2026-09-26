@@ -1,18 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { readFileSync } from "node:fs";
+import { readProject } from "../vite-plugin-files";
 import { Project, type FileApi } from "./project";
 
 /** The real data files, saved into memory instead of onto disk. */
 function memoryApi(): FileApi & { written: Record<string, string> } {
-  const files: Record<string, string> = {};
-  const walk = (dir: string): string[] =>
-    readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(dir, e.name)) : e.name.endsWith(".yaml") ? [join(dir, e.name)] : []));
-  for (const abs of walk("data")) files[relative(".", abs).split(sep).join("/")] = readFileSync(abs, "utf8");
+  const { files, roots } = readProject(".");
   const written: Record<string, string> = {};
   return {
     written,
-    load: async () => ({ files, music: ["village", "boss"] }),
+    load: async () => ({ files, music: ["lib:village", "lib:boss"], roots }),
     save: async (path, text) => void (written[path] = text),
   };
 }
@@ -31,7 +28,7 @@ describe("editor project (editor-design §2)", () => {
     await p.load();
     expect(p.content.db?.map("sandhollow").name).toBe("Sandhollow");
     expect(p.content.problems).toEqual([]);
-    expect(p.music).toEqual(["boss", "village"]);
+    expect(p.music).toEqual(["lib:boss", "lib:village"]);
     expect(p.dirtyPaths()).toEqual([]);
   });
 
@@ -39,30 +36,27 @@ describe("editor project (editor-design §2)", () => {
     const api = memoryApi();
     const p = new Project(api);
     await p.load();
-    p.edit("data/maps/sandhollow.yaml", "Music", (d) => d.set("music", "boss"));
+    p.edit("data/maps/sandhollow.yaml", "Music", (d) => d.set("music", "lib:boss"));
     expect(p.dirtyPaths()).toEqual(["data/maps/sandhollow.yaml"]);
-    expect(p.content.db?.map("sandhollow").music).toBe("boss");
+    expect(p.content.db?.map("sandhollow").music).toBe("lib:boss");
     await p.save();
     expect(Object.keys(api.written)).toEqual(["data/maps/sandhollow.yaml"]);
     // only the changed line differs from the file on disk
-    const before = lines(readFileSync("data/maps/sandhollow.yaml", "utf8"));
+    const before = lines(readFileSync("projects/demo/data/maps/sandhollow.yaml", "utf8"));
     const after = lines(api.written["data/maps/sandhollow.yaml"]);
     expect(after.length).toBe(before.length);
-    expect(after.filter((l, i) => l !== before[i])).toEqual(["music: boss"]);
+    expect(after.filter((l, i) => l !== before[i])).toEqual(["music: lib:boss"]);
     expect(p.dirtyPaths()).toEqual([]);
   });
 
-  it("an edit in an aligned file keeps the other lines' columns", async () => {
+  it("the library is read-only; its content shows up with lib: ids", async () => {
     const api = memoryApi();
     const p = new Project(api);
     await p.load();
-    p.edit("data/chipsets/desert.yaml", "Sand", (d) => d.setIn(["terrains", "sand", "name"], "Fine Sand"));
-    await p.save();
-    const before = lines(readFileSync("data/chipsets/desert.yaml", "utf8"));
-    const after = lines(api.written["data/chipsets/desert.yaml"]);
-    const changed = after.filter((l, i) => l !== before[i]);
-    expect(changed).toHaveLength(1);
-    expect(changed[0]).toContain("Fine Sand");
+    expect(() => p.edit("library/v1/data/chipsets/desert.yaml", "Sand", (d) => d.setIn(["terrains", "sand", "name"], "Fine Sand"))).toThrow(/read-only/);
+    expect(p.dirtyPaths()).toEqual([]);
+    expect(p.content.db?.heroes.get("lib:aldric")?.name).toBe("Aldric");
+    expect(p.content.db?.chipsets.get("lib:desert")?.image).toBe("library/v1/assets/chipsets/desert.png");
   });
 
   it("undo/redo; edits of one group (a paint stroke) are one step", async () => {
@@ -95,12 +89,12 @@ describe("editor project (editor-design §2)", () => {
     const store = memoryStore();
     const a = new Project(api, store);
     await a.load();
-    a.edit("data/maps/sandhollow.yaml", "Music", (d) => d.set("music", "boss"));
+    a.edit("data/maps/sandhollow.yaml", "Music", (d) => d.set("music", "lib:boss"));
     a.persistNow();
     const b = new Project(api, store);
     await b.load();
     expect(b.dirtyPaths()).toEqual(["data/maps/sandhollow.yaml"]);
-    expect(b.content.db?.map("sandhollow").music).toBe("boss");
+    expect(b.content.db?.map("sandhollow").music).toBe("lib:boss");
     expect(b.undoLabel).toBe("Music");
     b.undo();
     expect(b.dirtyPaths()).toEqual([]);
@@ -115,7 +109,7 @@ describe("editor project (editor-design §2)", () => {
     const store = memoryStore();
     const a = new Project(api, store);
     await a.load();
-    a.edit("data/maps/sandhollow.yaml", "Music", (d) => d.set("music", "boss"));
+    a.edit("data/maps/sandhollow.yaml", "Music", (d) => d.set("music", "lib:boss"));
     a.persistNow();
     // someone edits the file outside the editor
     const { files } = await api.load();
@@ -131,8 +125,8 @@ describe("editor project (editor-design §2)", () => {
     const p = new Project(memoryApi(), null);
     await p.load();
     p.transaction("Two maps", () => {
-      p.edit("data/maps/sandhollow.yaml", "a", (d) => d.set("music", "boss"));
-      p.edit("data/maps/temple.yaml", "b", (d) => d.set("music", "boss"));
+      p.edit("data/maps/sandhollow.yaml", "a", (d) => d.set("music", "lib:boss"));
+      p.edit("data/maps/temple.yaml", "b", (d) => d.set("music", "lib:boss"));
     });
     expect(p.dirtyPaths().sort()).toEqual(["data/maps/sandhollow.yaml", "data/maps/temple.yaml"]);
     expect(p.undoLabel).toBe("Two maps");

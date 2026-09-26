@@ -8,6 +8,7 @@ import { aliveMembers, fieldEffectsAt, isHidden, memberReach, mustPieceOf, pageO
 import { abilityTargeting, canUseBoardAbility, joinTargets } from "./actions";
 import { canPieceMove, moveOptions, type MoveOption } from "./moves";
 import { abilityUsed } from "./turns";
+import { BUILTIN } from "../data/builtins";
 
 export type AiDecision = { type: "move"; dest: Pos } | { type: "engage"; dest: Pos } | { type: "end" };
 
@@ -102,13 +103,13 @@ export function planPreActions(ctx: Ctx, charId: string): AiPreAction[] {
   const aware = nearest <= (def.aggroRange ?? 4) + 2;
 
   // 1. stuck member leaves so the rest of the party can move
-  if (piece.members.length > 1 && memberReach(ctx, me) === 0 && canUseBoardAbility(ctx, charId, "leave_party")) {
+  if (piece.members.length > 1 && memberReach(ctx, me) === 0 && canUseBoardAbility(ctx, charId, BUILTIN.leaveParty)) {
     const others = aliveMembers(ctx, piece).filter((c) => c.id !== charId);
     if (others.some((c) => memberReach(ctx, c) > 0)) return [{ type: "leave" }];
   }
 
   // 2. pack up before a fight
-  if (def.pack && aware && canUseBoardAbility(ctx, charId, "join_party")) {
+  if (def.pack && aware && canUseBoardAbility(ctx, charId, BUILTIN.joinParty)) {
     const engageNow = canPieceMove(ctx, piece) && [...moveOptions(ctx, charId).values()].some((o) => o.kind === "engage");
     const target = joinTargets(ctx, charId).find((p) => p.faction === "enemy");
     if (!engageNow && target) return [{ type: "join", target: { x: target.x, y: target.y } }];

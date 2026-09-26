@@ -7,6 +7,7 @@ import type { GameEvent } from "../core/events";
 import type { Ctx } from "../core/context";
 
 import { SFX, type SfxName } from "./sfxNames";
+import { BUILTIN } from "../core/data/builtins";
 
 export { SFX, type SfxName };
 
@@ -36,7 +37,7 @@ export function musicTracks(db: Database): string[] {
 
 export function preloadAudio(scene: Phaser.Scene, db: Database) {
   for (const n of SFX) loadAudio(scene, sfxKey(n), `audio/sfx/${n}.wav`);
-  for (const m of musicTracks(db)) loadAudio(scene, musicKey(m), `audio/music/${m}.wav`);
+  for (const m of musicTracks(db)) loadAudio(scene, musicKey(m), db.musicPath(m));
 }
 
 export function sfx(name: SfxName, opts?: { volume?: number; rate?: number; throttleMs?: number }) {
@@ -74,7 +75,7 @@ export function sfxForEvent(ctx: Ctx, e: GameEvent) {
       sfx("ko");
       break;
     case "fieldEffect":
-      if (e.rounds > 0) sfx(e.effect === "burning" ? "burn" : e.effect === "frozen" ? "freeze" : "status");
+      if (e.rounds > 0) sfx(e.effect === BUILTIN.burning ? "burn" : e.effect === BUILTIN.frozen ? "freeze" : "status");
       break;
     case "trap":
       sfx(e.triggeredBy ? "trap" : "confirm");

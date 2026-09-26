@@ -305,9 +305,9 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ Walk-through entities are stood on (no close-up); a solid state waits until its cell is free
 - ☑ Validation: looks, handler scripts, state names and entities named in conditions / actions
 
-## R5 · Handlers & triggers (◐)
+## R5 · Handlers & triggers ☑
 - ☑ Interact (options or a script), enter, leave, pass over (stops hero moves, not flying ones), map loaded, condition becomes true; `once`; `heroesOn` condition; chained handlers settle in one go
-- ☐ Enemies' "defeated" handler; state-level hidden (Discover)
+- ☑ State-level hidden (Discover)
 - ☑ Damage / heal (with status, the heroes here or the party, a trap cue)
 - ☑ New actions: move an entity / hero piece, face, show / hide, camera, sound / music, fade / flash / shake, emote, add / remove party member, enable / disable exit
 - ☑ Enemies' *defeated* handlers (enemy form: Events)
@@ -323,6 +323,26 @@ Layering (see also [architecture](../CLAUDE.md)):
 - ☑ Appearance: states as folder tabs (★ starting state, rename – handlers follow, duplicate, delete), each with its look (sprite picker), facing, movement, passability; hidden
 - ☑ Events: handlers as tabs – trigger, condition, close-up options and label (interact) or once, and the script (block editor from R3)
 - ☑ New events are entities; duplicating one points its handlers at the copy; renaming updates the handlers that name it
+
+# Projects (see [projects.md](projects.md))
+
+## PJ1 · Library and the demo project ☑
+- ☑ `library/v1/` (library.yaml, data, assets) and `projects/demo/` (project.yaml, data, assets); the runtime's own assets stay in public/
+- ☑ Loader: library layer (keys get `lib:`) + project layer; asset paths per layer; `?project=` / `VITE_PROJECT`; the build copies the project's and its library's assets
+- ☑ Content migrated to `lib:` references (validation proves it, now also terrain surfaces and melting); the rules' library needs in `builtins.ts` (validated); tests; save version 2
+- ☑ Tools follow: art / audio generators, e2e, screenshots; editor reads the library read-only
+
+## PJ2 · Projects in the editor ☐
+- ☐ Editor file access on the open project (library read-only); project switcher; New project (empty / copy of the demo)
+
+## PJ3 · Export, import, shipping ☐
+- ☐ `.brpg` zip with the used library content; import; `npm run build -- --project <id>` with only the used library files
+
+## PJ4 · Importing resources ☐
+- ☐ Drop PNG / music into the editor: copied into the project, registered; sprite sheet layout form
+
+## PJ5 · Library content in the editor ☐
+- ☐ Library badge, read-only forms, Copy to project (references follow); moving a project to a newer library version
 
 # Editor (see [editor-design.md](editor-design.md))
 

@@ -34,14 +34,14 @@ const gate: MapEventDef = {
 
 function world(events: MapEventDef[]): Ctx {
   const ctx = arenaCtx({ ...arena(), events });
-  for (const id of ["mira", "kit", "tarek"]) leaveParty(ctx, id);
+  for (const id of ["lib:mira", "lib:kit", "lib:tarek"]) leaveParty(ctx, id);
   loadTriggers(ctx);
   return ctx;
 }
 
 const step = (ctx: Ctx, to: { x: number; y: number }) => {
   board(ctx).turn.moved = [];
-  executeMove(ctx, "aldric", to);
+  executeMove(ctx, "lib:aldric", to);
   return entityTriggers(ctx);
 };
 
@@ -49,7 +49,7 @@ describe("entities: states and handlers (§10.3)", () => {
   it("a plate pressed by a hero opens its gate; stepping off closes it again", () => {
     const ctx = world([plate, gate]);
     expect(stateOf(ctx, "gate")).toBe("closed");
-    expect(moveOptions(ctx, "aldric").has(key({ x: 3, y: 1 }))).toBe(false); // solid
+    expect(moveOptions(ctx, "lib:aldric").has(key({ x: 3, y: 1 }))).toBe(false); // solid
     step(ctx, { x: 3, y: 5 });
     expect(stateOf(ctx, "plate")).toBe("down");
     expect(stateOf(ctx, "gate")).toBe("open");
@@ -62,7 +62,7 @@ describe("entities: states and handlers (§10.3)", () => {
   it("a solid state waits until nobody stands on the cell (a gate never closes on someone)", () => {
     const ctx = world([plate, gate]);
     step(ctx, { x: 3, y: 5 });
-    const hero = mustPieceOf(ctx, "aldric");
+    const hero = mustPieceOf(ctx, "lib:aldric");
     hero.x = 3;
     hero.y = 1; // in the open gate
     entityTriggers(ctx); // the plate is left: the gate wants to close
@@ -83,7 +83,7 @@ describe("entities: states and handlers (§10.3)", () => {
     };
     const ctx = world([trap]);
     board(ctx).turn.moved = [];
-    const res = executeMove(ctx, "aldric", { x: 3, y: 6 }); // straight across the trap
+    const res = executeMove(ctx, "lib:aldric", { x: 3, y: 6 }); // straight across the trap
     expect(res.final).toEqual({ x: 3, y: 4 }); // caught on it
     entityTriggers(ctx);
     expect(ctx.state.flags.snap).toBe(true);
@@ -98,18 +98,18 @@ describe("entities: states and handlers (§10.3)", () => {
       states: { closed: { decor: "chest_closed" }, open: { decor: "chest_open" } },
       on: [
         { on: "load", when: { flag: "chest_looted" }, do: [{ setState: { event: "chest", state: "open" } }] },
-        { on: "interact", when: { state: { event: "chest", is: "closed" } }, label: "Open", do: [{ giveItem: "potion" }, { setState: { event: "chest", state: "open" } }, { setFlag: "chest_looted" }] },
+        { on: "interact", when: { state: { event: "chest", is: "closed" } }, label: "Open", do: [{ giveItem: "lib:potion" }, { setState: { event: "chest", state: "open" } }, { setFlag: "chest_looted" }] },
       ],
     };
     const ctx = world([chest]);
     expect(stateOf(ctx, "chest")).toBe("closed");
-    const opts = interactionsFor(ctx, "aldric", "n:chest");
+    const opts = interactionsFor(ctx, "lib:aldric", "n:chest");
     expect(opts.map((o) => o.label)).toEqual(["Open"]);
-    const potions = ctx.state.inventory.potion ?? 0;
-    performInteraction(ctx, "aldric", "n:chest", opts[0]);
-    expect(ctx.state.inventory.potion).toBe(potions + 1);
+    const potions = ctx.state.inventory["lib:potion"] ?? 0;
+    performInteraction(ctx, "lib:aldric", "n:chest", opts[0]);
+    expect(ctx.state.inventory["lib:potion"]).toBe(potions + 1);
     expect(stateOf(ctx, "chest")).toBe("open");
-    expect(interactionsFor(ctx, "aldric", "n:chest")).toEqual([]); // nothing more to do
+    expect(interactionsFor(ctx, "lib:aldric", "n:chest")).toEqual([]); // nothing more to do
     // coming back later: the flag opens it right away
     const again = world([chest]);
     runActions(again, [{ setFlag: "chest_looted" }]);
@@ -136,7 +136,7 @@ describe("entities: states and handlers (§10.3)", () => {
     expect(board(ctx).pieces["n:guide"]).toMatchObject({ x: 1, y: 4, facing: "E" });
     expect(ctx.state.maps.arena.positions?.guide).toEqual({ x: 1, y: 4 }); // remembered for the next visit
     runActions(ctx, [{ move: { who: "party", to: { x: 5, y: 3 } } }]);
-    expect(mustPieceOf(ctx, "aldric")).toMatchObject({ x: 5, y: 3 });
+    expect(mustPieceOf(ctx, "lib:aldric")).toMatchObject({ x: 5, y: 3 });
 
     runActions(ctx, [{ hide: "guide" }]);
     expect(board(ctx).pieces["n:guide"]).toBeUndefined();
@@ -146,18 +146,18 @@ describe("entities: states and handlers (§10.3)", () => {
     out = runActions(ctx, [{ camera: { who: "guide" } }, { emote: { who: "guide", icon: "exclaim" } }, { sound: "chest" }, { screen: "shake" }]);
     expect(out.requests.map((r) => r.type)).toEqual(["camera", "emote", "sound", "screen"]);
 
-    runActions(ctx, [{ removeMember: "tarek" }]);
-    expect(ctx.state.roster).not.toContain("tarek");
-    expect(Object.values(board(ctx).pieces).some((p) => p.members.includes("tarek"))).toBe(false);
-    runActions(ctx, [{ addMember: "tarek" }]);
-    expect(ctx.state.roster).toContain("tarek");
-    expect(mustPieceOf(ctx, "tarek").faction).toBe("hero");
+    runActions(ctx, [{ removeMember: "lib:tarek" }]);
+    expect(ctx.state.roster).not.toContain("lib:tarek");
+    expect(Object.values(board(ctx).pieces).some((p) => p.members.includes("lib:tarek"))).toBe(false);
+    runActions(ctx, [{ addMember: "lib:tarek" }]);
+    expect(ctx.state.roster).toContain("lib:tarek");
+    expect(mustPieceOf(ctx, "lib:tarek").faction).toBe("hero");
   });
 
   it("setExit opens and closes an exit; a placed enemy's defeated handler runs once", async () => {
     const { exitEnabled } = await import("../core/board/board");
     const ctx = arenaCtx({
-      ...arena({ enemies: [{ id: "boss", enemy: "sand_scorpion", x: 5, y: 5, on: [{ on: "defeated", do: [{ setFlag: "boss_down" }, { giveGold: 5 }] }] }] }),
+      ...arena({ enemies: [{ id: "boss", enemy: "lib:sand_scorpion", x: 5, y: 5, on: [{ on: "defeated", do: [{ setFlag: "boss_down" }, { giveGold: 5 }] }] }] }),
       exits: [{ x: 0, y: 3, dir: "W", to: "arena", spawn: "start", enabled: { flag: "never" } }],
     });
     const exit = ctx.db.map("arena").exits![0];

@@ -10,6 +10,9 @@ import { peak, gainToDb } from './synth.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const AUDIO_DIR = join(ROOT, 'public', 'assets', 'audio');
+/** Music is library content (docs/projects.md); sound effects belong to the runtime. */
+export const MUSIC_DIR = join(ROOT, 'library', 'v1', 'assets', 'audio', 'music');
+export const dirOf = (kind) => (kind === 'music' ? MUSIC_DIR : join(AUDIO_DIR, kind));
 const LIMITS = { musicFileBytes: 1.6e6, musicTotalBytes: 20e6 };
 
 /** Largest sample-to-sample jump inside the file (reference for the seam). */
@@ -25,7 +28,7 @@ export function checkAll({ quiet = false } = {}) {
   const totals = {};
   const rows = [];
   for (const kind of ['sfx', 'music']) {
-    const dir = join(AUDIO_DIR, kind);
+    const dir = dirOf(kind);
     if (!existsSync(dir)) continue;
     totals[kind] = 0;
     for (const f of readdirSync(dir).filter((f) => f.endsWith('.wav')).sort()) {

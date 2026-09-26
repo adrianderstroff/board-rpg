@@ -1,0 +1,140 @@
+# Grove Garden (§18.11): the Pumpkin King and his court hold Old Mora hostage in her garden.
+# Her door opens once they are all beaten.
+name: Grove Garden
+kind: wild
+chipset: lib:desert
+battleback: lib:jungle
+music: lib:boss
+
+legend:
+  terrain:
+    j: jungle_floor
+    s: garden_soil
+    p: dirt
+    H: bamboo_wall
+    R: thatch_roof
+    O: doorway
+  decor:
+    J: jungle_tree
+    N: banana_plant
+    S: seed_sprout
+
+layers:
+  terrain: |
+    jjjjjjjjjjjj
+    jjjRRRRRRjjj
+    jjjRRRRRRjjj
+    jjjHHHOHHjjj
+    jjjjjjpjjjjj
+    jjjssppssjjj
+    jjjssppssjjj
+    jjjssppssjjj
+    jjjssppssjjj
+    jjjssppssjjj
+    jjjjjjpjjjjj
+    jjjjjjpjjjjj
+  overhead: |
+    ............
+    ............
+    ............
+    ......H.....
+    ............
+    ............
+    ............
+    ............
+    ............
+    ............
+    ............
+    ............
+  overheadHeight: |
+    ............
+    ............
+    ............
+    ......5.....
+    ............
+    ............
+    ............
+    ............
+    ............
+    ............
+    ............
+    ............
+  height: |
+    111111111111
+    111777777111
+    111666666111
+    111555155111
+    111111111111
+    111111111111
+    111111111111
+    111111111111
+    111111111111
+    111111111111
+    111111111111
+    111111111111
+  decor: |
+    JJ........JJ
+    J..........J
+    ..N......N..
+    ............
+    .N........N.
+    J...........
+    ...S....S..J
+    ............
+    J...S.......
+    .......S...J
+    ..N......N..
+    J..........J
+
+spawns:
+  from_isle: { x: 6, y: 10, dir: N }
+  from_house: { x: 6, y: 4, dir: S }
+
+exits:
+  - { x: 6, y: 11, dir: S, to: verdant_isle, spawn: from_garden, label: Verdant Isle }
+  - { x: 6, y: 3, dir: N, to: mora_house, spawn: from_garden, label: Mora's House, door: true }
+
+enemies:
+  - { id: king, enemy: lib:pumpkin_king, x: 6, y: 5, dir: S }
+  - { id: g_tomato, enemy: lib:tomato, x: 4, y: 6, dir: S }
+  - { id: g_lemon, enemy: lib:lemon, x: 8, y: 7, dir: S }
+  - { id: g_melon, enemy: lib:watermelon, x: 5, y: 8, dir: S }
+  - { id: g_chili, enemy: lib:chili, x: 7, y: 5, dir: S }
+
+events:
+  - id: mora_hostage
+    x: 9
+    y: 3
+    states:
+      islander: { npc: islander, dir: S }
+      nothing: {}
+    on:
+      - on: becomes
+        when: { not: { defeatedAllOn: grove_garden } }
+        do: [{ setState: { event: mora_hostage, state: islander } }]
+      - on: becomes
+        when: { defeatedAllOn: grove_garden }
+        do: [{ setState: { event: mora_hostage, state: nothing } }]
+      - on: interact
+        when: { not: { defeatedAllOn: grove_garden } }
+        options: [{ type: talk, dialog: mora_help }]
+  - id: mora_door
+    x: 6
+    y: 3
+    states:
+      closed: { decor: gate_bars, pass: solid }
+      open: { pass: walk }
+    on:
+      - { on: becomes, when: { defeatedAllOn: grove_garden }, do: [{ setState: { event: mora_door, state: open } }] }
+      - { on: becomes, when: { all: [{ not: { defeatedAllOn: grove_garden } }, { state: { event: mora_door, is: open } }] }, do: [{ setState: { event: mora_door, state: closed } }] }
+on:
+  - on: becomes
+    when: { always: true }
+    do: [{ dialog: garden_enter }]
+    once: true
+    onceKey: garden_intro#0
+  - on: becomes
+    when: { defeatedAllOn: grove_garden }
+    do: [{ dialog: garden_won }]
+    once: true
+    onceKey: garden_won#1

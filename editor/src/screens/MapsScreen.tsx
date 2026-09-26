@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { getGrid } from "../../../src/core/board/grid";
 import type { MapDef } from "../../../src/core/data/types";
+import { assetUrl } from "../map/sprites";
 import { resize } from "../map/layers";
 import { MapEditor, type Brush, type EntitySelection, type Mode } from "../map/MapEditor";
 import { BoardPalette, DecorPalette } from "../map/Palettes";
@@ -179,7 +180,7 @@ function MapProperties({ project, id, resizeBy, setResizeBy }: { project: Projec
                     <option key={m}>{m}</option>
                   ))}
                 </select>
-                <MusicPreview track={map.music} />
+                <MusicPreview src={map.music && db ? assetUrl(db.musicPath(map.music)) : undefined} />
               </div>
             </td>
           </tr>
@@ -195,7 +196,7 @@ function MapProperties({ project, id, resizeBy, setResizeBy }: { project: Projec
           </tr>
           <tr class="joined">
             <td colSpan={2}>
-              <img src={`/assets/battlebacks/${map.battleback}.png`} class="preview-wide" alt="" />
+              <img src={assetUrl(db?.graphics.battlebacks[map.battleback]?.image ?? "")} class="preview-wide" alt="" />
             </td>
           </tr>
         </tbody>
@@ -259,7 +260,7 @@ function ResizeForm(props: { project: Project; id: string; size: { w: number; h:
 }
 
 /** ▶ / ■ to listen to a track while choosing it. */
-function MusicPreview({ track }: { track?: string }) {
+function MusicPreview({ src: track }: { src?: string }) {
   const audio = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   // another track or another map: stop listening
@@ -278,7 +279,7 @@ function MusicPreview({ track }: { track?: string }) {
     }
     if (!track) return;
     audio.current?.pause();
-    audio.current = new Audio(`/assets/audio/music/${track}.wav`);
+    audio.current = new Audio(track);
     audio.current.loop = true;
     audio.current.volume = 0.5;
     void audio.current.play();

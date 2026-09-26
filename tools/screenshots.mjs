@@ -77,9 +77,9 @@ await page.evaluate(() => {
 await until(`d.state().board && d.state().board.mapId === "scorpion_dunes"`);
 await page.evaluate(() => {
   const s = __game.debug.state();
-  for (const c of Object.values(s.board.chars)) if (c.kind === "enemy") c.statuses.push({ id: "sleep", turns: 9 });
-  s.heroes.mira.statuses.push({ id: "regen", turns: 3 });
-  s.heroes.kit.statuses.push({ id: "haste", turns: 3 });
+  for (const c of Object.values(s.board.chars)) if (c.kind === "enemy") c.statuses.push({ id: "lib:sleep", turns: 9 });
+  s.heroes["lib:mira"].statuses.push({ id: "lib:regen", turns: 3 });
+  s.heroes["lib:kit"].statuses.push({ id: "lib:haste", turns: 3 });
 });
 await until(`!!d.heroTurn() && !!d.menu()`);
 const hero = await dbg(`d.heroTurn()`);

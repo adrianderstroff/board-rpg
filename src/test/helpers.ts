@@ -19,8 +19,8 @@ export function arena(opts: { terrain?: string; height?: string; enemies?: MapDe
   return {
     name: "Arena",
     kind: "wild",
-    chipset: "desert",
-    battleback: "desert",
+    chipset: "lib:desert",
+    battleback: "lib:desert",
     legend: { terrain: { s: "sand", q: "quicksand", i: "ice", w: "water", p: "stone_path" } },
     layers: {
       terrain: opts.terrain ?? "sssssss\nsssssss\nsssssss\nsssssss\nsssssss\nsssssss\nsssssss",

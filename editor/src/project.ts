@@ -1,5 +1,10 @@
 import { parseDocument, type Document } from "yaml";
-import { assembleRaw } from "../../src/content/raw";
+import { layeredRaw } from "../../src/content/raw";
+import type { AssetRoots } from "../../src/core/data/database";
+import type { ProjectFiles } from "./projectFiles";
+
+/** The library's files are read-only in a project (projects.md §6). */
+export const isLibraryFile = (path: string) => path.startsWith("library/");
 import { Database, type RawContent } from "../../src/core/data/database";
 import { validateContent } from "../../src/core/data/validate";
 import { browserStorage, SESSION_KEY } from "./persist";
@@ -46,7 +51,7 @@ interface Session {
 const SESSION_HISTORY = 100;
 
 export interface FileApi {
-  load(): Promise<{ files: Record<string, string>; music: string[] }>;
+  load(): Promise<ProjectFiles>;
   save(path: string, text: string): Promise<void>;
 }
 
@@ -68,8 +73,10 @@ export class Project {
   private redoStack: Change[] = [];
   private listeners = new Set<() => void>();
   private cache?: { version: number; raw: RawContent; db: Database | null; problems: string[] };
-  /** Music track ids available (public/assets/audio/music). */
+  /** Music track ids available (the library's as lib:<name>). */
   music: string[] = [];
+  /** Where the library's and the project's assets are (projects.md §4). */
+  roots: AssetRoots = { library: "", project: "" };
   /** Bumped on every change; UI re-renders when it changes. */
   version = 0;
   /** Unsaved edits dropped at load because their file changed on disk meanwhile. */
@@ -85,7 +92,8 @@ export class Project {
 
   /** Loads the files from disk, then brings back unsaved work from before a reload. */
   async load() {
-    const { files, music } = await this.api.load();
+    const { files, music, roots } = await this.api.load();
+    this.roots = roots;
     this.files.clear();
     for (const [path, text] of Object.entries(files)) this.files.set(path, this.entry(text, text));
     this.music = music.sort();
@@ -180,7 +188,13 @@ export class Project {
   /** The game's raw content, Database and validation problems for the current state. */
   get content() {
     if (this.cache?.version !== this.version) {
-      const raw = assembleRaw([...this.files].map(([p, f]) => [p, f.js] as [string, unknown]));
+      // the library version's files, then the project's (projects.md §4)
+      const all = [...this.files].map(([p, f]) => [p, f.js] as [string, unknown]);
+      const raw = layeredRaw(
+        all.filter(([p]) => isLibraryFile(p)),
+        all.filter(([p]) => !isLibraryFile(p)),
+        this.roots,
+      );
       let db: Database | null = null;
       let problems: string[];
       try {
@@ -205,6 +219,7 @@ export class Project {
    * into one undo step (a paint stroke, typing in a field).
    */
   edit(path: string, label: string, fn: (doc: Document) => void, group?: string) {
+    if (isLibraryFile(path)) throw new Error(`${path}: the library is read-only (projects.md §6)`);
     const f = this.files.get(path);
     if (!f) throw new Error(`No file ${path}`);
     const before = f.text;

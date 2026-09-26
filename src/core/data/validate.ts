@@ -1,6 +1,7 @@
 import { BoardGrid } from "../board/grid";
 import type { Database } from "./database";
 import { EMOTES, type Action, type BattleUse, type BoardUse, type Condition, type DialogNode, type EffectDef, type GraphicsRef, type PatternRef, type Script } from "./types";
+import { BUILTIN } from "./builtins";
 
 /**
  * Cross-reference check of all content. Returns human readable problems (empty = OK).
@@ -140,7 +141,16 @@ export function validateContent(db: Database): string[] {
       for (const c of i.learn.classes) has(db.classes, c, w, "class");
     }
   }
-  for (const f of db.fieldEffects.values()) if (f.status) has(db.statuses, f.status, `field effect ${f.id}`, "status");
+  for (const f of db.fieldEffects.values()) {
+    if (f.status) has(db.statuses, f.status, `field effect ${f.id}`, "status");
+    if (f.melts) has(db.fieldEffects, f.melts, `field effect ${f.id}`, "field effect");
+  }
+  // what the rules rely on (builtins.ts) must be in the library
+  has(db.statuses, BUILTIN.defending, "rules", "status");
+  has(db.statuses, BUILTIN.hidden, "rules", "status");
+  for (const a of [BUILTIN.joinParty, BUILTIN.leaveParty, BUILTIN.steal]) has(db.abilities, a, "rules", "ability");
+  has(db.patterns, BUILTIN.npcMove, "rules", "pattern");
+  for (const f of [BUILTIN.burning, BUILTIN.frozen]) has(db.fieldEffects, f, "rules", "field effect");
   // enemies & npcs
   for (const e of db.enemies.values()) {
     const w = `enemy ${e.id}`;
@@ -190,6 +200,7 @@ export function validateContent(db: Database): string[] {
     for (const [id, t] of Object.entries(chip.terrains)) {
       if (t.flammable && !t.burnsTo) err(`chipset ${chip.id}`, `flammable terrain "${id}" needs burnsTo`);
       if (t.burnsTo && !chip.terrains[t.burnsTo]) err(`chipset ${chip.id}`, `terrain "${id}" burns to unknown terrain "${t.burnsTo}"`);
+      if (t.surface) has(db.fieldEffects, t.surface, `chipset ${chip.id} terrain ${id}`, "field effect");
     }
   }
   // maps

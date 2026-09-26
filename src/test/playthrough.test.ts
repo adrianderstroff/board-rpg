@@ -63,8 +63,8 @@ describe("scripted playthrough", () => {
 
     // Visit the elder in his house and talk to him (as if the party walked up to him).
     game.enter("elder_house", "from_town");
-    const talk = interactionsFor(game.ctx, "aldric", "n:elder").find((o) => o.interaction.type === "talk")!;
-    performInteraction(game.ctx, "aldric", "n:elder", talk);
+    const talk = interactionsFor(game.ctx, "lib:aldric", "n:elder").find((o) => o.interaction.type === "talk")!;
+    performInteraction(game.ctx, "lib:aldric", "n:elder", talk);
     evaluateQuests(game.ctx);
     expect(ctx.state.flags.gate_open).toBe(true);
     game.enter("sandhollow", "from_elder");

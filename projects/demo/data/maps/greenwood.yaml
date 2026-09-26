@@ -1,0 +1,102 @@
+# Greenwood River – long forest map (§18). The river can only be crossed on ice (§5.4);
+# two cacti block the stairs to the desert's edge until they are burnt away with fire.
+name: Greenwood River
+kind: peaceful
+chipset: lib:desert
+battleback: lib:forest
+music: lib:forest
+
+legend:
+  terrain:
+    f: forest_floor
+    d: dirt
+    g: grass
+    F: flowers
+    w: water
+    t: stairs
+    O: overgrown_step
+    r: rock
+    s: sand
+  decor:
+    T: tree_oak
+    Y: tree_pine
+    m: mushroom
+    e: fern
+    B: bush
+    c: cactus_small
+    C: cactus
+
+layers:
+  terrain: |
+    fffffffffdffffffgwwwgggggfgrrrrrrr
+    fffffffffdffffffgwwwgggFFggrrrrrrr
+    fffffffffdffffffgwwwgggFFFgrrrrrrr
+    fffffffffdffffffgwwwggfggggrrrrsss
+    fffffffffdffffffgwwwgfgggFFsssssss
+    fffffffffddfffffgwwwgggggfgttttsss
+    ddddddddddddddddgwwwggggfggttttsss
+    ffffffffffffffdfgwwwgggfggFsssssss
+    ffffffffffffffffgwwwggfgggg       
+    ffffffffffffffffgwwwgfFFggf       
+    ffffffffffffffffgwwwgggFFfg       
+    ffffffffffffffffgwwwggggfgg       
+  height: |
+    1111111111111111100011111117777777
+    1111111111111111100011111117777777
+    1112211111111121100011111117777777
+    1112111111111111100011111117777555
+    1111111111111111100011111114567555
+    1111111111111111100011111112345555
+    1111111111111111100011111112345555
+    1111111111111111100011111114567555
+    1111111111111111100011111117777111
+    1111122111112211100011111117777111
+    1111111111112111100011111117777111
+    1111111111111111100011111117777111
+  decor: |
+    T.TTmTT.m...m.YT.........B........
+    T.T.TTYTm.e.Te.Y..................
+    T.TY.eYee..eY.....................
+    T.TTYTYTe...TY.T..................
+    TeTTe.e.e....TYT...........cBcB...
+    mmmmemmm....mmm.............C.....
+    ............................C.....
+    m.mme..meem............c...BcBc...
+    ..TTTY.Y..TTY..e..................
+    .Y...m.Y.T..TY.Y..................
+    ..TT..eY.TTmT.Te..................
+    YemTYT.me.TT.e....................
+
+spawns:
+  from_harbor: { x: 1, y: 6, dir: E }
+  from_elves: { x: 9, y: 1, dir: S }
+  from_ruins: { x: 32, y: 5, dir: W }
+
+exits:
+  - { x: 0, y: 6, dir: W, to: saltmere_harbor, spawn: from_forest, label: Saltmere Harbor }
+  - { x: 9, y: 0, dir: N, to: elvenglade, spawn: from_forest, label: Elvenglade }
+  - { x: 33, y: 5, dir: E, to: sunken_ruins, spawn: from_forest, label: Sunken Ruins }
+
+events:
+
+  - id: scout
+    x: 15
+    y: 4
+    states:
+      idle: { npc: elf_scout, dir: W }
+    on:
+      - { on: interact, options: [{ type: talk, dialog: scout_talk }] }
+
+  - id: sign_river
+    x: 16
+    y: 7
+    states:
+      idle: { decor: sign_post }
+    on:
+      - { on: interact, options: [{ type: examine, label: Read, dialog: sign_river }] }
+on:
+  - on: becomes
+    when: { always: true }
+    do: [{ dialog: greenwood_enter }]
+    once: true
+    onceKey: greenwood_enter#0

@@ -1,0 +1,214 @@
+# NPC characters. Placed on maps via events (maps/*.yaml). Shopkeepers always use the same look.
+
+elder:
+  name: Elder Hamid
+  description: Sandhollow's elder. He remembers when the road to the oasis was safe.
+  charset: lib:npc_elder
+  face: lib:elder
+  level: 12
+  stats: { maxHp: 60, maxMp: 40, str: 6, def: 8, mag: 20, mdef: 20, spd: 4 }
+
+smith:
+  name: Brann the Smith
+  description: Weapons and armor. Loud, honest, sweaty.
+  charset: lib:npc_smith
+  face: lib:smith
+  level: 10
+  stats: { maxHp: 90, maxMp: 0, str: 25, def: 18, mag: 2, mdef: 6, spd: 5 }
+
+merchant:
+  name: Salma
+  description: Sells potions and remedies. Knows everyone's business.
+  charset: lib:npc_merchant
+  face: lib:merchant
+  level: 5
+  stats: { maxHp: 40, maxMp: 5, str: 6, def: 6, mag: 8, mdef: 8, spd: 9 }
+  steal: [{ item: lib:potion, chance: 1 }]
+
+mage:
+  name: Oriel
+  description: A traveling mage selling scrolls and alchemy.
+  charset: lib:npc_mage
+  face: lib:mage
+  level: 14
+  stats: { maxHp: 45, maxMp: 80, str: 5, def: 7, mag: 30, mdef: 28, spd: 8 }
+  steal: [{ item: lib:ether, chance: 1 }]
+
+innkeeper:
+  name: Dara
+  description: Runs the Sleeping Camel inn.
+  charset: lib:npc_innkeeper
+  face: lib:innkeeper
+  level: 4
+  stats: { maxHp: 40, maxMp: 0, str: 7, def: 7, mag: 4, mdef: 6, spd: 6 }
+
+child:
+  name: Nia
+  description: Curious, fearless, a little too fond of the dunes.
+  charset: lib:npc_child
+  face: lib:child
+  level: 1
+  stats: { maxHp: 12, maxMp: 0, str: 2, def: 2, mag: 3, mdef: 3, spd: 10 }
+
+guard:
+  name: Gate Guard
+  description: Watches the east gate.
+  charset: lib:npc_guard
+  face: lib:guard
+  level: 6
+  stats: { maxHp: 70, maxMp: 0, str: 16, def: 14, mag: 2, mdef: 5, spd: 7 }
+
+villager_m:
+  name: Villager
+  description: A Sandhollow local.
+  charset: lib:npc_villager_m
+  face: lib:villager_m
+  stats: { maxHp: 25, maxMp: 0, str: 5, def: 4, mag: 3, mdef: 3, spd: 6 }
+  steal: [{ item: lib:potion, chance: 1 }]
+
+villager_f:
+  name: Villager
+  description: A Sandhollow local.
+  charset: lib:npc_villager_f
+  face: lib:villager_f
+  stats: { maxHp: 22, maxMp: 0, str: 4, def: 4, mag: 4, mdef: 4, spd: 7 }
+  steal: [{ item: lib:antidote, chance: 1 }]
+
+trader:
+  name: Stranded Trader
+  description: His camel ran off. He's hiding at the oasis and hoping the scorpions don't notice.
+  charset: lib:npc_villager_m
+  face: lib:villager_m
+  level: 3
+  targetable: true
+  stats: { maxHp: 40, maxMp: 0, str: 8, def: 6, mag: 3, mdef: 4, spd: 5 }
+  steal: [{ item: lib:ether, chance: 1 }]
+
+# ---------------- Saltmere Harbor ----------------
+captain:
+  name: Captain Rhea
+  description: Captain of the Gull. Brought the heroes across the sea.
+  charset: lib:npc_captain
+  face: lib:captain
+  level: 12
+  stats: { maxHp: 80, maxMp: 10, str: 18, def: 12, mag: 6, mdef: 8, spd: 10 }
+
+sailor:
+  name: Sailor
+  description: Deckhand of the Gull, enjoying solid ground.
+  charset: lib:npc_sailor
+  face: lib:sailor
+  level: 4
+  stats: { maxHp: 34, maxMp: 0, str: 9, def: 6, mag: 2, mdef: 3, spd: 8 }
+  steal: [{ item: lib:potion, chance: 1 }]
+
+sailor_b:
+  name: Old Dockhand
+  description: Has unloaded more ships than he can count.
+  charset: lib:npc_sailor_b
+  face: lib:sailor_b
+  level: 5
+  stats: { maxHp: 40, maxMp: 0, str: 11, def: 7, mag: 2, mdef: 3, spd: 5 }
+
+fishwife:
+  name: Marta
+  description: Sells the morning catch at the quay.
+  charset: lib:npc_villager_f
+  face: lib:villager_f
+  stats: { maxHp: 22, maxMp: 0, str: 4, def: 4, mag: 4, mdef: 4, spd: 7 }
+  steal: [{ item: lib:antidote, chance: 1 }]
+
+# ---------------- Greenwood & Elvenglade ----------------
+elf_scout:
+  name: Scout Tamsin
+  description: An elf scout watching the river crossing.
+  charset: lib:npc_elf
+  face: lib:elf
+  level: 6
+  stats: { maxHp: 30, maxMp: 20, str: 8, def: 6, mag: 12, mdef: 12, spd: 14 }
+
+elf:
+  name: Lio
+  description: A young elf with endless questions.
+  charset: lib:npc_elf
+  face: lib:elf
+  stats: { maxHp: 18, maxMp: 10, str: 3, def: 3, mag: 8, mdef: 8, spd: 12 }
+
+elf_b:
+  name: Mirelle
+  description: Tends the moonwell of Elvenglade.
+  charset: lib:npc_elf_b
+  face: lib:elf_b
+  stats: { maxHp: 20, maxMp: 20, str: 3, def: 3, mag: 10, mdef: 10, spd: 10 }
+  steal: [{ item: lib:ether, chance: 1 }]
+
+elf_elder:
+  name: Elder Sylwen
+  description: Eldest of the small elves. Remembers when the ford had a bridge.
+  charset: lib:npc_elf_elder
+  face: lib:elf_elder
+  level: 15
+  stats: { maxHp: 50, maxMp: 90, str: 5, def: 8, mag: 30, mdef: 30, spd: 8 }
+
+elf_mage:
+  name: Faelar
+  description: Elven mage who sells scrolls – most importantly, Ice.
+  charset: lib:npc_elf_mage
+  face: lib:elf_mage
+  level: 12
+  stats: { maxHp: 40, maxMp: 80, str: 4, def: 6, mag: 28, mdef: 26, spd: 9 }
+  steal: [{ item: lib:ether, chance: 1 }]
+
+# ---------------- Temple Mountain & Verdant Isle ----------------
+monk_old:
+  name: Abbot Dorje
+  description: The old abbot of the Temple of the Still Sky. Has not raised his voice in forty years.
+  charset: lib:npc_monk_old
+  face: lib:monk_old
+  level: 20
+  stats: { maxHp: 90, maxMp: 80, str: 14, def: 14, mag: 24, mdef: 26, spd: 8 }
+
+monk_a:
+  name: Brother Tenzin
+  description: A monk of the Still Sky. Speaks slowly and means every word.
+  charset: lib:npc_monk
+  face: lib:monk
+  level: 14
+  stats: { maxHp: 70, maxMp: 40, str: 18, def: 12, mag: 12, mdef: 16, spd: 12 }
+
+monk_b:
+  name: Brother Sen
+  description: The youngest of the three meditating monks. Opens one eye now and then.
+  charset: lib:npc_monk_b
+  face: lib:monk_b
+  level: 12
+  stats: { maxHp: 60, maxMp: 40, str: 14, def: 10, mag: 14, mdef: 16, spd: 14 }
+
+monk_novice:
+  name: Novice
+  description: Sweeps the temple steps from dawn to dusk.
+  charset: lib:npc_monk_b
+  face: lib:monk_b
+  stats: { maxHp: 30, maxMp: 10, str: 8, def: 6, mag: 6, mdef: 8, spd: 10 }
+
+pilgrim:
+  name: Pilgrim
+  description: Climbing to the temple, one step at a time.
+  charset: lib:npc_villager_m
+  face: lib:villager_m
+  stats: { maxHp: 24, maxMp: 0, str: 5, def: 5, mag: 3, mdef: 4, spd: 6 }
+
+pilgrim_b:
+  name: Pilgrim
+  description: Resting on a ledge half-way up the mountain.
+  charset: lib:npc_villager_f
+  face: lib:villager_f
+  stats: { maxHp: 22, maxMp: 0, str: 4, def: 4, mag: 5, mdef: 5, spd: 7 }
+
+islander:
+  name: Old Mora
+  description: Elder of the Verdant Isle. Grew the garden that grew too clever.
+  charset: lib:npc_islander
+  face: lib:islander
+  level: 10
+  stats: { maxHp: 50, maxMp: 40, str: 5, def: 6, mag: 18, mdef: 18, spd: 6 }

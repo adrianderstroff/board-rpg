@@ -1,0 +1,38 @@
+# Temporary or terrain field effects on board cells (§7.4). Applied when a character LANDS on the cell.
+# overlayRow: row in system/field_effects.png.
+
+burning:
+  name: Burning
+  damagePercent: 8
+  element: fire
+  ignites: true      # burns flowers/grass, spreads (§5.4)
+  melts: lib:frozen  # fire on ice melts it instead of burning
+  overlayRow: 0
+
+poisonous:
+  name: Poisonous
+  status: lib:poison
+  statusTurns: [2, 4]
+  overlayRow: 1
+
+frozen:
+  name: Frozen
+  slide: true
+  bridges: true      # water becomes a walkable ice bridge (§5.4)
+  exploreFactor: 3   # lasts longer on boards without enemies (time-based there)
+  overlayRow: 2
+
+sticky:
+  name: Sticky
+  status: lib:stuck
+  overlayRow: 3
+
+soaked:
+  name: Soaked
+  conducts: true     # lightning runs through it like water (§5.6)
+  overlayRow: 5
+
+seeds:
+  name: Seeds
+  grows: bramble     # a round later a bramble grows here – unless someone stands on it (§5.7)
+  overlayRow: 6

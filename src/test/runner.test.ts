@@ -29,13 +29,13 @@ describe("script runner (R3)", () => {
   it("a question stops the script; the answer runs its option, then the rest", () => {
     const { ctx } = villageGame();
     const out = runActions(ctx, [
-      { choice: [{ text: "Yes", do: [{ setFlag: "yes" }] }, { text: "No", icon: "potion", do: [{ setFlag: "no" }] }, { text: "Hidden", when: { flag: "never" } }] },
+      { choice: [{ text: "Yes", do: [{ setFlag: "yes" }] }, { text: "No", icon: "lib:potion", do: [{ setFlag: "no" }] }, { text: "Hidden", when: { flag: "never" } }] },
       { setFlag: "after" },
     ]);
     const q = out.requests[0] as Extract<UiRequest, { type: "choice" }>;
     expect(q.type).toBe("choice");
     expect(q.options.map((o) => o.text)).toEqual(["Yes", "No"]);
-    expect(q.options[1].icon).toBe("potion");
+    expect(q.options[1].icon).toBe("lib:potion");
     expect(ctx.state.flags.after).toBeUndefined(); // not yet: waiting for the answer
     q.resume(1);
     expect(ctx.state.flags.no).toBe(true);
@@ -53,7 +53,7 @@ describe("script runner (R3)", () => {
 
   it("an action's effects come out as events the presentation can play", () => {
     const { ctx } = villageGame();
-    const r = new ScriptRunner(ctx, [{ giveItem: "potion" }, { say: "Got it" }]);
+    const r = new ScriptRunner(ctx, [{ giveItem: "lib:potion" }, { say: "Got it" }]);
     const first = r.next();
     expect(first.type).toBe("events");
     expect(r.next()).toMatchObject({ type: "say", text: "Got it" });

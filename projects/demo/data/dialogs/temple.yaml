@@ -1,0 +1,260 @@
+# Dialogs of the Mountain Temple chapter (§18 items 7-12): Temple Mountain, the monks, the three
+# tokens (Reed Pond, Mirage Tower, Verdant Isle), the Hall of Fears and the Grave Toad's cave.
+# Format: see sandhollow.yaml.
+
+# ---------------- Temple Mountain ----------------
+mountain_enter:
+  - speaker: lib:kit
+    say: "Up ^there^? We're climbing ^that^?"
+  - speaker: lib:tarek
+    say: "The Temple of the Still Sky.|\nMy old master trained there as a boy. One step at a time, Kit."
+
+sign_mountain:
+  - speaker: Sign
+    say: "[c=gold]Temple of the Still Sky[/c] – up the mountain path.\n[c=gold]Reed Pond[/c] – east along the foot of the mountain."
+
+pilgrim_1:
+  - say: "Stairs, then a ledge, then stairs again... the path swings back and forth like a pendulum.|\nGood for the soul. Bad for the knees."
+
+pilgrim_2:
+  - say: "Do you feel that cold air? It comes from behind that iron grate.|\nThe monks sealed that cave long ago. They don't talk about what's inside."
+
+pilgrim_2_after:
+  - say: "The grate... it's ^open^! And the smell – like an old swamp full of bones.|\nWhatever lives down there, it's awake now."
+
+novice_talk:
+  - say: "Welcome, travelers. The abbot and the brothers are meditating inside.|\nIf you wish to speak with them, sit on the *free cushion* before them."
+
+cave_opened:
+  - speaker: lib:aldric
+    say: "The grate is open.|\nWhatever the monks sealed in there is waiting for us."
+  - speaker: lib:tarek
+    say: "Then let it see the light it was hiding from."
+
+# ---------------- the monks ----------------
+abbot_talk:
+  - say: "...|\n[c=grey](The abbot breathes slowly. There is a free cushion in front of him.)[/c]"
+monk_a_talk:
+  - say: "Sit, if you wish to speak.|\nStanding, one only talks. Sitting, one listens."
+monk_b_talk:
+  - say: "Shh! We're meditating.|\n...The *free cushion* is for guests, by the way."
+
+# Sitting on the free cushion: the three monks speak in turns.
+monks_talk:
+  - if: { flag: orb_claimed }
+    then: monks_after
+  - if: { flag: tokens_returned }
+    then: monks_fears
+  - if: { all: [{ item: lib:token_serenity }, { item: lib:token_foresight }, { item: lib:token_life }] }
+    then: monks_return
+  - if: { flag: monks_trial }
+    then: monks_waiting
+  - speaker: monk_old
+    say: "Travelers on the Still Sky cushion. It has been many winters."
+  - speaker: monk_a
+    say: "You came from the desert. Sand on your boots,| and on your hearts, a question."
+  - speaker: monk_b
+    say: "And a monk among them! Brother, is that not the stance of the old Iron Palm school?"
+  - speaker: lib:tarek
+    say: "It is. My master learned it here, long ago.|\nHe spoke of a light the Still Sky keeps against the restless dead."
+  - speaker: monk_old
+    say: "*Holy.* The oldest of our techniques.|\nA light that burns what should not walk – bones, ghosts, shadows."
+  - speaker: monk_a
+    say: "But it is not given. It is earned."
+  - speaker: monk_b
+    say: "And we have a... small problem. Three of them, actually."
+  - speaker: monk_old
+    say: "Three tokens rested on this altar: *Serenity*, *Foresight* and *Life*.|\nThey were stolen – each carried to a different corner of the world."
+  - speaker: monk_a
+    say: "*Serenity* was taken by the fish-folk of the *Reed Pond*, east of the mountain's foot.|\nIts waters are deep. Deep water does not care for swords."
+  - speaker: monk_b
+    say: "*Foresight* is in the *Mirage Tower* – south of the Scorpion Dunes.|\nIt only shows itself to those who are truly lost. Get lost! ~Properly~ lost."
+  - speaker: monk_old
+    say: "*Life* sailed across the sea, to the *Verdant Isle*.|\nA captain in Saltmere Harbor knows the way."
+  - speaker: monk_a
+    say: "Bring back the three tokens, and you prove yourselves worthy."
+  - speaker: monk_b
+    say: "Then we show you the door behind us. Then you'll wish we hadn't. ^Ha!^|\n...Sorry. Meditating."
+  - speaker: lib:kit
+    say: "A pond, a tower that isn't there, and an island.|\nWhy is it never ^one^ thing in ^one^ place?"
+  - do: [{ setFlag: monks_trial }]
+
+monks_waiting:
+  - speaker: monk_old
+    say: "The tokens are not yet complete."
+  - speaker: monk_a
+    say: "*Serenity* – the Reed Pond, east of the mountain's foot."
+  - speaker: monk_b
+    say: "*Foresight* – get lost in the dunes south of the Scorpion Dunes."
+  - speaker: monk_old
+    say: "*Life* – the Verdant Isle. Captain Rhea in Saltmere sails there."
+
+monks_return:
+  - speaker: monk_old
+    say: "...|Serenity. Foresight. Life.\nAll three have come home."
+  - do: [{ takeItem: lib:token_serenity }, { takeItem: lib:token_foresight }, { takeItem: lib:token_life }, { setFlag: tokens_returned }]
+  - speaker: monk_a
+    say: "You are worthy of the light. But light casts shadows."
+  - speaker: monk_b
+    say: "Behind us – the door is open now. The *Hall of Fears*.|\nWhat waits in there is yours. We can't fight it for you."
+  - speaker: monk_old
+    say: "Beyond your fears lies the *Holy Orb*. Meditate on it, young monk, and the light is yours."
+  - speaker: lib:tarek
+    say: "My fears... Then I'll finally get to meet them."
+
+monks_fears:
+  - speaker: monk_old
+    say: "The Hall of Fears waits behind us."
+  - speaker: monk_b
+    say: "The door's open. We're not going in. We tried once. ^Once.^"
+
+monks_after:
+  - speaker: monk_old
+    say: "The light is yours. Use it well."
+  - speaker: monk_a
+    say: "When you took the orb, the mountain shook. The iron grate half-way down has opened."
+  - speaker: monk_b
+    say: "The *Grave Toad*. It swallowed our pilgrims, one by one, until we sealed it in.|\nIt's awake. And it's hungry."
+  - speaker: monk_old
+    say: "Its two acolytes serve it even in death. Strike them down, and it will buy new ones with the gold of the dead.|\nGo. And if it swallows you... be patient."
+
+# ---------------- Hall of Fears ----------------
+fears_enter:
+  - speaker: lib:aldric
+    say: "It's so dark... Wait. Those shapes..."
+  - speaker: lib:mira
+    say: "They're ^us^.|\nOur fears – they have our faces."
+  - speaker: lib:kit
+    say: "I'm way better looking than that."
+
+fears_gone:
+  - speaker: lib:tarek
+    say: "They're gone. Faced, and gone.|\nThe gate at the back – it opened."
+
+orb_claim:
+  - speaker: ""
+    say: "Light pours from the orb and fills the hall. The *Holy Orb* was added to your items.\n[c=grey](A Monk who uses it learns Holy.)[/c]"
+  - speaker: ""
+    say: "Somewhere far below, the mountain ~rumbles~."
+
+orb_empty:
+  - speaker: ""
+    say: "An empty pedestal. It still feels warm."
+
+# ---------------- Reed Pond ----------------
+pond_enter:
+  - speaker: lib:mira
+    say: "The islet in the middle – something glints there.|\nThe water around it is deep. I could *freeze* a way across."
+  - speaker: lib:aldric
+    say: "Something's moving under the surface. Fish... with spears?"
+  - speaker: lib:kit
+    say: "Swords won't reach them in the deep water. But *lightning* loves water."
+
+pond_chest:
+  - speaker: ""
+    say: "In a clam shell lies a jade token, cool as still water: the *Token of Serenity*!"
+
+# ---------------- Endless Dunes & the Mirage Tower ----------------
+endless_enter:
+  - speaker: lib:kit
+    say: "Sand. And more sand. Which way was south again?"
+
+mirage_appears:
+  - speaker: lib:mira
+    say: "We've crossed these dunes three times now. We're... lost."
+  - speaker: lib:aldric
+    say: "Look! The air is shimmering. There's a ^tower^ where there was nothing!"
+  - do: [{ teleport: { map: mirage_sands, spawn: from_dunes } }]
+
+mirage_sands_enter:
+  - speaker: lib:tarek
+    say: "The Mirage Tower. It only shows itself to the lost – and here we are."
+
+tower_enter:
+  - speaker: lib:aldric
+    say: "A plate in the floor, and a gate. Let's see what it does."
+
+tower_split_up:
+  - speaker: lib:kit
+    say: "The gate slams shut as soon as nobody stands on the plate!"
+  - speaker: lib:mira
+    say: "One of us holds the plate, the others go through.|\n*We have to split up.*"
+  - speaker: ""
+    say: "Tip: in the party menu, heroes can *Leave* the party and move on their own.\nTeams climb the tower separately – every team takes its own stairs."
+
+tower_f2:
+  - speaker: lib:mira
+    say: "A wall between us. Each side has a plate – and a gate.|\nMaybe each plate opens the ^other^ side's gate."
+
+tower_f3:
+  - speaker: lib:kit
+    say: "Ice! Once you step on it you slide all the way.|\nThere's a plate at the end of each lane."
+
+tower_f5:
+  - speaker: lib:aldric
+    say: "The top of the tower... and something is waiting for us."
+
+tower_chest:
+  - speaker: ""
+    say: "The sand settles. In the chest lies a token that shows the sky of tomorrow: the *Token of Foresight*!"
+
+# ---------------- Verdant Isle ----------------
+captain_isle_offer:
+  - say: "The Verdant Isle? The monks sent you, didn't they.|\nStrange place. The ~vegetables~ there look at you."
+  - choice:
+      - text: "Sail to the Verdant Isle"
+        do: [{ teleport: { map: verdant_isle, spawn: from_ship } }]
+      - text: "Not yet"
+
+captain_isle:
+  - say: "The *Gull* waits. Ready to sail back to Saltmere?"
+  - choice:
+      - text: "Sail back to Saltmere"
+        do: [{ teleport: { map: saltmere_harbor, spawn: start } }]
+      - text: "Not yet"
+
+isle_enter:
+  - speaker: lib:kit
+    say: "That tomato just ^looked^ at me."
+  - speaker: lib:mira
+    say: "They fight together – one soaks the ground, another sends lightning into the water.|\nLet's not stand in puddles."
+
+garden_enter:
+  - speaker: islander
+    say: "Travelers! Help! My own garden has turned on me!"
+  - speaker: lib:aldric
+    say: "A pumpkin... wearing a crown?"
+  - speaker: ""
+    say: "[c=orange]Pumpkin King:[/c] ^THE GARDEN IS OURS!^\nThe old woman stays. Her *token* stays. ^YOU^ become compost!"
+
+mora_help:
+  - say: "They're guarding my door. Please – beat them, all of them!"
+
+garden_won:
+  - speaker: islander
+    say: "You did it! Come in, come in – my house is right here."
+
+mora_thanks:
+  - say: "I planted them with love, and they grew clever. Too clever.|\nThey stole this from the monks' altar – they thought it would make them live forever."
+  - do: [{ giveItem: lib:token_life }, { setFlag: mora_token }]
+  - speaker: ""
+    say: "Old Mora hands you a green token that is warm like a sleeping animal: the *Token of Life*!"
+  - say: "Take it back where it belongs. And say hello to the old abbot from Mora."
+
+mora_after:
+  - say: "The garden will be quiet now. Mostly.|\nThe captain's boat is at the dock when you're ready."
+
+# ---------------- the Grave Toad ----------------
+cave_enter:
+  - speaker: lib:mira
+    say: "Bones... everywhere. And that smell."
+  - speaker: lib:tarek
+    say: "The monks said it swallowed pilgrims. If it swallows one of us – we get them back by striking it down."
+
+demo_end:
+  - speaker: lib:tarek
+    say: "It's over. The light held."
+  - speaker: lib:aldric
+    say: "The mountain is quiet again."
+  - speaker: ""
+    say: "[c=gold]The Grave Toad is defeated.[/c]\n[c=grey](End of the demo – thank you for playing!)[/c]"

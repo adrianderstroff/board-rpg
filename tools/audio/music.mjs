@@ -667,5 +667,5 @@ const final = {
   ],
 };
 
-/** All songs, written to public/assets/audio/music/<name>.wav */
+/** All songs, written to library/v1/assets/audio/music/<name>.wav */
 export const SONGS = [title, village, dunes, battle, boss, harbor, forest, elvenglade, ruins, temple, mirage, island, fear, final];

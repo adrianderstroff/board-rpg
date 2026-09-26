@@ -1,0 +1,143 @@
+# Sunken Ruins – wild map (§18): dormant skeletons among harmless remains, ancient traps and
+# an invisible chest (§7.5). Kit's Discover senses and uncovers hidden things.
+name: Sunken Ruins
+kind: wild
+chipset: lib:desert
+battleback: lib:ruins
+music: lib:ruins
+
+legend:
+  terrain:
+    r: rock
+    s: sand
+    u: ruin_floor
+    X: ruin_wall
+    p: stone_path
+  decor:
+    K: skeleton
+    I: pillar
+    i: pillar_broken
+    o: rubble
+    c: cactus_small
+    C: cactus
+
+layers:
+  terrain: |
+    rrrrrsssssssssssrrrr
+    rrsssuuuXXXuuussssrr
+    rssuuuuuXuXuuuuusssr
+    rsuuXXuuuuuuXXuuusss
+    ssuuXuuuuuuuuXuuussr
+    ssuuuuuuXXXuuuuuussr
+    pssuuuuuuuuuuuuuusss
+    rsuuuuuuuuuuuuuuuupp
+    rsuuXuuuXXuuuXuuussr
+    rssuXuuuuuuuuXuusssr
+    rsssuuuuuuuuuuussssr
+    rsssuuuXXuuuuusssrrr
+    rrssssssssssssssrrrr
+    rrrrrrssssssrrrrrrrr
+  height: |
+    33333000000000003333
+    33000111333111000033
+    30011111313111110003
+    30113311111133111000
+    00113111111113111003
+    00111111333111111003
+    00011111111111111000
+    30111111111111111100
+    30113111331113111003
+    30013111111113110003
+    30001111111111100003
+    30001113311111000333
+    33000000000000003333
+    33333300000033333333
+  decor: |
+    ....................
+    ......I......i......
+    .c.....K....K.......
+    ..........I....K....
+    ...I.......o....i...
+    ....................
+    ....................
+    .....o..............
+    ....................
+    ...K............K...
+    ......I..K..i..o....
+    ..o...............C.
+    ....................
+    ....................
+
+spawns:
+  from_forest: { x: 1, y: 6, dir: E }
+  from_sandhollow: { x: 18, y: 7, dir: W }
+
+exits:
+  - { x: 0, y: 6, dir: W, to: greenwood, spawn: from_ruins, label: Greenwood River }
+  - { x: 19, y: 7, dir: E, to: sandhollow, spawn: from_ruins, label: Sandhollow }
+
+# Dormant skeletons look exactly like the remains (K) around them (§7.5).
+enemies:
+  - { id: bones_a, enemy: lib:skeleton, x: 5, y: 4, dir: S }
+  - { id: bones_b, enemy: lib:skeleton, x: 11, y: 9, dir: N }
+  - { id: bones_c, enemy: lib:skeleton, x: 16, y: 5, dir: W }
+
+events:
+  # Ancient traps: invisible, stop heroes walking over them (§7.5).
+  - id: trap_a
+    x: 8
+    y: 6
+    states:
+      armed: { hidden: true, pass: walk }
+      revealed: { mark: trap, pass: avoid }
+      sprung: { pass: walk }
+    on:
+      - { on: pass, when: { not: { state: { event: trap_a, is: sprung } } }, do: [{ damage: { amount: 8, status: lib:stuck, cue: trap } }, { setState: { event: trap_a, state: sprung } }] }
+      - { on: ability, ability: lib:discover, when: { state: { event: trap_a, is: armed } }, do: [{ setState: { event: trap_a, state: revealed } }] }
+      - { on: ability, ability: lib:defuse, when: { state: { event: trap_a, is: revealed } }, do: [{ setState: { event: trap_a, state: sprung } }] }
+  - id: trap_b
+    x: 13
+    y: 7
+    states:
+      armed: { hidden: true, pass: walk }
+      revealed: { mark: trap, pass: avoid }
+      sprung: { pass: walk }
+    on:
+      - { on: pass, when: { not: { state: { event: trap_b, is: sprung } } }, do: [{ damage: { amount: 8, status: lib:stuck, cue: trap } }, { setState: { event: trap_b, state: sprung } }] }
+      - { on: ability, ability: lib:discover, when: { state: { event: trap_b, is: armed } }, do: [{ setState: { event: trap_b, state: revealed } }] }
+      - { on: ability, ability: lib:defuse, when: { state: { event: trap_b, is: revealed } }, do: [{ setState: { event: trap_b, state: sprung } }] }
+  - id: trap_c
+    x: 4
+    y: 7
+    states:
+      armed: { hidden: true, pass: walk }
+      revealed: { mark: trap, pass: avoid }
+      sprung: { pass: walk }
+    on:
+      - { on: pass, when: { not: { state: { event: trap_c, is: sprung } } }, do: [{ damage: { amount: 8, status: lib:stuck, cue: trap } }, { setState: { event: trap_c, state: sprung } }] }
+      - { on: ability, ability: lib:discover, when: { state: { event: trap_c, is: armed } }, do: [{ setState: { event: trap_c, state: revealed } }] }
+      - { on: ability, ability: lib:defuse, when: { state: { event: trap_c, is: revealed } }, do: [{ setState: { event: trap_c, state: sprung } }] }
+
+  - id: hidden_chest
+    x: 10
+    y: 11
+    hidden: true
+    states:
+      chest_closed: { decor: chest_closed }
+      chest_open: { decor: chest_open }
+    on:
+      - on: becomes
+        when: { not: { flag: ruins_chest_open } }
+        do: [{ setState: { event: hidden_chest, state: chest_closed } }]
+      - on: becomes
+        when: { flag: ruins_chest_open }
+        do: [{ setState: { event: hidden_chest, state: chest_open } }]
+      - on: interact
+        when: { not: { flag: ruins_chest_open } }
+        options:
+          - type: examine
+            label: Open
+            dialog: ruins_chest
+            actions: [{ giveItem: lib:speed_anklet }, { setFlag: ruins_chest_open }]
+on:
+  - { on: becomes, when: { always: true }, do: [{ dialog: ruins_enter }], once: true, onceKey: ruins_enter#0 }

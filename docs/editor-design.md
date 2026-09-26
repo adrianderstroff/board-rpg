@@ -12,7 +12,8 @@ can represent.
 ## 1. Goals and principles
 
 1. **Everything the editor saves is plain game data.** The editor reads and writes the same
-   `data/**/*.yaml` files the game loads. There is no separate project format; a file edited by
+   YAML files the game loads – the open project's `data/` (the library's files are read-only, see
+   [projects.md](projects.md)). There is no separate file format; a file edited by
    hand and a file edited in the editor are the same thing.
 2. **Only what the game can do.** Every field the editor offers maps onto something the game
    implements. Things the game can't represent yet are listed in §11 instead of being faked.
@@ -52,7 +53,7 @@ src/…                   the game – the editor imports src/core, src/engine a
   canvas is a Phaser scene inside the page, using the engine's `IsoMapView`.
 - **Files.** A browser can't write files, so the editor runs on the Vite dev server with a small
   plugin: `GET /__editor/files` (list), `GET /__editor/file?path=` (read), `PUT /__editor/file`
-  (write, only below `data/`). It is only there in dev (`npm run editor`), never in a build.
+  (write, only the project's own `data/`; the library is read-only). It is only there in dev (`npm run editor`), never in a build.
 - **Project model.** On start the editor loads every data file into (a) a YAML document per file
   (for saving with comments intact) and (b) the same `RawContent` the game builds. Edits change the
   document; the raw content and a `Database` are rebuilt from it (cheap – it's a few hundred KB).
@@ -477,7 +478,7 @@ Order: E1 → E2 → E3 → E4, then E5–E8 in any order, E9 alongside.
 
 ## 13. Decisions
 
-1. **Same files, no project format** – the editor edits `data/**/*.yaml` in place, keeping comments.
+1. **Same files, no separate format** – the editor edits the project's `data/**/*.yaml` in place, keeping comments.
 2. **Entities are a view**: exits, spawns, enemies, gates, switches, traps, signs and events are all
    entities in the editor but stay in their own lists in the data (no data migration needed).
 3. **No new scripting language**: events use the existing condition/action system; the editor gives

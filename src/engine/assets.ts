@@ -1,7 +1,10 @@
 import Phaser from "phaser";
 
-/** Asset paths are relative to public/assets/. */
+/** The runtime's own asset paths are relative to public/assets/; content comes with root-relative paths (library/…, projects/…). */
 export const ASSET_ROOT = "assets/";
+
+/** The URL of an asset path. */
+export const assetPath = (p: string) => (/^(library|projects)\//.test(p) ? p : ASSET_ROOT + p);
 
 export interface SheetSpec {
   key: string;
@@ -11,15 +14,15 @@ export interface SheetSpec {
 }
 
 export function loadSheet(scene: Phaser.Scene, s: SheetSpec) {
-  scene.load.spritesheet(s.key, ASSET_ROOT + s.path, { frameWidth: s.frameWidth, frameHeight: s.frameHeight });
+  scene.load.spritesheet(s.key, assetPath(s.path), { frameWidth: s.frameWidth, frameHeight: s.frameHeight });
 }
 
 export function loadAudio(scene: Phaser.Scene, key: string, path: string) {
-  scene.load.audio(key, ASSET_ROOT + path);
+  scene.load.audio(key, assetPath(path));
 }
 
 export function loadImage(scene: Phaser.Scene, key: string, path: string) {
-  scene.load.image(key, ASSET_ROOT + path);
+  scene.load.image(key, assetPath(path));
 }
 
 export interface FontSpec {

@@ -22,23 +22,23 @@ describe("editor Quick Play (editor-design §4)", () => {
       quickPlay: {
         x: 5,
         y: 6,
-        party: [{ hero: "tarek", level: 9 }, { hero: "kit" }],
-        items: { token_serenity: 1, potion: 2 },
-        abilities: { tarek: ["holy"] },
+        party: [{ hero: "lib:tarek", level: 9 }, { hero: "lib:kit" }],
+        items: { "lib:token_serenity": 1, "lib:potion": 2 },
+        abilities: { "lib:tarek": ["lib:holy"] },
         flags: ["monks_trial"],
         gold: 999,
       },
     };
     const { game } = quickPlay(db, "temple", 1);
     const ctx = game.ctx;
-    const p = mustPieceOf(ctx, "tarek");
+    const p = mustPieceOf(ctx, "lib:tarek");
     expect([p.x, p.y]).toEqual([5, 6]);
-    expect(ctx.state.roster).toEqual(["tarek", "kit"]);
-    expect(ctx.state.heroes.tarek.level).toBe(9);
-    expect(ctx.state.heroes.aldric).toBeUndefined();
-    expect(knownAbilities(db, ctx.state.heroes.tarek)).toContain("holy");
-    expect(ctx.state.inventory.token_serenity).toBe(1);
-    expect(ctx.state.inventory.potion).toBe(db.config.start.items.potion + 2);
+    expect(ctx.state.roster).toEqual(["lib:tarek", "lib:kit"]);
+    expect(ctx.state.heroes["lib:tarek"].level).toBe(9);
+    expect(ctx.state.heroes["lib:aldric"]).toBeUndefined();
+    expect(knownAbilities(db, ctx.state.heroes["lib:tarek"])).toContain("lib:holy");
+    expect(ctx.state.inventory["lib:token_serenity"]).toBe(1);
+    expect(ctx.state.inventory["lib:potion"]).toBe(db.config.start.items["lib:potion"] + 2);
     expect(ctx.state.flags.monks_trial).toBe(true);
     expect(ctx.state.gold).toBe(999);
   });

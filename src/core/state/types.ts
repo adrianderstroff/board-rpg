@@ -160,4 +160,5 @@ export interface GameState {
   battle: import("../battle/types").BattleState | null;
 }
 
-export const SAVE_VERSION = 1;
+/** 2: library content is `lib:` (projects.md) – version 1 saves no longer load. */
+export const SAVE_VERSION = 2;

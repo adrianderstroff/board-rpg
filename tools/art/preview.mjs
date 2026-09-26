@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Composes contact-sheet previews from the generated PNGs in public/assets
+// Composes contact-sheet previews from the generated PNGs (library/v1/assets, public/assets)
 // into tools/art/out/preview-*.png (scaled x3, nearest neighbour).
 // Usage: node tools/art/preview.mjs   (also run automatically by generate.mjs)
 import { readFileSync, readdirSync, mkdirSync } from 'node:fs';
@@ -14,12 +14,14 @@ import { DECOR_NAMES } from './decor.mjs';
 import { ICON_NAMES } from './icons.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const ASSETS = join(HERE, '..', '..', 'public', 'assets');
+const RUNTIME = join(HERE, '..', '..', 'public', 'assets');
+const LIBRARY = join(HERE, '..', '..', 'library', 'v1', 'assets');
+const ASSETS_OF = (rel) => join(rel.startsWith('system/') ? RUNTIME : LIBRARY, rel);
 const OUT = join(HERE, 'out');
 const SCALE = 3;
 
 function load(rel) {
-  const { width, height, data } = readPNG(join(ASSETS, rel));
+  const { width, height, data } = readPNG(ASSETS_OF(rel));
   const c = new Canvas(width, height);
   c.data.set(data);
   return c;
@@ -33,14 +35,14 @@ function checker(w, h, a = 0x2a2f45ff, b = 0x32384fff, size = 8) {
 
 export function buildPreviews() {
   mkdirSync(OUT, { recursive: true });
-  const font = { img: load('system/font.png'), json: JSON.parse(readFileSync(join(ASSETS, 'system/font.json'), 'utf8')) };
+  const font = { img: load('system/font.png'), json: JSON.parse(readFileSync(ASSETS_OF('system/font.json'), 'utf8')) };
   const label = (c, t, x, y, col = null) => drawText(c, font, t, x, y, col);
   const written = [];
   const save = (name, c) => { writePNG(join(OUT, `preview-${name}.png`), c.scaled(SCALE)); written.push(`preview-${name}.png`); };
 
   // ---- charsets
   {
-    const ids = readdirSync(join(ASSETS, 'charsets')).filter((f) => f.endsWith('.png')).map((f) => f.slice(0, -4));
+    const ids = readdirSync(ASSETS_OF('charsets')).filter((f) => f.endsWith('.png')).map((f) => f.slice(0, -4));
     const cellW = 104, cellH = 144, cols = 6;
     const c = checker(cols * cellW, Math.ceil(ids.length / cols) * cellH);
     ids.forEach((id, i) => {
@@ -77,7 +79,7 @@ export function buildPreviews() {
   }
   // ---- faces: each at x3 plus 1x, 24px and 14px (the in-menu sizes); written unscaled
   {
-    const ids = readdirSync(join(ASSETS, 'faces')).filter((f) => f.endsWith('.png') && !f.includes('-var')).map((f) => f.slice(0, -4));
+    const ids = readdirSync(ASSETS_OF('faces')).filter((f) => f.endsWith('.png') && !f.includes('-var')).map((f) => f.slice(0, -4));
     const cellW = 144 + 64, cellH = 144 + 20, cols = 6;
     const c = new Canvas(cols * cellW + 8, Math.ceil(ids.length / cols) * cellH + 8, 0x24252cff);
     const down = (f, n) => { const d = new Canvas(n, n), k = 48 / n; for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) d.set(x, y, f.get(Math.floor((x + 0.5) * k), Math.floor((y + 0.5) * k))); return d; };

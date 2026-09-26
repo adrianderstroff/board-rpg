@@ -20,6 +20,7 @@ import { tickStatuses } from "../board/turns";
 import type { Character } from "../state/types";
 import { clamp } from "../util/misc";
 import type { BattleAction, BattleKind, BattleSource, BattleState, Combatant, Side } from "./types";
+import { BUILTIN } from "../data/builtins";
 
 export interface BattleSetup {
   kind: BattleKind;
@@ -344,7 +345,7 @@ export function performAction(ctx: Ctx, actorId: string, action: BattleAction): 
     }
     case "defend": {
       events.push({ type: "action", actor: actorId, name: "Defend" });
-      if (addStatus(ctx, actor, "defending")) events.push({ type: "status", target: actorId, status: "defending", added: true });
+      if (addStatus(ctx, actor, BUILTIN.defending)) events.push({ type: "status", target: actorId, status: BUILTIN.defending, added: true });
       break;
     }
     case "run": {

@@ -23,9 +23,9 @@ function talk(game: Game, eventId: string) {
 
 function talkHere(game: Game, eventId: string) {
   const ctx = game.ctx;
-  const opts = interactionsFor(ctx, "aldric", `n:${eventId}`);
+  const opts = interactionsFor(ctx, "lib:aldric", `n:${eventId}`);
   const talkOpt = opts.find((o) => o.interaction.type === "talk")!;
-  const out = performInteraction(ctx, "aldric", `n:${eventId}`, talkOpt);
+  const out = performInteraction(ctx, "lib:aldric", `n:${eventId}`, talkOpt);
   const runner = new DialogRunner(ctx, out.dialog!.id, out.dialog!.speaker);
   const lines: string[] = [];
   for (let step = runner.next(); step.type !== "end"; step = runner.next(0)) {
@@ -69,7 +69,7 @@ describe("quests", () => {
     const game = newGame();
     talk(game, "elder");
     const ctx = game.ctx;
-    ctx.state.records.kills.emperor_scorpion = 1;
+    ctx.state.records.kills["lib:emperor_scorpion"] = 1;
     mapMemory(ctx, "scorpion_dunes").defeated.push(...ctx.db.map("scorpion_dunes").enemies!.map((e) => e.id));
     evaluateQuests(ctx);
     expect(ctx.state.quests.entries.clear_dunes).toMatchObject({ status: "done", ending: "cleansed" });
@@ -78,13 +78,13 @@ describe("quests", () => {
     expect(currentObjective(ctx)).toBe("Report back to Elder Hamid");
     talk(game, "elder");
     expect(ctx.state.quests.entries.road_to_oasis.status).toBe("done");
-    expect(ctx.state.inventory.flame_blade).toBe(1);
+    expect(ctx.state.inventory["lib:flame_blade"]).toBe(1);
   });
 
   it("side quests can be switched to and completed", () => {
     const game = newGame();
     const ctx = game.ctx;
-    const out = performInteraction(ctx, "aldric", "n:nia", interactionsFor(ctx, "aldric", "n:nia")[0]);
+    const out = performInteraction(ctx, "lib:aldric", "n:nia", interactionsFor(ctx, "lib:aldric", "n:nia")[0]);
     const runner = new DialogRunner(ctx, out.dialog!.id);
     let step = runner.next();
     while (step.type !== "choice") step = runner.next();
@@ -94,7 +94,7 @@ describe("quests", () => {
     expect(canSwitchQuest(ctx)).toBe(true);
     switchQuest(ctx, "nias_charm");
     expect(currentObjective(ctx)).toBe("Find Nia's charm near the oasis");
-    ctx.state.inventory.village_charm = 1;
+    ctx.state.inventory["lib:village_charm"] = 1;
     evaluateQuests(ctx);
     expect(currentObjective(ctx)).toBe("Bring the charm back to Nia");
   });
@@ -119,14 +119,14 @@ describe("buildings (§18)", () => {
     expect(door.door).toBe(true);
     game.travel(door);
     expect(game.ctx.state.board!.mapId).toBe("sandhollow_inn");
-    const opts = interactionsFor(game.ctx, "aldric", "n:inn_counter");
+    const opts = interactionsFor(game.ctx, "lib:aldric", "n:inn_counter");
     expect(opts.map((o) => o.label)).toEqual(["Rest", "Talk"]);
-    const rest = performInteraction(game.ctx, "aldric", "n:inn_counter", opts[0]);
+    const rest = performInteraction(game.ctx, "lib:aldric", "n:inn_counter", opts[0]);
     expect(rest.requests[0]).toMatchObject({ type: "inn", wakeAt: { map: "sandhollow_inn_upper", spawn: "bed" } });
     // stepping out puts the party one cell in front of the door, not on it
     const out = exitAt(game.ctx, { x: 3, y: 6 })!;
     game.travel(out);
-    const p = Object.values(game.ctx.state.board!.pieces).find((x) => x.members.includes("aldric"))!;
+    const p = Object.values(game.ctx.state.board!.pieces).find((x) => x.members.includes("lib:aldric"))!;
     expect([p.x, p.y]).toEqual([10, 3]);
     expect(exitAt(game.ctx, p)).toBeUndefined();
   });

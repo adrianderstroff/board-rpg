@@ -111,7 +111,7 @@ export class BattleScene extends Phaser.Scene {
   create() {
     this.router = new InputRouter(this);
     const b = battle(this.ctx);
-    const bg = this.textures.exists(K.battleback(b.battleback)) ? K.battleback(b.battleback) : K.battleback("desert");
+    const bg = this.textures.exists(K.battleback(b.battleback)) ? K.battleback(b.battleback) : K.battleback(Object.keys(this.ctx.db.graphics.battlebacks)[0]);
     this.add.image(0, 0, bg).setOrigin(0, 0);
     this.add.rectangle(0, 190, 480, 80, 0x181425).setOrigin(0, 0);
     const heroes = b.combatants.filter((c) => c.side === "hero");

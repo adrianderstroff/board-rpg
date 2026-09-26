@@ -51,6 +51,8 @@ export function deserialize(text: string): SaveFile {
 /** Upgrades older save versions in place. */
 function migrate(file: SaveFile): SaveFile {
   if (file.version > SAVE_VERSION) throw new Error(`Save version ${file.version} is newer than the game`);
+  // before projects (version 1) ids had no `lib:` prefix – such saves are dropped (projects.md §2)
+  if (file.version < 2) throw new Error(`Save version ${file.version} is too old`);
   return file;
 }
 

@@ -46,6 +46,7 @@ import { openMainMenu } from "../ui/mainMenu";
 import { openShop } from "../ui/shop";
 import { showStats } from "../ui/stats";
 import { music, sfx, sfxForEvent, type SfxName } from "../sound";
+import { BUILTIN } from "../../core/data/builtins";
 
 /** Emote balloons (the script action `emote`, EMOTES in core). */
 const EMOTE_TEXT: Record<Emote, string> = { exclaim: "!", question: "?", silence: "...", surprise: "!?", angry: "#", sleep: "zZ", love: "<3", note: "~" };
@@ -1181,27 +1182,27 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
     const ctx = this.ctx;
     const piece = mustPieceOf(ctx, actor);
     const options = [
-      { id: "join_party", label: "Join Party" },
-      { id: "leave_party", label: "Leave Party" },
+      { id: BUILTIN.joinParty, label: "Join Party" },
+      { id: BUILTIN.leaveParty, label: "Leave Party" },
     ].map((o) => ({ ...o, disabled: !canUseBoardAbility(ctx, actor, o.id) }));
     for (;;) {
       const r = await pick(this, this.router, options, {
         ...this.menuPos(piece),
         title: "Party",
         initial: Math.max(0, options.findIndex((o) => !o.disabled)),
-        onHighlight: (i) => this.preview(options[i]?.id === "join_party" ? abilityTargeting(this.ctx, actor, "join_party") : null),
+        onHighlight: (i) => this.preview(options[i]?.id === BUILTIN.joinParty ? abilityTargeting(this.ctx, actor, BUILTIN.joinParty) : null),
       });
       this.view.clearHighlight("range", "valid");
       if (r === null) return this.cursorBack(actor);
-      if (options[r].id === "leave_party") {
+      if (options[r].id === BUILTIN.leaveParty) {
         this.spend();
-        await this.play(useBoardAbility(this.ctx, actor, "leave_party"));
+        await this.play(useBoardAbility(this.ctx, actor, BUILTIN.leaveParty));
         return this.cursorBack(actor);
       }
-      const target = await this.pickTarget(abilityTargeting(this.ctx, actor, "join_party")!);
+      const target = await this.pickTarget(abilityTargeting(this.ctx, actor, BUILTIN.joinParty)!);
       if (!target) continue;
       this.spend();
-      await this.play(useBoardAbility(this.ctx, actor, "join_party", target));
+      await this.play(useBoardAbility(this.ctx, actor, BUILTIN.joinParty, target));
       await this.afterChange();
       return this.cursorBack(actor);
     }
@@ -1314,8 +1315,8 @@ export class BoardScene extends Phaser.Scene implements RequestHandler {
         this.moveCursor(pre.target);
         await this.previewFor(actor, pre.ability, pre.target);
         await this.play(useBoardAbility(this.ctx, actor, pre.ability, pre.target));
-      } else if (pre.type === "join") await this.play(useBoardAbility(this.ctx, actor, "join_party", pre.target));
-      else await this.play(useBoardAbility(this.ctx, actor, "leave_party"));
+      } else if (pre.type === "join") await this.play(useBoardAbility(this.ctx, actor, BUILTIN.joinParty, pre.target));
+      else await this.play(useBoardAbility(this.ctx, actor, BUILTIN.leaveParty));
     }
     if (!pieceOf(this.ctx, actor)) return;
     const d = planBoardTurn(this.ctx, actor);

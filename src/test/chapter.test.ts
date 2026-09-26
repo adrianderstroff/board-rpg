@@ -35,7 +35,7 @@ function place(ctx: Ctx, charId: string, x: number, y: number): string[] {
 
 const dialogsOf = (r: { requests: { type: string; id?: string }[] }) => r.requests.filter((q) => q.type === "dialog").map((q) => q.id!);
 
-const tokens = ["token_serenity", "token_foresight", "token_life"];
+const tokens = ["lib:token_serenity", "lib:token_foresight", "lib:token_life"];
 
 describe("the Mountain Temple chapter (§18.7-12)", () => {
   it("reporting to the elder opens the road east and starts The Mountain Temple", () => {
@@ -43,8 +43,8 @@ describe("the Mountain Temple chapter (§18.7-12)", () => {
     const ctx = game.ctx;
     game.enter("elder_house", "from_town");
     const talkElder = () => {
-      const opt = interactionsFor(ctx, "aldric", "n:elder").find((o) => o.interaction.type === "talk")!;
-      const out = performInteraction(ctx, "aldric", "n:elder", opt);
+      const opt = interactionsFor(ctx, "lib:aldric", "n:elder").find((o) => o.interaction.type === "talk")!;
+      const out = performInteraction(ctx, "lib:aldric", "n:elder", opt);
       runDialog(ctx, out.dialog!.id);
       evaluateQuests(ctx);
     };
@@ -67,15 +67,15 @@ describe("the Mountain Temple chapter (§18.7-12)", () => {
     game.enter("temple", "from_mountain");
     const ctx = game.ctx;
     expect(grid(ctx).cell({ x: 8, y: 0 })?.walkable).toBe(false);
-    expect(place(ctx, "aldric", 5, 5)).toEqual(["monks_talk"]); // sitting on the cushion
+    expect(place(ctx, "lib:aldric", 5, 5)).toEqual(["monks_talk"]); // sitting on the cushion
     const talk = runDialog(ctx, "monks_talk");
     const monks = talk.speakers.filter((s) => s?.startsWith("monk"));
     expect(new Set(monks)).toEqual(new Set(["monk_old", "monk_a", "monk_b"]));
     expect(monks.every((s, i) => i === 0 || s !== monks[i - 1])).toBe(true); // they take turns
     expect(ctx.state.flags.monks_trial).toBe(true);
     // sitting again repeats the task; with all three tokens they are returned
-    place(ctx, "aldric", 5, 6);
-    expect(place(ctx, "aldric", 5, 5)).toEqual(["monks_talk"]);
+    place(ctx, "lib:aldric", 5, 6);
+    expect(place(ctx, "lib:aldric", 5, 5)).toEqual(["monks_talk"]);
     for (const t of tokens) runActions(ctx, [{ giveItem: t }]);
     runDialog(ctx, "monks_talk");
     expect(tokens.every((t) => !ctx.state.inventory[t])).toBe(true);
@@ -103,14 +103,14 @@ describe("the Mountain Temple chapter (§18.7-12)", () => {
     const game = villageGame();
     game.enter("mirage_tower_1", "start");
     const ctx = game.ctx;
-    expect(place(ctx, "aldric", 3, 8)).not.toContain("tower_split_up");
+    expect(place(ctx, "lib:aldric", 3, 8)).not.toContain("tower_split_up");
     expect(stateOf(ctx, "east_gate")).toBe("open");
-    expect(place(ctx, "aldric", 6, 8)).toContain("tower_split_up"); // the gate slams shut: the scene starts
+    expect(place(ctx, "lib:aldric", 6, 8)).toContain("tower_split_up"); // the gate slams shut: the scene starts
     expect(ctx.state.flags.tower_split).toBe(true);
     // one team holds the plate, the other passes; the inner plate opens the west gate
-    for (const id of ["kit", "tarek"]) leaveParty(ctx, id);
-    place(ctx, "kit", 3, 8);
-    place(ctx, "aldric", 9, 2);
+    for (const id of ["lib:kit", "lib:tarek"]) leaveParty(ctx, id);
+    place(ctx, "lib:kit", 3, 8);
+    place(ctx, "lib:aldric", 9, 2);
     expect(stateOf(ctx, "west_gate")).toBe("open");
   });
 
@@ -118,13 +118,13 @@ describe("the Mountain Temple chapter (§18.7-12)", () => {
     const game = villageGame();
     game.enter("mirage_tower_3", "west");
     const ctx = game.ctx;
-    executeMove(ctx, "aldric", { x: 3, y: 7 }); // onto the ice
-    const p = mustPieceOf(ctx, "aldric");
+    executeMove(ctx, "lib:aldric", { x: 3, y: 7 }); // onto the ice
+    const p = mustPieceOf(ctx, "lib:aldric");
     expect([p.x, p.y]).toEqual([3, 2]); // slid all the way up, onto the plate
     entityTriggers(ctx);
     expect(stateOf(ctx, "east_stairs")).toBe("open");
     board(ctx).turn.moved = [];
-    executeMove(ctx, "aldric", { x: 2, y: 2 });
+    executeMove(ctx, "lib:aldric", { x: 2, y: 2 });
     entityTriggers(ctx);
     expect(stateOf(ctx, "east_stairs")).toBe("open"); // latched
     expect(stateOf(ctx, "west_stairs")).toBe("closed");
@@ -134,10 +134,10 @@ describe("the Mountain Temple chapter (§18.7-12)", () => {
     const game = villageGame();
     const spawnDir = game.ctx.db.map("sandhollow_inn_upper").spawns.bed.dir ?? "S";
     game.enter("sandhollow_inn_upper", "bed");
-    expect(mustPieceOf(game.ctx, "aldric").facing).toBe(spawnDir);
+    expect(mustPieceOf(game.ctx, "lib:aldric").facing).toBe(spawnDir);
     const other = spawnDir === "N" ? "E" : "N";
     game.enter("sandhollow_inn_upper", "bed", other);
-    expect(mustPieceOf(game.ctx, "aldric").facing).toBe(other);
+    expect(mustPieceOf(game.ctx, "lib:aldric").facing).toBe(other);
   });
 
   it("the cave half-way up the mountain stays sealed until the Holy Orb is claimed", () => {
@@ -145,7 +145,7 @@ describe("the Mountain Temple chapter (§18.7-12)", () => {
     game.enter("temple_mountain", "from_dunes");
     expect(grid(game.ctx).cell({ x: 6, y: 13 })?.walkable).toBe(false);
     game.enter("hall_of_fears", "from_temple");
-    runActions(game.ctx, [{ giveItem: "holy_orb" }, { setFlag: "orb_claimed" }]);
+    runActions(game.ctx, [{ giveItem: "lib:holy_orb" }, { setFlag: "orb_claimed" }]);
     game.enter("temple_mountain", "from_temple");
     expect(grid(game.ctx).cell({ x: 6, y: 13 })?.walkable).toBe(true);
   });

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Generates all procedural chiptune audio into public/assets/audio/.
+// Generates all procedural chiptune audio: sound effects into public/assets/audio/sfx, music into
+// the library (library/v1/assets/audio/music, docs/projects.md).
 // Usage: node tools/audio/generate.mjs [name ...]   (or: npm run audio)
 //   Optional names limit generation to matching sfx/songs, e.g. `hit battle`.
 // Deterministic: all noise is seeded; re-running produces identical files.
@@ -22,14 +23,14 @@ import { lintSong } from './theory.mjs';
 import { encodeWav } from './wav.mjs';
 import { SFX } from './sfx.mjs';
 import { SONGS } from './music.mjs';
-import { checkAll, AUDIO_DIR } from './check.mjs';
+import { checkAll, AUDIO_DIR, MUSIC_DIR } from './check.mjs';
 
 const MUSIC_PEAK_DB = -6;
 const only = process.argv.slice(2);
 const wanted = (name) => only.length === 0 || only.includes(name);
 
 function write(rel, samples) {
-  const path = join(AUDIO_DIR, rel);
+  const path = rel.startsWith('music/') ? join(MUSIC_DIR, rel.slice('music/'.length)) : join(AUDIO_DIR, rel);
   mkdirSync(join(path, '..'), { recursive: true });
   writeFileSync(path, encodeWav(samples, SR));
 }

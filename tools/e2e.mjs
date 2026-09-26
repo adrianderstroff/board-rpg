@@ -479,13 +479,13 @@ const scenarios = {
     await page.mouse.click(qp.x, qp.y);
     await sleep(300);
     await page.getByRole("button", { name: "+ Hero" }).click();
-    const party = page.locator(".inspector select").filter({ has: page.locator("option[value=tarek]") }).first();
-    await party.selectOption("tarek");
+    const party = page.locator(".inspector select").filter({ has: page.locator("option[value=\"lib:tarek\"]") }).first();
+    await party.selectOption("lib:tarek");
     await page.locator(".inspector input[type=number]").nth(3).fill("9"); // level (the arrival's x, y, gold, level)
     await page.locator(".inspector input[placeholder^='e.g.']").fill("monks_trial");
     // an unsaved edit the play-test must see: other music
     await page.getByRole("button", { name: "Info", exact: true }).click();
-    await page.getByRole("combobox", { name: "Music" }).selectOption("boss");
+    await page.getByRole("combobox", { name: "Music" }).selectOption("lib:boss");
     d.expect(await page.getByRole("button", { name: "Save (1)" }).isVisible(), "the map is marked unsaved");
     await d.shot("editor");
     const [game] = await Promise.all([page.context().waitForEvent("page"), page.getByRole("button", { name: /▶ Quick Play/ }).click()]);
@@ -499,14 +499,14 @@ const scenarios = {
     await game.waitForTimeout(1500);
     const st = await game.evaluate(() => {
       const s = __game.debug.state();
-      const p = Object.values(s.board.pieces).find((x) => x.members.includes("tarek"));
-      return { roster: s.roster, level: s.heroes.tarek.level, flag: s.flags.monks_trial, music: __game.debug.ctx().db.map("temple").music, at: [p.x, p.y] };
+      const p = Object.values(s.board.pieces).find((x) => x.members.includes("lib:tarek"));
+      return { roster: s.roster, level: s.heroes["lib:tarek"].level, flag: s.flags.monks_trial, music: __game.debug.ctx().db.map("temple").music, at: [p.x, p.y] };
     });
     await game.screenshot({ path: `${OUT}/editorQuickPlay-02-game.png` });
-    d.expect(JSON.stringify(st.roster) === '["tarek"]', `party from Quick Play (${st.roster})`);
+    d.expect(JSON.stringify(st.roster) === '["lib:tarek"]', `party from Quick Play (${st.roster})`);
     d.expect(st.level === 9, `level 9 (${st.level})`);
     d.expect(st.flag === true, "flag set");
-    d.expect(st.music === "boss", "unsaved edit reached the game");
+    d.expect(st.music === "lib:boss", "unsaved edit reached the game");
     d.expect(st.at[0] === 5 && st.at[1] === 6, `started on the Quick Play start (${st.at})`);
     // nothing was written to disk: undo everything
     await page.bringToFront();
@@ -539,7 +539,7 @@ const scenarios = {
   /** Visits every map of the Mountain Temple chapter (§18.7-12) and takes a screenshot of each. */
   async chapterTour(d) {
     await d.newGame();
-    for (const h of ["aldric", "mira", "kit", "tarek"]) await d.dbg(`d.setLevel("${h}", 30)`);
+    for (const h of ["lib:aldric", "lib:mira", "lib:kit", "lib:tarek"]) await d.dbg(`d.setLevel("${h}", 30)`);
     const stops = [
       ["temple_mountain", "from_dunes"], ["temple_mountain", "from_temple"], ["temple", "from_mountain"], ["hall_of_fears", "from_temple"],
       ["reed_pond", "from_mountain"], ["endless_dunes", "north"], ["mirage_sands", "from_dunes"], ["mirage_tower_1", "start"],
@@ -596,7 +596,7 @@ const scenarios = {
   /** Reed Pond (§5.6): Thunder into the water runs through the connected water and hits the swimmers. */
   async pondLightning(d) {
     await d.newGame();
-    for (const h of ["aldric", "mira", "kit", "tarek"]) await d.dbg(`d.setLevel("${h}", 10)`);
+    for (const h of ["lib:aldric", "lib:mira", "lib:kit", "lib:tarek"]) await d.dbg(`d.setLevel("${h}", 10)`);
     await d.ev(() => {
       __game.debug.state().maps.reed_pond = { defeated: [], removedEvents: [], triggered: ["pond_intro#0"] };
       __game.debug.travel("reed_pond", "from_mountain");
@@ -604,11 +604,11 @@ const scenarios = {
     await d.waitFor(`d.state().board && d.state().board.mapId === "reed_pond"`);
     let t = await d.waitHeroTurn();
     await d.dbg(`d.place("${t}", 1, 4)`);
-    for (let i = 0; i < 6 && t !== "mira"; i++) {
+    for (let i = 0; i < 6 && t !== "lib:mira"; i++) {
       await d.choose("End Turn");
       t = await d.waitHeroTurn(t);
     }
-    d.expect(t === "mira", "Mira's turn");
+    d.expect(t === "lib:mira", "Mira's turn");
     const hp = () => d.ev(() => Object.fromEntries(Object.values(__game.debug.state().board.chars).map((c) => [c.id, c.hp])));
     const before = await hp();
     const heroesBefore = await d.dbg(`d.state().roster.map(id => d.state().heroes[id].hp)`);
@@ -632,7 +632,7 @@ const scenarios = {
   /** Verdant Isle (§18.11): the produce fights together on the board – spit (soaked), zap, seeds, fire. */
   async islandCombo(d) {
     await d.newGame();
-    for (const h of ["aldric", "mira", "kit", "tarek"]) await d.dbg(`d.setLevel("${h}", 16)`);
+    for (const h of ["lib:aldric", "lib:mira", "lib:kit", "lib:tarek"]) await d.dbg(`d.setLevel("${h}", 16)`);
     await d.ev(() => {
       for (const e of __game.debug.ctx().db.enemies.values()) for (const a of e.boardAi.abilities ?? []) a.chance = 1;
       __game.debug.state().maps.verdant_isle = { defeated: [], removedEvents: [], triggered: ["isle_intro#0"] };
@@ -658,7 +658,7 @@ const scenarios = {
       if (await d.ev(() => window.__seen.includes("shock"))) break;
     }
     const seen = await d.ev(() => [...new Set(window.__seen)]);
-    d.expect(seen.includes("fx:soaked"), `the tomato soaked the ground (${seen})`);
+    d.expect(seen.includes("fx:lib:soaked"), `the tomato soaked the ground (${seen})`);
     d.expect(seen.includes("shock"), `the lemon sent lightning into the wet ground (${seen})`);
   },
 
@@ -695,7 +695,7 @@ const scenarios = {
     await walk(9, 2);
     await d.waitFor(`d.entityState("west_gate") === "open"`, 10000, "west gate open");
     await d.shot("split");
-    const others = await at("mira");
+    const others = await at("lib:mira");
     d.expect(others[0] === 9 && others[1] === 2, `the team crossed to the inner plate (${others})`);
     // Aldric climbs the west stairs, the others the east stairs
     await walk(3, 8); // select Aldric
@@ -706,8 +706,8 @@ const scenarios = {
     await walk(10, 1);
     await d.waitFor(`d.state().board && d.state().board.mapId === "mirage_tower_2"`, 20000, "2F");
     await d.pressUntil(`!!d.explorer()`, "Enter", 30, 400);
-    const aldric = await at("aldric");
-    const kit = await at("kit");
+    const aldric = await at("lib:aldric");
+    const kit = await at("lib:kit");
     d.expect(aldric[0] === 3 && aldric[1] === 9 && kit[0] === 9 && kit[1] === 9, `teams arrive apart (${aldric} / ${kit})`);
     await d.shot("2F");
   },
@@ -715,13 +715,13 @@ const scenarios = {
   /** The Grave Toad (§12.7): swallow → digest → spit, acolytes raised again for gold, release on death. */
   async graveToad(d) {
     await d.newGame();
-    for (const h of ["aldric", "mira", "kit", "tarek"]) await d.dbg(`d.setLevel("${h}", 14)`);
+    for (const h of ["lib:aldric", "lib:mira", "lib:kit", "lib:tarek"]) await d.dbg(`d.setLevel("${h}", 14)`);
     await d.ev(() => {
       const db = __game.debug.ctx().db;
       // make the rare moves happen right away for this check
-      db.enemies.get("grave_toad").ai = [
-        { action: "swallow", weight: 1, priority: true, when: { cooldown: 4 } },
-        { action: "raise_dead", weight: 1, priority: true, when: { alone: true } },
+      db.enemies.get("lib:grave_toad").ai = [
+        { action: "lib:swallow", weight: 1, priority: true, when: { cooldown: 4 } },
+        { action: "lib:raise_dead", weight: 1, priority: true, when: { alone: true } },
         { action: "attack", weight: 1 },
       ];
       const s = __game.debug.state();
@@ -796,7 +796,7 @@ const scenarios = {
     await d.newGame();
     const actor = await d.waitReady();
     await d.dbg(`d.place("${actor}", 10, 3)`);
-    const other = actor === "mira" ? "tarek" : "mira";
+    const other = actor === "lib:mira" ? "lib:tarek" : "lib:mira";
     await d.dbg(`d.setHp("${actor}", 3)`);
     await d.shot("outside");
     // stepping into the doorway enters the inn (no question)
@@ -893,7 +893,7 @@ const scenarios = {
   async shopScrollEquip(d) {
     await d.newGame();
     const actor = await d.waitReady();
-    await d.dbg(`(d.give("scroll_venom_mist"), d.give("iron_sword"), true)`);
+    await d.dbg(`(d.give("lib:scroll_venom_mist"), d.give("lib:iron_sword"), true)`);
     const gold0 = await d.dbg(`d.state().gold`);
     await d.dbg(`d.place("${actor}", 6, 9)`);
     await d.moveTo(["ArrowUp"]); // Brann
@@ -917,7 +917,7 @@ const scenarios = {
     await d.choose("Mira");
     await sleep(400);
     await d.pressUntil(`d.menu() && d.menu().title === "Items"`, "Enter", 6, 400);
-    d.expect(await d.dbg(`d.state().heroes.mira.learned.includes("venom_mist")`), "Mira learned Venom Mist");
+    d.expect(await d.dbg(`d.state().heroes["lib:mira"].learned.includes("lib:venom_mist")`), "Mira learned Venom Mist");
     await d.key("Escape", 1, 300);
     // equip the iron sword on Aldric
     await d.choose("Heroes");
@@ -926,21 +926,21 @@ const scenarios = {
     await d.choose("Weapon:");
     await d.shot("equip");
     await d.choose("Iron Sword");
-    const eq = await d.dbg(`[d.state().heroes.aldric.equipment.weapon, d.state().inventory.bronze_sword]`);
-    d.expect(eq[0] === "iron_sword" && eq[1] === 1, `equipped iron sword (${eq})`);
+    const eq = await d.dbg(`[d.state().heroes["lib:aldric"].equipment.weapon, d.state().inventory["lib:bronze_sword"]]`);
+    d.expect(eq[0] === "lib:iron_sword" && eq[1] === 1, `equipped iron sword (${eq})`);
     await d.key("Escape", 5, 250);
   },
 
   async stealNpc(d) {
     await d.newGame();
     // exploring: whoever leads the party talks, Kit steals for them
-    await d.dbg(`d.place("kit", 8, 9)`);
+    await d.dbg(`d.place("lib:kit", 8, 9)`);
     await d.moveTo(["ArrowUp"]); // Salma
     await d.shot("options");
     await d.choose("Steal");
     await sleep(800);
     await d.shot("stolen");
-    d.expect(await d.dbg(`d.state().board.turn.abilityUsed.includes("kit")`), "stealing used Kit's ability action");
+    d.expect(await d.dbg(`d.state().board.turn.abilityUsed.includes("lib:kit")`), "stealing used Kit's ability action");
   },
 
   async trapFreezeSlide(d) {
@@ -948,16 +948,16 @@ const scenarios = {
     await d.travelToDunes(["scorp_a"]);
     await d.ev(() => {
       const s = __game.debug.state();
-      s.board.chars["scorp_a#0"].statuses.push({ id: "sleep", turns: 9 });
+      s.board.chars["scorp_a#0"].statuses.push({ id: "lib:sleep", turns: 9 });
       // everyone can cast Ice for this test
       for (const id of s.roster) {
-        s.heroes[id].learned.push("ice");
+        s.heroes[id].learned.push("lib:ice");
       }
     });
-    await d.dbg(`d.setLevel("kit", 3)`);
+    await d.dbg(`d.setLevel("lib:kit", 3)`);
     const actor = await d.waitHeroTurn();
-    d.expect(actor === "kit", `Kit's turn (${actor})`);
-    await d.dbg(`d.place("kit", 3, 4)`);
+    d.expect(actor === "lib:kit", `Kit's turn (${actor})`);
+    await d.dbg(`d.place("lib:kit", 3, 4)`);
     // Trap: Ability → Skill → Trap → click an empty cell
     await d.choose("Ability");
     await d.chooseType("Skill");
@@ -977,22 +977,22 @@ const scenarios = {
     const trapped = await d.ev(() => {
       const s = __game.debug.state();
       const c = s.board.chars["scorp_a#0"];
-      return { traps: s.board.traps.length, hp: c?.hp, stuck: c?.statuses.some((x) => x.id === "stuck") };
+      return { traps: s.board.traps.length, hp: c?.hp, stuck: c?.statuses.some((x) => x.id === "lib:stuck") };
     });
     d.expect(trapped.traps === 0 && trapped.stuck && trapped.hp < 30, `trap triggered ${JSON.stringify(trapped)}`);
     await d.shot("trapped");
     await d.reopenBox();
     await d.choose("End Turn");
-    const next = await d.waitHeroTurn("kit");
+    const next = await d.waitHeroTurn("lib:kit");
     // Ability → Magic → (Attack) → Ice at (5,4)
     await d.choose("Ability");
     await d.chooseType("Magic");
-    if (next === "mira") await d.chooseType("Attack");
+    if (next === "lib:mira") await d.chooseType("Attack");
     await d.choose("Ice");
     await d.clickCell(5, 4);
     await sleep(900);
     await d.shot("frozen");
-    const frozen = await d.dbg(`d.state().board.fieldEffects.filter(f => f.effect === "frozen").map(f => f.x + "," + f.y)`);
+    const frozen = await d.dbg(`d.state().board.fieldEffects.filter(f => f.effect === "lib:frozen").map(f => f.x + "," + f.y)`);
     await d.reopenBox();
     d.expect(frozen.length === 3 && ["4,4", "5,4", "6,4"].every((c) => frozen.includes(c)), `on land, ice freezes a line of 3 (${frozen})`);
     await d.choose("Move");
@@ -1000,7 +1000,7 @@ const scenarios = {
     await d.key("Enter", 1, 500);
     await sleep(1500);
     await d.shot("slid");
-    const pos = await d.dbg(`(p => [p.x, p.y])(Object.values(d.state().board.pieces).find(p => p.members.includes("kit")))`);
+    const pos = await d.dbg(`(p => [p.x, p.y])(Object.values(d.state().board.pieces).find(p => p.members.includes("lib:kit")))`);
     d.expect(pos[0] === 7 && pos[1] === 4, `slid over the ice to 7,4 (at ${pos})`);
     // sliding is an effect → the move can't be undone
     await d.waitFor(`d.menu() && d.menu().items.some(i => i.label === "Stats")`);
@@ -1021,7 +1021,7 @@ const scenarios = {
     await d.pressUntil(`d.state().flags.gate_open && d.menu() && d.menu().title === "Choose"`, "Enter", 40, 400);
     d.expect((await d.dbg(`d.state().quests.active`)) === "clear_dunes", "sub quest active after talking");
     await d.choose("Leave");
-    for (const h of ["aldric", "mira", "kit", "tarek"]) await d.dbg(`d.setLevel("${h}", 18)`);
+    for (const h of ["lib:aldric", "lib:mira", "lib:kit", "lib:tarek"]) await d.dbg(`d.setLevel("${h}", 18)`);
     await d.dbg(`(d.travel("sandhollow", "from_elder"), true)`);
     await d.waitFor(`d.state().board.mapId === "sandhollow"`);
     await sleep(1200);
@@ -1063,7 +1063,7 @@ const scenarios = {
     await d.moveTo(["ArrowUp"]);
     await d.pressUntil(`d.state().quests.entries.road_to_oasis.status === "done" && !!d.menu()`, "Enter", 40, 400);
     await d.shot("reward");
-    d.expect((await d.dbg(`d.state().inventory.flame_blade`)) === 1, "Elder gave the Flame Blade bonus");
+    d.expect((await d.dbg(`d.state().inventory["lib:flame_blade"]`)) === 1, "Elder gave the Flame Blade bonus");
   },
 
   async touch(d) {
@@ -1207,13 +1207,13 @@ const scenarios = {
     await d.travelToDunes(["scorp_a"]);
     await d.ev(() => {
       const s = __game.debug.state();
-      s.board.chars["scorp_a#0"].statuses.push({ id: "sleep", turns: 9 });
-      s.heroes.kit.statuses.push({ id: "poison", turns: 5 }, { id: "protect", turns: 3 });
-      s.heroes.mira.statuses.push({ id: "regen", turns: 3 });
+      s.board.chars["scorp_a#0"].statuses.push({ id: "lib:sleep", turns: 9 });
+      s.heroes["lib:kit"].statuses.push({ id: "lib:poison", turns: 5 }, { id: "lib:protect", turns: 3 });
+      s.heroes["lib:mira"].statuses.push({ id: "lib:regen", turns: 3 });
       __game.debug.resync();
     });
     const actor = await d.waitHeroTurn();
-    d.expect(actor === "kit", `Kit's turn (${actor})`);
+    d.expect(actor === "lib:kit", `Kit's turn (${actor})`);
     await d.shot("header-and-board-icons");
     // inspect the scorpion: its movement range is highlighted
     await d.key("Escape", 1, 300);
@@ -1229,8 +1229,8 @@ const scenarios = {
     await d.ev(() => {
       const d2 = __game.debug; const ctx = d2.ctx();
       const p = Object.values(ctx.state.board.pieces).find((x) => x.faction === "enemy");
-      d2.place("kit", p.x + 1, p.y);
-      __game.phaser.scene.getScene("board").battle(() => __game.core.engage(ctx, "kit", { x: p.x, y: p.y }));
+      d2.place("lib:kit", p.x + 1, p.y);
+      __game.phaser.scene.getScene("board").battle(() => __game.core.engage(ctx, "lib:kit", { x: p.x, y: p.y }));
     });
     await d.waitFor(`d.activeScenes().includes("battle") && d.menu() && d.menu().items.some(i => i.label === "Fight")`, 20000);
     await d.shot("battle-icons");
@@ -1241,7 +1241,7 @@ const scenarios = {
   async undoMove(d) {
     await d.newGame();
     await d.travelToDunes(["scorp_a"]); // a (sleeping) enemy keeps the board turn-based
-    await d.ev(() => __game.debug.state().board.chars["scorp_a#0"].statuses.push({ id: "sleep", turns: 9 }));
+    await d.ev(() => __game.debug.state().board.chars["scorp_a#0"].statuses.push({ id: "lib:sleep", turns: 9 }));
     const actor = await d.waitHeroTurn();
     await d.dbg(`d.place("${actor}", 3, 4)`);
     await d.moveTo(["ArrowRight"]); // (4,4): plain sand, no effects
@@ -1252,7 +1252,7 @@ const scenarios = {
     d.expect(back[0] === 3 && back[1] === 4, `undo returned the party (${back})`);
     d.expect(await d.dbg(`d.menu().items.some(i => i.label === "Move" && !i.disabled)`), "Move is available again");
     // move onto a burning cell: effects happened → no undo
-    await d.ev(() => { __game.debug.state().board.fieldEffects.push({ x: 4, y: 4, effect: "burning", rounds: 3 }); __game.debug.resync(); });
+    await d.ev(() => { __game.debug.state().board.fieldEffects.push({ x: 4, y: 4, effect: "lib:burning", rounds: 3 }); __game.debug.resync(); });
     await d.moveTo(["ArrowRight"]);
     await d.waitFor(`d.menu() && d.menu().items.some(i => i.label === "Stats")`);
     d.expect(!(await d.dbg(`d.menu().items.some(i => i.label === "Undo Move")`)), "no undo after taking fire damage");
@@ -1290,7 +1290,7 @@ const scenarios = {
     await d.waitFor(`JSON.stringify(Object.values(d.state().board.pieces).filter(p => p.faction === "npc").map(p => [p.x, p.y])) !== ${JSON.stringify(npcs0)}`, 15000, "a villager wandered");
     // wild map: tactics while an enemy lives, exploration once it's gone
     await d.travelToDunes(["scorp_a"]);
-    await d.ev(() => __game.debug.state().board.chars["scorp_a#0"].statuses.push({ id: "sleep", turns: 9 }));
+    await d.ev(() => __game.debug.state().board.chars["scorp_a#0"].statuses.push({ id: "lib:sleep", turns: 9 }));
     await d.waitHeroTurn();
     d.expect(!(await d.dbg(`d.exploring()`)), "turn-based with an enemy around");
     await d.dbg(`d.setHp("scorp_a#0", 0)`);
@@ -1307,18 +1307,18 @@ const scenarios = {
     await d.pressUntil(`!!d.explorer()`, "Enter", 30, 400); // captain's intro
     await d.shot("harbor");
     const actor = await d.waitReady();
-    const potions = await d.dbg(`d.state().inventory.potion ?? 0`);
+    const potions = await d.dbg(`d.state().inventory["lib:potion"] ?? 0`);
     await d.dbg(`d.place("${actor}", 8, 4)`);
     await d.moveTo(["ArrowUp"]); // the herring barrel at (8,3)
     await d.waitFor(`d.menu() && d.menu().title === "Choose"`);
     await d.shot("barrel-close-up");
     await d.choose("Search");
     await d.pressUntil(`d.menu() && d.menu().title === "Choose"`, "Enter", 10, 400);
-    d.expect((await d.dbg(`d.state().inventory.potion`)) === potions + 1, "found a potion in the barrel");
+    d.expect((await d.dbg(`d.state().inventory["lib:potion"]`)) === potions + 1, "found a potion in the barrel");
     // searching again only tells what's left – no second potion
     await d.choose("Search");
     await d.pressUntil(`d.menu() && d.menu().title === "Choose"`, "Enter", 10, 400);
-    d.expect((await d.dbg(`d.state().inventory.potion`)) === potions + 1, "only one potion in the barrel");
+    d.expect((await d.dbg(`d.state().inventory["lib:potion"]`)) === potions + 1, "only one potion in the barrel");
     await d.choose("Leave");
   },
 
@@ -1327,7 +1327,7 @@ const scenarios = {
     await d.pressUntil(`!!d.explorer()`, "Enter", 30, 400);
     await d.ev(() => {
       const s = __game.debug.state();
-      s.heroes.mira.learned.push("ice", "fire");
+      s.heroes["lib:mira"].learned.push("lib:ice", "lib:fire");
       __game.debug.travel("greenwood", "from_harbor");
     });
     await d.waitFor(`d.state().board.mapId === "greenwood"`);
@@ -1348,7 +1348,7 @@ const scenarios = {
     await d.key("Enter", 1, 300);
     await sleep(1200);
     await d.shot("frozen-river");
-    const frozen = await d.dbg(`d.state().board.fieldEffects.filter(f => f.effect === "frozen").length`);
+    const frozen = await d.dbg(`d.state().board.fieldEffects.filter(f => f.effect === "lib:frozen").length`);
     d.expect(frozen === 9, `ice froze 9 cells (${frozen})`);
     await d.key("Escape", 2, 300);
     await d.waitReady();
@@ -1411,7 +1411,7 @@ const scenarios = {
     d.expect((await d.dbg(`Object.values(d.state().maps.sunken_ruins.states ?? {}).filter((st) => st === "revealed").length`)) === 1, "Discover revealed the trap next to Kit");
     await d.shot("trap-revealed");
     await kitCast("Defuse", true);
-    d.expect((await d.dbg(`d.state().inventory.snare ?? 0`)) === 1, "the defused trap is a Snare now");
+    d.expect((await d.dbg(`d.state().inventory["lib:snare"] ?? 0`)) === 1, "the defused trap is a Snare now");
     // walking along the road: a trap nobody found stops the party
     await d.dbg(`d.place("${actor}", 6, 6)`);
     await sleep(300);
@@ -1433,7 +1433,7 @@ const scenarios = {
 
   async enemyAi(d) {
     await d.newGame();
-    for (const h of ["aldric", "mira", "kit", "tarek"]) await d.dbg(`d.setLevel("${h}", 12)`);
+    for (const h of ["lib:aldric", "lib:mira", "lib:kit", "lib:tarek"]) await d.dbg(`d.setLevel("${h}", 12)`);
     // make board abilities deterministic for this check
     await d.ev(() => {
       for (const e of __game.debug.ctx().db.enemies.values()) for (const a of e.boardAi.abilities ?? []) a.chance = 1;
@@ -1452,8 +1452,8 @@ const scenarios = {
         const enemyPieces = Object.values(s.board.pieces).filter((p) => p.faction === "enemy");
         return {
           maxParty: Math.max(0, ...enemyPieces.map((p) => p.members.length)),
-          sticky: s.board.fieldEffects.some((f) => f.effect === "sticky"),
-          statuses: s.roster.some((id) => s.heroes[id].statuses.some((x) => ["slow", "poison"].includes(x.id))),
+          sticky: s.board.fieldEffects.some((f) => f.effect === "lib:sticky"),
+          statuses: s.roster.some((id) => s.heroes[id].statuses.some((x) => ["lib:slow", "lib:poison"].includes(x.id))),
         };
       });
       if (snap.maxParty > 1) sawPack = true;

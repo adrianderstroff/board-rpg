@@ -1,0 +1,41 @@
+# Playable heroes. Graphics ids refer to graphics.yaml.
+
+aldric:
+  name: Aldric
+  classId: lib:knight
+  level: 1
+  description: A former caravan guard who never leaves a friend behind.
+  charset: lib:hero_knight
+  battler: lib:hero_knight
+  face: lib:hero_knight
+  equipment: { weapon: lib:bronze_sword, armor: lib:chain_mail }
+
+mira:
+  name: Mira
+  classId: lib:magician
+  level: 1
+  description: A wandering sorceress from the coast, silver-haired and wiser than she lets on, studying the desert's old magic.
+  charset: lib:hero_magician
+  battler: lib:hero_magician
+  face: lib:hero_magician
+  equipment: { weapon: lib:oak_staff, armor: lib:cloth_robe }
+
+kit:
+  name: Kit
+  classId: lib:thief
+  level: 1
+  description: A fox-folk rogue who grew up in the Sandhollow bazaar. Knows every trick – and every back alley.
+  charset: lib:hero_thief
+  battler: lib:hero_thief
+  face: lib:hero_thief
+  equipment: { weapon: lib:dagger, armor: lib:leather_vest }
+
+tarek:
+  name: Tarek
+  classId: lib:monk
+  level: 1
+  description: A wandering monk searching for the Mirage Oasis.
+  charset: lib:hero_monk
+  battler: lib:hero_monk
+  face: lib:hero_monk
+  equipment: { weapon: lib:leather_knuckles, armor: lib:leather_vest }

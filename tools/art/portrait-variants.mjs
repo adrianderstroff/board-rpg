@@ -13,11 +13,12 @@ import { MAGICIAN_VARIANTS } from './portraits.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ASSETS = join(HERE, '..', '..', 'public', 'assets');
+const LIBRARY = join(HERE, '..', '..', 'library', 'v1', 'assets');
 
 export function buildMagicianVariants() {
   const frames = MAGICIAN_VARIANTS.map(([name, fn], i) => {
     const f = fn();
-    writePNG(join(ASSETS, 'faces', `hero_magician-var${i + 1}.png`), f);
+    writePNG(join(LIBRARY, 'faces', `hero_magician-var${i + 1}.png`), f);
     return [name, f];
   });
   // comparison sheet: x4 each, plus 1x, 24px and 14px downscales next to it

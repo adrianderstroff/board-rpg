@@ -1,0 +1,105 @@
+# Reed Pond (§18.9): shallow water is walkable (and freezes), deep water only frozen. Fishfolk and
+# Bog Toads swim; in deep water only lightning reaches them (§5.5, §5.6).
+name: Reed Pond
+kind: wild
+chipset: lib:desert
+battleback: lib:pond
+music: lib:forest
+
+legend:
+  terrain:
+    g: grass
+    e: mountain_path
+    r: rock
+    s: shallow
+    D: deep
+    i: grass
+  decor:
+    T: tree_oak
+    B: bush
+    R: reeds
+    Y: lily_pad
+    o: rock_small
+
+layers:
+  terrain: |
+    rrrggggggggggrrr
+    rgggggggggggggrr
+    ggggssssssgggggr
+    gggssDDDDsssgggg
+    ggssDDDDDDDssggg
+    gssDDDsssDDDssgg
+    essDDsiiisDDDsgg
+    gssDDsiiisDDssgg
+    ggsDDsssssDDsggg
+    ggssDDDDDDDssggg
+    gggsssDDDsssgggg
+    ggggggssssgggggg
+    rgggggggggggggrr
+    rrrggggggggggrrr
+  height: |
+    2221111111111222
+    2111111111111122
+    1111000000111112
+    1110000000001111
+    1100000000000111
+    1000000000000011
+    1000001110000011
+    1000001110000011
+    1100000000000111
+    1100000000000111
+    1110000000001111
+    1111110000111111
+    2111111111111122
+    2221111111111222
+  decor: |
+    ................
+    .T...T......T...
+    ....R....R......
+    .........Y....T.
+    ...R..Y.....R...
+    ................
+    ........o..Y....
+    ....Y........R..
+    ..R............B
+    .......Y..Y.....
+    ...........R....
+    ......R.........
+    .T......B....T..
+    ................
+
+spawns:
+  from_mountain: { x: 1, y: 6, dir: E }
+
+exits:
+  - { x: 0, y: 6, dir: W, to: temple_mountain, spawn: from_pond, label: Temple Mountain }
+
+enemies:
+  - { id: fish_a, enemy: lib:fishfolk, x: 4, y: 4, dir: S }
+  - { id: fish_pair, enemy: lib:fishfolk, party: [lib:fishfolk], x: 11, y: 7, dir: W, level: 6 } # a little stronger (§12.6)
+  - { id: toad_a, enemy: lib:bog_toad, x: 3, y: 9, dir: E }
+  - { id: toad_b, enemy: lib:bog_toad, x: 12, y: 3, dir: S }
+
+events:
+  - id: serenity_chest
+    x: 7
+    y: 6
+    states:
+      chest_closed: { decor: chest_closed }
+      chest_open: { decor: chest_open }
+    on:
+      - on: becomes
+        when: { not: { flag: pond_token_found } }
+        do: [{ setState: { event: serenity_chest, state: chest_closed } }]
+      - on: becomes
+        when: { flag: pond_token_found }
+        do: [{ setState: { event: serenity_chest, state: chest_open } }]
+      - on: interact
+        when: { not: { flag: pond_token_found } }
+        options:
+          - type: examine
+            label: Open
+            dialog: pond_chest
+            actions: [{ giveItem: lib:token_serenity }, { setFlag: pond_token_found }]
+on:
+  - { on: becomes, when: { always: true }, do: [{ dialog: pond_enter }], once: true, onceKey: pond_intro#0 }

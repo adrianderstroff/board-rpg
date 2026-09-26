@@ -685,7 +685,7 @@ export interface MapDef {
   kind: "peaceful" | "wild";
   chipset: string;
   battleback: string;
-  /** Music track id (public/assets/audio/music/<id>.wav). */
+  /** Music track id: `lib:<name>` (the library's audio/music/<name>.wav) or the project's own. */
   music?: string;
   /**
    * `overhead` + `overheadHeight`: a structure floating above a walkable cell – e.g. the lintel and

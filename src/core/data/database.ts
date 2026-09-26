@@ -35,7 +35,17 @@ export interface RawContent {
   chipsets: Record<string, Omit<ChipsetDef, "id">>;
   graphics: GraphicsDb;
   maps: Record<string, Omit<MapDef, "id">>;
+  /** Where each layer's assets are (projects.md §4), e.g. "library/v1/assets/" – music is found there by id. */
+  roots?: AssetRoots;
 }
+
+export interface AssetRoots {
+  library: string;
+  project: string;
+}
+
+/** Library content's ids start with this (projects.md §2). */
+export const LIB = "lib:";
 
 type Collection<T> = Map<string, T>;
 
@@ -65,8 +75,10 @@ export class Database {
   readonly chipsets: Collection<ChipsetDef>;
   readonly maps: Collection<MapDef>;
   readonly graphics: GraphicsDb;
+  readonly roots: AssetRoots;
 
   constructor(raw: RawContent) {
+    this.roots = raw.roots ?? { library: "", project: "" };
     this.config = raw.config;
     this.classes = withIds(raw.classes);
     this.heroes = withIds(raw.heroes);
@@ -83,6 +95,11 @@ export class Database {
     this.chipsets = withIds(raw.chipsets);
     this.maps = withIds(raw.maps);
     this.graphics = raw.graphics ?? { charsets: {}, battlers: {}, faces: {}, battlebacks: {} };
+  }
+
+  /** The file of a music track: `lib:<name>` in the library's assets, other names in the project's. */
+  musicPath(id: string): string {
+    return id.startsWith(LIB) ? `${this.roots.library}audio/music/${id.slice(LIB.length)}.wav` : `${this.roots.project}audio/music/${id}.wav`;
   }
 
   private must<T>(col: Map<string, T>, id: string, kind: string): T {

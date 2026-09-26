@@ -42,8 +42,8 @@ describe("shaped blocks (§5.9)", () => {
       deck: {
         name: "Deck",
         kind: "peaceful",
-        chipset: "desert",
-        battleback: "harbor",
+        chipset: "lib:desert",
+        battleback: "lib:harbor",
         legend: { terrain: { s: "sand" }, decor: { H: "ship_wheel" } },
         layers: { terrain: "sss", decor: "H.H", decorDir: "N.." },
         spawns: { start: { x: 1, y: 0 } },

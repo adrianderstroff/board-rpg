@@ -1,0 +1,125 @@
+# Scorpion Dunes – wild board east of Sandhollow (§18).
+name: Scorpion Dunes
+kind: wild
+chipset: lib:desert
+battleback: lib:desert
+music: lib:dunes
+
+legend:
+  terrain:
+    s: sand
+    d: sand_dark
+    e: sand_ripple
+    q: quicksand
+    r: rock
+    p: stone_path
+    g: grass
+    w: water
+  decor:
+    C: cactus
+    c: cactus_small
+    o: rock_small
+    O: rock_big
+    X: bones
+    T: dead_tree
+    P: palm
+    B: bush
+
+layers:
+  terrain: |
+    rrrrssddsssddsrrrr
+    rrssseessseesssrrr
+    rssddsssqqsssdssrr
+    rsddsseesqsssssssr
+    sssssssssssssddssr
+    ssdssssspppppsssss
+    ssddsppppssssppppp
+    ppppppsssseessssss
+    sssssssqqsssssdssr
+    sseessssssssqssssr
+    rssssssgggssssssrr
+    rsssssgwwgsssssrrr
+    rrssssggggssssrrrr
+    rrrrssssssssrrrrrr
+  height: |
+    333311221112213333
+    331101100011110333
+    311221000001121033
+    312210110000110003
+    110000000000122103
+    112100000000001100
+    012210000011000000
+    000000110011121000
+    011000000012212103
+    011100000011001113
+    310000000001111033
+    311000000000111333
+    331100000001113333
+    333311000011333333
+  decor: |
+    ..................
+    ..................
+    ..........o.......
+    ...............C..
+    ..C.........X.....
+    ..................
+    ..................
+    ..................
+    .............C....
+    .T..O.............
+    .......P..........
+    ......B...........
+    ..o.......P.......
+    ..................
+
+spawns:
+  from_village: { x: 1, y: 7, dir: E }
+  from_mountain: { x: 16, y: 6, dir: W }
+  from_south: { x: 9, y: 12, dir: N }
+
+exits:
+  - { x: 0, y: 7, dir: W, to: sandhollow, spawn: from_dunes, label: Sandhollow }
+  - { x: 17, y: 6, dir: E, to: temple_mountain, spawn: from_dunes, label: Temple Mountain, enabled: { flag: road_beyond_open } }
+  # into the Endless Dunes (§18.10) – where the lost find the Mirage Tower
+  - { x: 9, y: 13, dir: S, to: endless_dunes, spawn: north, label: Endless Dunes, enabled: { flag: monks_trial } }
+
+enemies:
+  - { id: scorp_a, enemy: lib:sand_scorpion, x: 5, y: 9, dir: E }
+  - { id: scorp_pair, enemy: lib:sand_scorpion, party: [lib:sand_scorpion], x: 11, y: 3, dir: S }
+  - { id: scorp_b, enemy: lib:sand_scorpion, x: 8, y: 12, dir: N }
+  - { id: condor_a, enemy: lib:giant_condor, x: 9, y: 1, dir: S }
+  - { id: condor_pair, enemy: lib:giant_condor, party: [lib:giant_condor], x: 14, y: 10, dir: W }
+  - { id: emperor, enemy: lib:emperor_scorpion, x: 15, y: 6, dir: W }
+
+events:
+  - id: charm_chest
+    x: 11
+    y: 11
+    states:
+      chest_closed: { decor: chest_closed }
+      chest_open: { decor: chest_open }
+    on:
+      - on: becomes
+        when: { not: { flag: charm_chest_open } }
+        do: [{ setState: { event: charm_chest, state: chest_closed } }]
+      - on: becomes
+        when: { flag: charm_chest_open }
+        do: [{ setState: { event: charm_chest, state: chest_open } }]
+      - on: interact
+        when: { not: { flag: charm_chest_open } }
+        options:
+          - type: examine
+            label: Open
+            dialog: chest_charm
+            actions: [{ giveItem: lib:village_charm }, { setFlag: charm_chest_open }]
+
+  - id: trader
+    x: 9
+    y: 11
+    states:
+      idle: { npc: trader, dir: E }
+    on:
+      - { on: interact, when: { flag: trader_thanked }, options: [{ type: talk, dialog: trader_after }] }
+      - { on: interact, options: [{ type: talk, dialog: trader_help }] }
+on:
+  - { on: becomes, when: { always: true }, do: [{ dialog: dunes_enter }], once: true, onceKey: enter_hint#0 }

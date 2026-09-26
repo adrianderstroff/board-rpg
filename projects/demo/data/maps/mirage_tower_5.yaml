@@ -1,0 +1,134 @@
+# Mirage Tower F5 (§18.10): the teams enter the boss room from two sides. The Mirage Djinn guards
+# the Token of Foresight; the tower is left through the door behind it.
+name: Mirage Tower 5F
+kind: wild
+chipset: lib:desert
+battleback: lib:mirage
+music: lib:boss
+
+legend:
+  terrain:
+    f: tower_floor
+    W: tower_wall
+    i: ice
+    O: doorway
+  decor:
+    M: mirage_crystal
+    U: stairs_up
+    o: rubble
+
+layers:
+  terrain: |
+    WWWWWWOWWWWWW
+    WfffffffffffW
+    WfffffffffffW
+    WfffffffffffW
+    WfffffffffffW
+    WfffffffffffW
+    WfffffffffffW
+    WffffWWWffffW
+    WffffWWWffffW
+    WffffWWWffffW
+    WffffWWWffffW
+    WffffWWWffffW
+  overhead: |
+    ......W......
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+  overheadHeight: |
+    ......3......
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+    .............
+  height: |
+    3333330333333
+    3000000000003
+    3000000000003
+    3000000000003
+    3000000000003
+    3000000000003
+    3000000000003
+    3000033300003
+    3000033300003
+    3000033300003
+    3000033300003
+    3000033300003
+  decor: |
+    .............
+    .............
+    ..M.......M..
+    .............
+    .............
+    .............
+    .M.........M.
+    .............
+    .............
+    .............
+    .............
+    .............
+
+spawns:
+  west: { x: 2, y: 10, dir: N }
+  east: { x: 10, y: 10, dir: N }
+
+exits:
+  - { x: 6, y: 0, dir: N, to: mirage_sands, spawn: from_tower, label: Leave the tower, door: true }
+
+enemies:
+  - { id: djinn, enemy: lib:mirage_djinn, x: 6, y: 3, dir: S }
+  - { id: phantom_a, enemy: lib:mirage_phantom, x: 3, y: 5, dir: S }
+  - { id: phantom_b, enemy: lib:mirage_phantom, x: 9, y: 5, dir: S }
+
+events:
+  - id: foresight_chest
+    x: 4
+    y: 1
+    states:
+      nothing: {}
+      chest_closed: { decor: chest_closed }
+      chest_open: { decor: chest_open }
+    on:
+      - on: becomes
+        when: { not: { any: [{ defeated: { enemy: lib:mirage_djinn } }, { flag: tower_token_found }] } }
+        do: [{ setState: { event: foresight_chest, state: nothing } }]
+      - on: becomes
+        when: { all: [{ defeated: { enemy: lib:mirage_djinn } }, { not: { flag: tower_token_found } }] }
+        do: [{ setState: { event: foresight_chest, state: chest_closed } }]
+      - on: becomes
+        when: { flag: tower_token_found }
+        do: [{ setState: { event: foresight_chest, state: chest_open } }]
+      - on: interact
+        when: { all: [{ defeated: { enemy: lib:mirage_djinn } }, { not: { flag: tower_token_found } }] }
+        options:
+          - type: examine
+            label: Open
+            dialog: tower_chest
+            actions: [{ giveItem: lib:token_foresight }, { setFlag: tower_token_found }]
+  - id: way_out
+    x: 6
+    y: 0
+    states:
+      closed: { decor: gate_bars, pass: solid }
+      open: { pass: walk }
+    on:
+      - { on: becomes, when: { defeated: { enemy: lib:mirage_djinn } }, do: [{ setState: { event: way_out, state: open } }] }
+      - { on: becomes, when: { all: [{ not: { defeated: { enemy: lib:mirage_djinn } } }, { state: { event: way_out, is: open } }] }, do: [{ setState: { event: way_out, state: closed } }] }
+on:
+  - { on: becomes, when: { always: true }, do: [{ dialog: tower_f5 }], once: true, onceKey: f5_intro#0 }

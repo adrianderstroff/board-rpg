@@ -1,0 +1,74 @@
+# Elder Hamid's house in Sandhollow (§18). Door: the doorway on the front row.
+name: Elder's House
+kind: peaceful
+chipset: lib:desert
+battleback: lib:interior
+music: lib:village
+
+legend:
+  terrain:
+    W: plaster_wall
+    f: floorboards
+    r: rug
+    O: doorway
+  decor:
+    B: bookshelf
+    t: table
+    b: bed
+    C: counter
+    U: stairs_up
+    D: stairs_down
+    s: scroll_shelf
+
+layers:
+  terrain: |
+    WWWWWW
+    Wfffff
+    Wfrrff
+    Wfrrff
+    Wfffff
+    WffOff
+  height: |
+    333333
+    300000
+    300000
+    300000
+    300000
+    300000
+  decor: |
+    ......
+    .B..B.
+    .....t
+    ......
+    ......
+    ......
+
+spawns:
+  from_town: { x: 3, y: 4, dir: N }
+
+exits:
+  - { x: 3, y: 5, dir: S, to: sandhollow, spawn: from_elder, label: Sandhollow, door: true }
+
+events:
+  - id: elder
+    x: 3
+    y: 2
+    states:
+      idle: { npc: elder, dir: S }
+    on:
+      - { on: interact, when: { questDone: road_to_oasis }, options: [{ type: talk, dialog: elder_after }] }
+      - on: interact
+        when: { questStep: { quest: road_to_oasis, step: report } }
+        options: [{ type: talk, dialog: elder_report }]
+      - on: interact
+        when: { questStep: { quest: road_to_oasis, step: clear } }
+        options: [{ type: talk, dialog: elder_waiting }]
+      - { on: interact, options: [{ type: talk, dialog: elder_intro }] }
+
+  - id: elder_jar
+    x: 5
+    y: 1
+    states:
+      idle: { decor: pot }
+    on:
+      - { on: interact, options: [{ type: examine, label: Search, dialog: search_elder_jar }] }

@@ -1,0 +1,143 @@
+# Elvenglade – village of the small elves (§18). Faelar's shop sells Scroll: Ice.
+name: Elvenglade
+kind: peaceful
+chipset: lib:desert
+battleback: lib:elvenglade
+music: lib:elvenglade
+
+legend:
+  terrain:
+    f: forest_floor
+    g: grass
+    m: moss_stone
+    z: moss_stone
+    H: elf_house
+    O: doorway
+  decor:
+    T: tree_oak
+    Y: tree_pine
+    L: lantern_elf
+    S: magic_sign
+    m: mushroom
+    e: fern
+
+layers:
+  terrain: |
+    ffffffffffffffff
+    fHHHggggggggHHHf
+    fHOHgmmmmmmgHHHf
+    fgmmmmggggmmmmgf
+    fgmggggzggggmggf
+    fgmggHHHHggmmggf
+    fgmggHHHHggmgggf
+    fgmmmmmmmmmmgggf
+    fggggggmgggHHHgf
+    fHHHgggmgggHHHgf
+    fHHHgggmgggggggf
+    fffffffmffffffff
+  # the shop's roof continues over its door
+  overhead: |
+    ................
+    ................
+    ..H.............
+    ................
+    ................
+    ................
+    ................
+    ................
+    ................
+    ................
+    ................
+    ................
+  overheadHeight: |
+    ................
+    ................
+    ..6.............
+    ................
+    ................
+    ................
+    ................
+    ................
+    ................
+    ................
+    ................
+    ................
+  height: |
+    1111111111111111
+    1666000000005551
+    1606000000005551
+    1000000000000001
+    1000000000000001
+    1000055550000001
+    1000055550000001
+    1000000000000001
+    1000000000055501
+    1555000000055501
+    1555000000000001
+    1111111011111111
+  decor: |
+    YTTYTTYTTYTTYTTY
+    T.........e....T
+    T..............T
+    Y...L......L...Y
+    T..............T
+    T.m...........eT
+    Y..............Y
+    T.....L.....L..T
+    T...e..........T
+    Y........m.....Y
+    T..............T
+    TYTTYTT.TTYTTYTT
+
+# MAGIC (with a star) is painted on the wall above the spell shop's door, facing the path
+wallDecor:
+  - { x: 2, y: 2, sign: magic, face: S, level: 6 }
+
+spawns:
+  from_forest: { x: 7, y: 10, dir: N }
+  from_shop: { x: 2, y: 3, dir: S }
+
+exits:
+  - { x: 7, y: 11, dir: S, to: greenwood, spawn: from_elves, label: Greenwood River }
+  - { x: 2, y: 2, dir: N, to: elvenglade_shop, spawn: from_town, label: Faelar's Glade Magic, door: true }
+
+events:
+
+  - id: sylwen
+    x: 8
+    y: 3
+    states:
+      idle: { npc: elf_elder, dir: S }
+    on:
+      - { on: interact, options: [{ type: talk, dialog: sylwen_talk }] }
+
+  - id: lio
+    x: 10
+    y: 6
+    states:
+      idle: { npc: elf, dir: W, move: wander, wanderRadius: 3 }
+    on:
+      - { on: interact, options: [{ type: talk, dialog: lio_talk }] }
+
+  - id: mirelle
+    x: 5
+    y: 8
+    states:
+      idle: { npc: elf_b, dir: E, move: wander, wanderRadius: 2 }
+    on:
+      - { on: interact, options: [{ type: talk, dialog: mirelle_talk }] }
+
+  - id: moonwell
+    x: 7
+    y: 4
+    states:
+      idle: { decor: well }
+    on:
+      - on: interact
+        options: [{ type: examine, label: Drink, dialog: moonwell_drink, actions: [{ healParty: true }] }]
+on:
+  - on: becomes
+    when: { always: true }
+    do: [{ dialog: elvenglade_enter }]
+    once: true
+    onceKey: elvenglade_enter#0

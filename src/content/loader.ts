@@ -1,23 +1,44 @@
 import { parse } from "yaml";
 import { Database, type RawContent } from "../core/data/database";
-import { assembleRaw } from "./raw";
+import { layeredRaw } from "./raw";
 
 /**
- * Loads every YAML file under /data (bundled at build time, works in tests too).
- * Where each file belongs: see assembleRaw.
+ * Loads a project's content (projects.md): the library version it names plus its own files – all
+ * YAML below library/ and projects/ is bundled at build time (works in tests too).
  */
-const files = import.meta.glob("/data/**/*.yaml", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+const files = import.meta.glob(["/library/*/library.yaml", "/library/*/data/**/*.yaml", "/projects/*/project.yaml", "/projects/*/data/**/*.yaml"], {
+  query: "?raw",
+  import: "default",
+  eager: true,
+}) as Record<string, string>;
 
-export function loadRawContent(sources: Record<string, string> = files): RawContent {
-  return assembleRaw(
-    Object.entries(sources).map(([path, text]) => {
-      try {
-        return [path, parse(text)] as [string, unknown];
-      } catch (e) {
-        throw new Error(`YAML error in ${path}: ${(e as Error).message}`);
-      }
-    }),
-  );
+/** The project the game plays: `?project=<id>`, else the build's VITE_PROJECT, else the demo. */
+export const PROJECT: string =
+  (typeof location !== "undefined" && new URLSearchParams(location.search).get("project")) || (import.meta.env?.VITE_PROJECT as string | undefined) || "demo";
+
+const read = (path: string, text: string): unknown => {
+  try {
+    return parse(text);
+  } catch (e) {
+    throw new Error(`YAML error in ${path}: ${(e as Error).message}`);
+  }
+};
+
+/** A project's settings (project.yaml). */
+export interface ProjectDef {
+  name: string;
+  /** The library version it uses ("v1" = library/v1). */
+  library: string;
+}
+
+export function loadRawContent(sources: Record<string, string> = files, project = PROJECT): RawContent {
+  const key = (p: string) => p.replace(/^\//, "");
+  const all = Object.entries(sources).map(([p, t]) => [key(p), t] as const);
+  const def = all.find(([p]) => p === `projects/${project}/project.yaml`);
+  if (!def) throw new Error(`No project "${project}" (projects/${project}/project.yaml)`);
+  const { library } = read(def[0], def[1]) as ProjectDef;
+  const layer = (prefix: string) => all.filter(([p]) => p.startsWith(`${prefix}/data/`)).map(([p, t]) => [p, read(p, t)] as [string, unknown]);
+  return layeredRaw(layer(`library/${library}`), layer(`projects/${project}`), { library: `library/${library}/assets/`, project: `projects/${project}/assets/` });
 }
 
 export function loadDatabase(): Database {

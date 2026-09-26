@@ -1,0 +1,88 @@
+# Mirage Tower F4 (§18.10): Mirage Phantoms on both sides; the stairs open when all are gone.
+name: Mirage Tower 4F
+kind: wild
+chipset: lib:desert
+battleback: lib:mirage
+music: lib:mirage
+
+legend:
+  terrain:
+    f: tower_floor
+    W: tower_wall
+    i: ice
+    O: doorway
+  decor:
+    M: mirage_crystal
+    U: stairs_up
+    o: rubble
+
+layers:
+  terrain: |
+    WWWWWWWWWWWWW
+    WfffffWfffffW
+    WWWfWWWWWfWWW
+    WfffffWfffffW
+    WfffffWfffffW
+    WfffffWfffffW
+    WfffffWfffffW
+    WfffffWfffffW
+    WfffffWfffffW
+    WfffffWfffffW
+    WfffffWfffffW
+  height: |
+    4444443444444
+    4000003000004
+    4330333330334
+    4000003000004
+    4000003000004
+    4000003000004
+    4000003000004
+    4000003000004
+    4000003000004
+    4000003000004
+    4000003000004
+  decor: |
+    .............
+    ...U.....U...
+    .............
+    .............
+    .............
+    .M.........M.
+    .............
+    ....o........
+    .............
+    .............
+    .............
+
+spawns:
+  west: { x: 3, y: 9, dir: N }
+  east: { x: 9, y: 9, dir: N }
+
+exits:
+  - { x: 3, y: 1, dir: N, to: mirage_tower_5, spawn: west, label: Upstairs, door: true, together: true }
+  - { x: 9, y: 1, dir: N, to: mirage_tower_5, spawn: east, label: Upstairs, door: true, together: true }
+
+enemies:
+  - { id: phantom_w1, enemy: lib:mirage_phantom, x: 2, y: 4, dir: S }
+  - { id: phantom_w2, enemy: lib:mirage_phantom, x: 4, y: 5, dir: S }
+  - { id: phantom_e1, enemy: lib:mirage_phantom, x: 8, y: 5, dir: S }
+  - { id: phantom_e2, enemy: lib:mirage_phantom, x: 10, y: 4, dir: S }
+events:
+  - id: west_stairs
+    x: 3
+    y: 2
+    states:
+      closed: { decor: gate_bars, pass: solid }
+      open: { pass: walk }
+    on:
+      - { on: becomes, when: { defeatedAllOn: mirage_tower_4 }, do: [{ setState: { event: west_stairs, state: open } }] }
+      - { on: becomes, when: { all: [{ not: { defeatedAllOn: mirage_tower_4 } }, { state: { event: west_stairs, is: open } }] }, do: [{ setState: { event: west_stairs, state: closed } }] }
+  - id: east_stairs
+    x: 9
+    y: 2
+    states:
+      closed: { decor: gate_bars, pass: solid }
+      open: { pass: walk }
+    on:
+      - { on: becomes, when: { defeatedAllOn: mirage_tower_4 }, do: [{ setState: { event: east_stairs, state: open } }] }
+      - { on: becomes, when: { all: [{ not: { defeatedAllOn: mirage_tower_4 } }, { state: { event: east_stairs, is: open } }] }, do: [{ setState: { event: east_stairs, state: closed } }] }

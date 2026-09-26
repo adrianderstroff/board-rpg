@@ -1,8 +1,10 @@
+import { assetPath } from "../../../src/engine/assets";
 import type { ChipsetDef } from "../../../src/core/data/types";
 
 /** Sprite sheet helpers for palettes and the grid view (thumbnails straight from the game's sheets). */
 
-export const assetUrl = (path: string) => `/assets/${path}`;
+/** Content paths are root-relative (library/…, projects/…); the runtime's own are below /assets/. */
+export const assetUrl = (path: string) => `/${assetPath(path)}`;
 
 /** CSS for one frame of a sheet as a thumbnail (`scale` × its pixel size). */
 export function frameStyle(sheet: string, frameW: number, frameH: number, cols: number, frame: number, scale = 1, cropH = frameH): Record<string, string> {

@@ -21,10 +21,10 @@ describe("split floors (§5.3)", () => {
     const game = new Game(db, newGameState(db, 3));
     game.enter("floor1", "start");
     const ctx = game.ctx;
-    for (const id of ["kit", "tarek"]) leaveParty(ctx, id);
-    const kit = mustPieceOf(ctx, "kit");
-    const tarek = mustPieceOf(ctx, "tarek");
-    Object.assign(mustPieceOf(ctx, "aldric"), { x: 0, y: 0 });
+    for (const id of ["lib:kit", "lib:tarek"]) leaveParty(ctx, id);
+    const kit = mustPieceOf(ctx, "lib:kit");
+    const tarek = mustPieceOf(ctx, "lib:tarek");
+    Object.assign(mustPieceOf(ctx, "lib:aldric"), { x: 0, y: 0 });
     expect(togetherReady(ctx)).toBeNull(); // kit and tarek are still in the hall
     Object.assign(kit, { x: 6, y: 0 });
     Object.assign(tarek, { x: 6, y: 1 });
@@ -35,8 +35,8 @@ describe("split floors (§5.3)", () => {
     expect(ready.to).toBe("floor2");
     game.enterGroups(ready.to, ready.groups);
     const at = (id: string) => ((p) => [p.x, p.y])(mustPieceOf(game.ctx, id));
-    expect(at("aldric")).toEqual([1, 5]);
-    expect(at("kit")).toEqual([5, 5]);
-    expect(at("tarek")).toEqual([5, 5]);
+    expect(at("lib:aldric")).toEqual([1, 5]);
+    expect(at("lib:kit")).toEqual([5, 5]);
+    expect(at("lib:tarek")).toEqual([5, 5]);
   });
 });

@@ -1,0 +1,4 @@
+# Library v1: the default content and resources projects build on (docs/projects.md).
+# Published versions never change - fixes go into a new version.
+version: 1
+name: Board RPG default library

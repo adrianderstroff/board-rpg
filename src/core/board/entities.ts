@@ -146,7 +146,13 @@ export function markCells(ctx: Ctx): Pos[] {
 
 /** An entity on `p` that Defuse can take apart: seen, with a defuse handler that applies now. */
 export function defusableAt(ctx: Ctx, p: Pos): MapEventDef | undefined {
-  return eventsOf(ctx).find((ev) => entityPos(ctx, ev).x === p.x && entityPos(ctx, ev).y === p.y && !stateNow(ctx, ev)?.hidden && (ev.on ?? []).some((h) => h.on === "ability" && h.ability === "defuse" && check(ctx, h.when)));
+  return eventsOf(ctx).find((ev) => entityPos(ctx, ev).x === p.x && entityPos(ctx, ev).y === p.y && !stateNow(ctx, ev)?.hidden && (ev.on ?? []).some((h) => h.on === "ability" && defuses(ctx, h.ability) && check(ctx, h.when)));
+}
+
+/** An ability or item that defuses (its board use has the Defuse effect) – whatever its id. */
+function defuses(ctx: Ctx, id: string | undefined): boolean {
+  const def = id ? (ctx.db.abilities.get(id) ?? ctx.db.items.get(id)) : undefined;
+  return !!def?.board?.effects.some((e) => e.type === "defuse");
 }
 
 /** The map's handlers and every entity's, each with who holds it. */

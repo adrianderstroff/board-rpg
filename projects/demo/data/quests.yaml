@@ -1,0 +1,96 @@
+# Quests (§10.4). Exactly one quest is active. Steps complete in order when `done` holds.
+# endings: finish conditions (first match wins); hidden endings are never shown.
+# Without endings a quest ends when all steps are done.
+
+into_the_desert:
+  title: Into the Desert
+  description: Captain Rhea brought you to Saltmere. Sandhollow, gateway to the desert, lies beyond the Greenwood and the old ruins.
+  steps:
+    - id: forest
+      objective: Head east into the Greenwood
+      done: { onMap: greenwood }
+    - id: river
+      objective: Cross the river and climb to the desert
+      done: { onMap: sunken_ruins }
+    - id: ruins
+      objective: Cross the ruins to Sandhollow
+      done: { onMap: sandhollow }
+      onComplete: [{ startQuest: { id: road_to_oasis, activate: true } }]
+
+road_to_oasis:
+  title: Road to the Oasis
+  description: The road east to the Mirage Oasis is blocked. Sandhollow's elder may know more.
+  steps:
+    - id: talk_elder
+      objective: Talk to Elder Hamid
+      done: { talkedTo: elder }
+      onComplete: [{ setFlag: gate_open }, { startQuest: { id: clear_dunes, activate: true } }]
+    - id: clear
+      objective: Clear the Scorpion Dunes
+      done: { questDone: clear_dunes }
+    - id: report
+      objective: Report back to Elder Hamid
+      done: { flag: reported_to_elder }
+      onComplete: [{ setFlag: road_beyond_open }, { startQuest: { id: mountain_temple, activate: true } }]
+
+clear_dunes:
+  title: Clear the Dunes
+  description: An Emperor Scorpion rules the dunes east of Sandhollow. Defeat it.
+  parent: road_to_oasis
+  steps:
+    - id: boss
+      objective: Defeat the Emperor Scorpion
+      done: { defeated: { enemy: lib:emperor_scorpion } }
+  endings:
+    - id: cleansed
+      hidden: true
+      when: { all: [{ questStepsDone: clear_dunes }, { defeatedAllOn: scorpion_dunes }] }
+      onComplete: [{ setFlag: dunes_cleansed }]
+    - id: cleared
+      when: { questStepsDone: clear_dunes }
+
+nias_charm:
+  title: Nia's Charm
+  description: Nia lost her clay sun charm somewhere near the oasis in the dunes.
+  steps:
+    - id: find
+      objective: Find Nia's charm near the oasis
+      done: { item: lib:village_charm }
+    - id: return
+      objective: Bring the charm back to Nia
+      done: { flag: charm_returned }
+
+mountain_temple:
+  title: The Mountain Temple
+  description: Beyond the Scorpion Dunes rises Temple Mountain. Tarek's old master trained at its temple, the Temple of the Still Sky.
+  steps:
+    - id: climb
+      objective: Climb Temple Mountain to the temple
+      done: { onMap: temple }
+    - id: monks
+      objective: Sit with the monks
+      done: { flag: monks_trial }
+    - id: tokens
+      objective: Find the tokens of Serenity, Foresight and Life
+      done: { any: [{ flag: tokens_returned }, { all: [{ item: lib:token_serenity }, { item: lib:token_foresight }, { item: lib:token_life }] }] }
+    - id: return
+      objective: Return the tokens to the monks
+      done: { flag: tokens_returned }
+    - id: fears
+      objective: Face your fears in the Hall of Fears
+      done: { defeatedAllOn: hall_of_fears }
+    - id: orb
+      objective: Claim the Holy Orb
+      done: { flag: orb_claimed }
+      onComplete: [{ startQuest: { id: grave_toad, activate: true } }]
+
+grave_toad:
+  title: The Grave Toad
+  description: Claiming the Holy Orb opened the sealed cave half-way up Temple Mountain. The Grave Toad is awake.
+  steps:
+    - id: cave
+      objective: Enter the cave on Temple Mountain
+      done: { onMap: grave_cave }
+    - id: toad
+      objective: Defeat the Grave Toad
+      done: { defeated: { enemy: lib:grave_toad } }

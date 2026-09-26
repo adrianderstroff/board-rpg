@@ -1,0 +1,61 @@
+# Hero classes (§3.2). base = level 1 values, growth = added per level (fractions accumulate).
+# move: pattern id from patterns.yaml. equip: equipment kinds this class may use.
+
+knight:
+  name: Knight
+  description: A sworn protector. Heavy armor, strong sword arts.
+  abilityType: Sword Art
+  move: lib:knight
+  equip: [sword, heavyArmor, shell, accessory]
+  base:   { maxHp: 42, maxMp: 6,  str: 12, def: 11, mag: 3,  mdef: 5,  spd: 6 }
+  growth: { maxHp: 7,  maxMp: 1,  str: 2.2, def: 2, mag: 0.6, mdef: 1, spd: 0.6 }
+  abilities:
+    - { level: 1, ability: lib:cleave }
+    - { level: 1, ability: lib:guard }
+    - { level: 3, ability: lib:shield_bash }
+    - { level: 6, ability: lib:cross_slash }
+
+magician:
+  name: Magician
+  description: Scholar of the elements. Fragile but devastating.
+  abilityType: Magic
+  move: lib:diagonal2
+  equip: [staff, robe, accessory]
+  base:   { maxHp: 26, maxMp: 22,  str: 4,   def: 5,   mag: 13,  mdef: 11, spd: 7 }
+  growth: { maxHp: 4,  maxMp: 3.5, str: 0.8, def: 0.9, mag: 2.3, mdef: 2,  spd: 0.8 }
+  abilities:
+    - { level: 1, ability: lib:fire }
+    - { level: 1, ability: lib:heal }
+    - { level: 4, ability: lib:sleep }
+    - { level: 7, ability: lib:thunder }
+
+thief:
+  name: Thief
+  description: Quick hands, quicker feet.
+  abilityType: Skill
+  move: lib:queen3
+  critBonus: 0.1
+  equip: [dagger, lightArmor, shell, accessory]
+  base:   { maxHp: 32, maxMp: 10,  str: 9,   def: 7,   mag: 5,   mdef: 7,   spd: 12 }
+  growth: { maxHp: 5,  maxMp: 1.5, str: 1.6, def: 1.2, mag: 0.8, mdef: 1.2, spd: 1.2 }
+  abilities:
+    - { level: 1, ability: lib:steal }
+    - { level: 1, ability: lib:hide }
+    - { level: 1, ability: lib:discover }
+    - { level: 1, ability: lib:defuse }
+    - { level: 3, ability: lib:trap }
+    - { level: 6, ability: lib:mug }
+
+monk:
+  name: Monk
+  description: Disciplined fighter who channels ki.
+  abilityType: Ki
+  move: lib:rook3
+  equip: [claw, staff, lightArmor, robe, shell, accessory]
+  base:   { maxHp: 38,  maxMp: 12,  str: 11, def: 8,   mag: 8,   mdef: 9,   spd: 9 }
+  growth: { maxHp: 6.5, maxMp: 1.8, str: 2,  def: 1.5, mag: 1.4, mdef: 1.5, spd: 0.9 }
+  abilities:
+    - { level: 1, ability: lib:chakra }
+    - { level: 1, ability: lib:perceive }
+    - { level: 3, ability: lib:palm_strike }
+    - { level: 5, ability: lib:aura }

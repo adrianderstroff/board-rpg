@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Generates all placeholder pixel-art assets into public/assets/.
+// Generates all placeholder pixel-art assets: content sheets into the library (library/v1/assets/),
+// the runtime's own (system/) into public/assets/ (docs/projects.md).
 // Usage: node tools/art/generate.mjs   (or: npm run art)
 // Deterministic: all randomness is seeded; re-running produces identical files.
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -23,10 +24,13 @@ import { buildPreviews } from './preview.mjs';
 import { buildMagicianVariants } from './portrait-variants.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const OUT = join(ROOT, 'public', 'assets');
+const RUNTIME = join(ROOT, 'public', 'assets');
+const LIBRARY = join(ROOT, 'library', 'v1', 'assets');
+/** Where a sheet goes: content (charsets, faces, chipsets …) into the library, system graphics stay with the runtime. */
+const OUT = (rel) => join(rel.startsWith('system/') ? RUNTIME : LIBRARY, rel);
 let count = 0;
-const png = (rel, canvas) => { writePNG(join(OUT, rel), canvas); count++; };
-const json = (rel, obj) => { mkdirSync(dirname(join(OUT, rel)), { recursive: true }); writeFileSync(join(OUT, rel), JSON.stringify(obj, null, 2) + '\n'); count++; };
+const png = (rel, canvas) => { writePNG(OUT(rel), canvas); count++; };
+const json = (rel, obj) => { mkdirSync(dirname(OUT(rel)), { recursive: true }); writeFileSync(OUT(rel), JSON.stringify(obj, null, 2) + '\n'); count++; };
 const row = (frames, fw, fh) => { const c = new Canvas(fw * frames.length, fh); frames.forEach((f, i) => c.blit(f, i * fw, 0, { blend: false })); return c; };
 
 const t0 = Date.now();
@@ -66,7 +70,7 @@ png('system/highlight.png', highlights());
 png('system/field_effects.png', fieldEffects());
 png('system/exit_arrows.png', exitArrows());
 png('system/shadow.png', shadow());
-png('system/wall_signs.png', wallSigns());
+png('signs/wall_signs.png', wallSigns());
 const icons = iconSheet();
 png('system/icons.png', icons.img);
 json('system/icons.json', icons.json);
@@ -85,7 +89,7 @@ for (const [id, fn] of Object.entries(BATTLEBACKS)) if (BG[fn]) png(`battlebacks
 
 // style study: faces/hero_magician-var1..5.png + tools/art/out/magician-face-variants.png
 buildMagicianVariants(); count += 5;
-console.log(`art: wrote ${count} files to public/assets in ${Date.now() - t0} ms`);
+console.log(`art: wrote ${count} files to library/v1/assets and public/assets in ${Date.now() - t0} ms`);
 if (!process.argv.includes('--no-preview')) {
   const files = buildPreviews();
   console.log(`art: previews -> ${files.join(', ')}`);
