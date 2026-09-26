@@ -348,12 +348,12 @@ function EntitiesPanel({ project, mapId, entities }: { project: Project; mapId: 
         <>
           <div class="entity-form">
             <div class="section-head">
-              <h3>{members.length} entities</h3>
+              <h3 title="Shift+click adds or removes one; drag one of them to move them all">Selection</h3>
             </div>
-            <p class="hint">Shift+click adds or removes one; drag one of them to move them all.</p>
-            <Field label="Anchor" hint="The top-left corner of their cells – change it to move them all.">
-              <AnchorInput project={project} mapId={mapId} group={group} />
-            </Field>
+            <div class="box">
+              <Field label="Anchor">
+                <AnchorInput project={project} mapId={mapId} group={group} />
+              </Field>
             <table class="entity-table">
               <thead>
                 <tr>
@@ -374,6 +374,7 @@ function EntitiesPanel({ project, mapId, entities }: { project: Project; mapId: 
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
           <div class="entity-actions">
             <button onClick={() => setGroup([])} title="Back to the list of all entities">
@@ -472,6 +473,7 @@ function EntitiesPanel({ project, mapId, entities }: { project: Project; mapId: 
           <div class="section-head">
             <h3>Entities</h3>
           </div>
+          <div class="box">
         <table class="entity-table">
           <thead>
             <tr>
@@ -492,6 +494,7 @@ function EntitiesPanel({ project, mapId, entities }: { project: Project; mapId: 
             ))}
           </tbody>
         </table>
+          </div>
         </>
       )}
     </div>
@@ -507,7 +510,7 @@ function AnchorInput({ project, mapId, group }: { project: Project; mapId: strin
     if ((dx || dy) && canMoveGroup(map, group, dx, dy)) project.edit(file, "Move group", (doc) => moveGroup(doc, map, group, dx, dy), "group-anchor");
   };
   return (
-    <div class="row">
+    <div class="row" title="The top-left corner of their cells – change it to move them all">
       x <Num value={at.x} width={56} onChange={(v) => moveBy((v ?? at.x) - at.x, 0)} /> y <Num value={at.y} width={56} onChange={(v) => moveBy(0, (v ?? at.y) - at.y)} />
     </div>
   );

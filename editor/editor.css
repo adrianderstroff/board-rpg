@@ -386,3 +386,7 @@ table.prefab-names { width: 100%; border-collapse: collapse; }
 table.prefab-names td { padding: 3px 4px; border-bottom: 1px solid var(--line); font-size: 12px; }
 table.prefab-names td:last-child { text-align: right; }
 table.prefab-names .segmented button { font-size: 11px; padding: 2px 8px; }
+/* a framed box under a heading (the entity list, a selection's anchor and list) */
+.box { border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 8px; margin-bottom: 10px; }
+.box > .field { margin: 4px 0 6px; }
+.box > table.entity-table:first-child th { padding-top: 2px; }

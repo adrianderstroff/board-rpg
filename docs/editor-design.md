@@ -214,7 +214,7 @@ A **marker tile** is a flat tile on the cell with the kind's icon (the same icon
 **Entity panel** (Edit tab in Entity mode), while no entity is selected: under the heading **Add
 entity** one row of buttons – **Event**, **Enemy**, **Teleport ▾** (the teleport, *Game start*,
 *Quick Play start*) and the **Prefab** icon button (§6.5) – and under **Entities** the map's
-entities as a table (a selected entity's form replaces both) – ID, type, position; a row click selects one
+entities as a table in a box (a selected entity's form replaces both) – ID, type, position; a row click selects one
 and opens its form. An event made of **states and handlers** (all new events, game-design §10.3) has the same two parts:
 - **Appearance** – its states as folder tabs (★ marks the one it starts in; rename, duplicate,
   delete), each with its look (click the preview), facing and movement, and **passability**
@@ -335,9 +335,9 @@ Ready-made groups of entities (game-design §10.5), the library's and the projec
 Several entities can be selected at once in Entity mode: **Shift+click** adds an entity to the
 selection or takes it out, **dragging on an empty cell** draws a rectangle that selects what is
 inside (with Shift: adds it). Dragging one of them moves them all – only where every one fits (on
-the map, on cells that are free or their own). The inspector then shows the group: its entities as a
-list (a row selects that one alone), its **anchor** (the top-left corner of their cells – changing x
-or y moves them all) and the bottom bar: **Save as prefab**, **Duplicate group** (the copy follows the
+the map, on cells that are free or their own). The inspector then shows the group under **Selection**, in one box: its
+**anchor** (the top-left corner of their cells – marked orange on the map; changing x or y moves them
+all) and its entities as a list (a row selects that one alone); then the bottom bar: **Save as prefab**, **Duplicate group** (the copy follows the
 cursor like a prefab – fresh ids, their references to each other follow – and becomes the new group)
 and **Delete group** (Del; one undo step). Esc clears the selection. A single entity's bar says
 **Duplicate entity** and **Delete entity**.

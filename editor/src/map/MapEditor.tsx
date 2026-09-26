@@ -6,7 +6,7 @@ import type { Corner, MapDef, PrefabDef } from "../../../src/core/data/types";
 import type { Dir, Pos } from "../../../src/core/util/grid";
 import { K } from "../../../src/game/keys";
 import { entitiesIn, placePrefabOnMap, prefabFootprint } from "../entities/prefabs";
-import { canMoveGroup, deleteGroup, groupMembers, moveGroup } from "../entities/group";
+import { canMoveGroup, deleteGroup, groupAnchor, groupMembers, moveGroup } from "../entities/group";
 import { PrefabIcon } from "../entities/PrefabPicker";
 import { SavePrefabWindow } from "../entities/SavePrefabWindow";
 import { placePrefab } from "../../../src/core/data/prefab";
@@ -577,6 +577,8 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
       ...(stroke.current?.erase || (mode === "board" && brush.board !== "terrain") ? preview.map((p) => ({ ...p, frame: 3 })) : []),
       ...(sel && mode === "entity" ? [{ x: sel.x, y: sel.y, frame: 2 }] : []),
       ...(mode === "entity" ? groupMembers(mapData, entities.group).map((e) => ({ x: e.x, y: e.y, frame: 2 })) : []),
+      // the group's anchor (its top-left corner): orange
+      ...(mode === "entity" && groupMembers(mapData, entities.group).length > 1 ? [{ ...groupAnchor(mapData, entities.group), frame: 3 }] : []),
       ...(box && mode === "entity" ? areaCells(rectOf(box.from, box.to), 3) : []),
       ...(area && mode !== "entity" && !moving ? areaCells(area, 3) : []),
       ...(moving ? areaCells(moving, 3) : []),
