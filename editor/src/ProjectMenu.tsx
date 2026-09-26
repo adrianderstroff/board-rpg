@@ -61,8 +61,9 @@ export function ProjectMenu({ project }: { project: Project }) {
 
   return (
     <div class="project-menu">
-      <button class="project-button" title={`Project ${project.info.id} · library ${project.info.library}`} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
-        {project.info.name} <span class="caret">▾</span>
+      <button class="project-button" title={project.info.name} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span class="name">{project.info.name}</span>
+        <span class="caret">▾</span>
       </button>
       {open && (
         <div class="menu" role="menu">

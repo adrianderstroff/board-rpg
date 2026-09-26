@@ -299,8 +299,10 @@ details.lintel summary { cursor: pointer; color: var(--dim); }
 
 /* the project menu (projects.md §6) */
 .project-menu { position: relative; }
-.project-button { font-weight: 600; color: var(--accent); }
-.project-button .caret { color: var(--dim); font-weight: normal; margin-left: 4px; }
+/* a long name ends in "…" (the full one on hover); the arrow always stays next to it */
+.project-button { font-weight: 600; color: var(--accent); display: inline-flex; align-items: center; max-width: 220px; }
+.project-button .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.project-button .caret { flex: none; color: var(--dim); font-weight: normal; margin-left: 4px; }
 .project-menu .menu {
   position: absolute; z-index: 20; left: 0; top: calc(100% + 4px); min-width: 260px; display: flex; flex-direction: column;
   background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px; box-shadow: 0 8px 24px #0008;
