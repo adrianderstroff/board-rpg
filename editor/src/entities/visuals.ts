@@ -51,6 +51,12 @@ export function entitySprites(db: Database, map: MapDef, rotation: number, selec
         const ev = map.events![e.key as number];
         // the look of its first page that shows something – for an entity, the state it starts in
         const page = ev.states ? ev.states[ev.state ?? Object.keys(ev.states)[0]] : (ev.pages?.find((p) => p.npc || p.decor || p.keeper) ?? ev.pages?.[0]);
+        // hidden when it starts (an armed trap, a buried chest): the editor still shows where
+        if (ev.states && (page as { hidden?: boolean } | undefined)?.hidden) {
+          const trapLike = (ev.on ?? []).some((h) => h.on === "pass");
+          out.push({ ...base, texture: markerKey(trapLike ? "trap" : "event"), flat: true, label: labels ? ev.id : undefined, editorOnly: true });
+          break;
+        }
         const npc = page?.npc ?? page?.keeper;
         const tex = npc ? charset(db.npcs.get(npc)?.charset) : undefined;
         if (tex) out.push({ ...base, texture: tex, frame: idleFrame(rotateDir(page?.dir ?? "S", rotation)), originY: 1, label: labels ? ev.id : undefined });
@@ -72,9 +78,6 @@ export function entitySprites(db: Database, map: MapDef, rotation: number, selec
         else out.push({ ...base, texture: K.exitArrows, frame: EXIT_FRAME[rotateDir(ex.dir, rotation)], flat: true, label: labels ? e.label : undefined });
         break;
       }
-      case "trap":
-        out.push({ ...base, texture: K.fieldEffects, frame: 32, flat: true, label: `trap ${e.label}`, editorOnly: true });
-        break;
       case "spawn": {
         // arrivals, the game start and the Quick Play start each have their own icon
         const role = db.config.start.map === map.id && db.config.start.spawn === e.key ? "start" : map.editor?.quickPlay?.spawn === e.key ? "quickplay" : "arrival";
@@ -89,6 +92,6 @@ export function entitySprites(db: Database, map: MapDef, rotation: number, selec
 
 /** The placing preview: the marker tile of what an Add button places, on the hovered cell. */
 export function placingSprite(add: AddKind, at: { x: number; y: number }): EntitySprite {
-  const kind: EntityKind = add === "teleport" ? "exit" : add === "start" || add === "quickplay" ? "spawn" : add === "gate" || add === "switch" ? "event" : add;
+  const kind: EntityKind = add === "teleport" ? "exit" : add === "start" || add === "quickplay" ? "spawn" : add === "gate" || add === "switch" || add === "trap" ? "event" : add;
   return { ref: { kind, key: "preview" }, kind, x: at.x, y: at.y, texture: markerKey(ADD_INFO[add].icon), flat: true, editorOnly: true, preview: true };
 }

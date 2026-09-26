@@ -7,7 +7,7 @@ import type { Dir, Pos } from "../../../src/core/util/grid";
  * stays in its own list in the map file.
  */
 
-export type EntityKind = "event" | "exit" | "spawn" | "enemy" | "trap";
+export type EntityKind = "event" | "exit" | "spawn" | "enemy";
 
 /** What the Add buttons place: entity kinds, a teleport (exit + arrival) and the starts (arrivals with a role). */
 export type AddKind = "event" | "teleport" | "enemy" | "gate" | "switch" | "trap" | "start" | "quickplay";
@@ -18,7 +18,7 @@ export const ADD_INFO: Record<AddKind, { label: string; icon: string; hint: stri
   enemy: { label: "Enemy", icon: "enemy", hint: "An enemy piece (or party) on the map." },
   gate: { label: "Gate", icon: "gate", hint: "An entity with bars (closed: solid) and open – it opens when its condition turns true (a flag, a plate that is down)." },
   switch: { label: "Floor switch", icon: "switch", hint: "An entity plate: down while a hero stands on it, up again when they step off – gates can open on it." },
-  trap: { label: "Hidden trap", icon: "trap", hint: "Stops heroes walking over it until found with Discover." },
+  trap: { label: "Hidden trap", icon: "trap", hint: "An entity: armed and hidden – a hero walking onto or across it is stopped, hurt and Stuck; Discover reveals it (heroes go around it then), Defuse takes it apart." },
   start: { label: "Game start", icon: "start", hint: "Where a new game begins (one for the whole game – placing it again moves it)." },
   quickplay: { label: "Quick Play start", icon: "quickplay", hint: "Where ▶ Quick Play starts on this map, with its party and items (editor only)." },
 };
@@ -41,7 +41,6 @@ export const KIND_INFO: Record<EntityKind, { label: string; list: string; editor
   exit: { label: "Teleport", list: "exits", hint: "Walking onto it travels to its arrival on another map." },
   spawn: { label: "Arrival", list: "spawns", editorOnly: true, hint: "Where the party lands – it comes with the teleport, start or wake-up that leads here." },
   enemy: { label: "Enemy", list: "enemies", hint: "An enemy piece (or party) on the map." },
-  trap: { label: "Hidden trap", list: "traps", editorOnly: true, hint: "Stops heroes walking over it until found with Discover." },
 };
 
 /** Every entity on the map, in a stable order. */
@@ -51,7 +50,6 @@ export function listEntities(map: MapDef): Entity[] {
   (map.exits ?? []).forEach((e, i) => out.push({ kind: "exit", key: i, x: e.x, y: e.y, label: `→ ${e.label ?? e.to}` }));
   for (const [id, s] of Object.entries(map.spawns ?? {})) out.push({ kind: "spawn", key: id, x: s.x, y: s.y, label: id });
   (map.enemies ?? []).forEach((e, i) => out.push({ kind: "enemy", key: i, x: e.x, y: e.y, label: `${e.id} (${e.enemy}${e.party?.length ? ` +${e.party.length}` : ""})` }));
-  (map.traps ?? []).forEach((t, i) => out.push({ kind: "trap", key: i, x: t.x, y: t.y, label: t.id }));
   return out;
 }
 
@@ -101,8 +99,6 @@ export function addEntity(doc: Document, map: MapDef, kind: EntityKind, at: Pos,
       return push("exits", { x, y, dir: "N" as Dir, to: defaults.map ?? "", spawn: defaults.spawn ?? "start" });
     case "enemy":
       return push("enemies", { id: freeId("enemy", (map.enemies ?? []).map((e) => e.id)), enemy: defaults.enemy ?? "sand_scorpion", x, y, dir: "S" as Dir });
-    case "trap":
-      return push("traps", { id: freeId("trap", (map.traps ?? []).map((t) => t.id)), x, y, damage: 10 });
     case "spawn": {
       const id = freeId("spawn", Object.keys(map.spawns ?? {}));
       doc.setIn(["spawns", id], doc.createNode({ x, y, dir: "S" }, { flow: true }));
@@ -133,16 +129,31 @@ export function duplicateEntity(doc: Document, map: MapDef, ref: EntityRef, at: 
 }
 
 /**
- * The Gate and Floor switch presets (game-design §10.3): entities with their states and handlers –
+ * The Gate, Floor switch and Hidden trap presets (game-design §10.3): entities with their states and handlers –
  * a gate opens when its condition turns true (a flag named after it, until it is pointed at a plate),
  * a plate goes down while a hero stands on it.
  */
-export function addPreset(doc: Document, map: MapDef, kind: "gate" | "switch", at: Pos): EntityRef {
+export function addPreset(doc: Document, map: MapDef, kind: "gate" | "switch" | "trap", at: Pos): EntityRef {
   const taken = (map.events ?? []).map((e) => e.id);
   const index = map.events?.length ?? 0;
-  const id = freeId(kind === "gate" ? "gate" : "plate", taken);
+  const id = freeId(kind === "gate" ? "gate" : kind === "trap" ? "trap" : "plate", taken);
+  const is = (state: string) => ({ state: { event: id, is: state } });
+  const to = (state: string) => ({ setState: { event: id, state } });
   const entity =
-    kind === "gate"
+    kind === "trap"
+      ? {
+          // armed (hidden) → revealed by Discover (a mark heroes go around) → sprung or defused
+          id,
+          x: at.x,
+          y: at.y,
+          states: { armed: { hidden: true, pass: "walk" }, revealed: { mark: "trap", pass: "avoid" }, sprung: { pass: "walk" } },
+          on: [
+            { on: "pass", when: { not: is("sprung") }, do: [{ damage: { amount: 10, status: "stuck", cue: "trap" } }, to("sprung")] },
+            { on: "ability", ability: "discover", when: is("armed"), do: [to("revealed")] },
+            { on: "ability", ability: "defuse", when: is("revealed"), do: [to("sprung")] },
+          ],
+        }
+      : kind === "gate"
       ? {
           id,
           x: at.x,

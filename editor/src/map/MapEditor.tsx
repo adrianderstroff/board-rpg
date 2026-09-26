@@ -197,7 +197,7 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
           return;
         }
         if (kind === "start" || kind === "quickplay") ref = { kind: "spawn", key: placeStart(project, mapId, c, kind) };
-        else if (kind === "gate" || kind === "switch")
+        else if (kind === "gate" || kind === "switch" || kind === "trap")
           project.edit(path, `Add ${kind}`, (doc) => {
             ref = addPreset(doc, doc.toJS() as MapDef, kind, c);
           });

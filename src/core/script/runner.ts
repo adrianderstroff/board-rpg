@@ -1,6 +1,7 @@
 import type { Ctx } from "../context";
 import type { ChoiceOption, Step } from "../data/types";
 import type { GameEvent } from "../events";
+import type { Pos } from "../util/grid";
 import { runAction, type UiRequest } from "./actions";
 import { check } from "./conditions";
 import { syncEvents } from "../board/board";
@@ -39,6 +40,8 @@ export class ScriptRunner {
     private readonly defaultSpeaker?: string,
     /** `{ dialog }` hands the whole dialog to the presentation (a request) instead of running its lines here. */
     private readonly dialogsAsRequests = false,
+    /** Where the script runs from – an entity's cell ("here" for damage, heal). */
+    private readonly here?: Pos,
   ) {
     if (steps.length) this.frames.push({ steps, i: 0 });
   }
@@ -121,7 +124,7 @@ export class ScriptRunner {
       return null;
     }
     // an action: its effects now, what it shows in order
-    const r = runAction(this.ctx, step);
+    const r = runAction(this.ctx, step, this.here);
     const events = [...r.events];
     if (this.ctx.state.board) events.push(...syncEvents(this.ctx));
     const quests = evaluateQuests(this.ctx);

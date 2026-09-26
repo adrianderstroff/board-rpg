@@ -1,7 +1,4 @@
-import { addStatus, isAlive } from "../chars/character";
 import type { Ctx } from "../context";
-import type { MapTrapDef } from "../data/types";
-import { dealDamage } from "../effects/effects";
 import { addItem } from "../items/inventory";
 import type { GameEvent } from "../events";
 import type { Character, Piece } from "../state/types";
@@ -10,7 +7,7 @@ import { chebyshev, key, samePos } from "../util/grid";
 import { movePatternOf } from "../chars/character";
 import { aliveMembers, board, grid, mapMemory, mustPieceOf, pieceReach, pieces, reconcile, syncEvents } from "./board";
 import { occupancyFor } from "./moves";
-import { passCells } from "./entities";
+import { defusableAt, hiddenEntities, passCells } from "./entities";
 import { resolveMoves, resolvePatternRef } from "./patterns";
 
 /**
@@ -30,30 +27,16 @@ function memory(ctx: Ctx) {
   return mapMemory(ctx, board(ctx).mapId);
 }
 
-/** Ancient traps of the current map that are still armed. */
-export function armedTraps(ctx: Ctx): MapTrapDef[] {
-  const sprung = memory(ctx).sprung ?? [];
-  return (ctx.db.map(board(ctx).mapId).traps ?? []).filter((t) => !sprung.includes(t.id));
-}
-
 export function dormantPieces(ctx: Ctx): Piece[] {
   return pieces(ctx).filter((p) => p.dormant);
-}
-
-/** Ancient traps Discover has revealed: still armed, visible, avoided by the heroes' paths. */
-export function revealedTraps(ctx: Ctx): MapTrapDef[] {
-  const revealed = memory(ctx).revealed ?? [];
-  return armedTraps(ctx).filter((t) => revealed.includes(t.id));
 }
 
 /** Everything on this board that is still hidden from the heroes. */
 export function hiddenThings(ctx: Ctx): HiddenThing[] {
   const mem = memory(ctx);
   const discovered = mem.discovered ?? [];
-  const revealed = mem.revealed ?? [];
-  const things: HiddenThing[] = armedTraps(ctx)
-    .filter((t) => !revealed.includes(t.id))
-    .map((t) => ({ id: `trap:${t.id}`, kind: "trap", x: t.x, y: t.y }));
+  // entities in a hidden state (armed traps…) – their "discover" handler says what showing up means
+  const things: HiddenThing[] = hiddenEntities(ctx).map((ev) => ({ id: `entity:${ev.id}`, kind: (ev.on ?? []).some((h) => h.on === "pass") ? "trap" : "event", x: ev.x, y: ev.y }));
   for (const ev of ctx.db.map(board(ctx).mapId).events ?? []) {
     if (ev.hidden && !discovered.includes(ev.id)) things.push({ id: `event:${ev.id}`, kind: "event", x: ev.x, y: ev.y });
   }
@@ -87,7 +70,7 @@ export function canReach(ctx: Ctx, sleeper: Piece, target: Pos): boolean {
 export function interruptionAt(ctx: Ctx, piece: Piece, path: Pos[], mode: string, flying: boolean): number {
   if (!path.length || piece.faction === "npc") return -1;
   const hero = piece.faction === "hero";
-  const traps: Pos[] = flying ? [] : hero ? [...armedTraps(ctx), ...passCells(ctx)] : board(ctx).traps;
+  const traps: Pos[] = flying ? [] : hero ? passCells(ctx) : board(ctx).traps;
   const sleepers = hero ? dormantPieces(ctx) : [];
   if (!traps.length && !sleepers.length) return -1;
   const first = mode === "leap" ? path.length - 1 : 0;
@@ -114,15 +97,7 @@ export function wake(_ctx: Ctx, piece: Piece): GameEvent[] {
 export function hiddenStop(ctx: Ctx, piece: Piece, flying: boolean): { events: GameEvent[]; ambush?: string } {
   const events: GameEvent[] = [];
   if (piece.faction !== "hero") return { events };
-  const trap = flying ? undefined : armedTraps(ctx).find((t) => samePos(t, piece));
-  if (trap) {
-    (memory(ctx).sprung ??= []).push(trap.id);
-    events.push({ type: "trap", x: trap.x, y: trap.y, triggeredBy: piece.id });
-    for (const c of aliveMembers(ctx, piece)) {
-      events.push(...dealDamage(ctx, c, trap.damage, { nonLethal: true }));
-      if (trap.status && isAlive(c) && addStatus(ctx, c, trap.status)) events.push({ type: "status", target: c.id, status: trap.status, added: true });
-    }
-  }
+  void flying; // (a trap entity's "pass over" handler does the springing, when things settle)
   let ambush: string | undefined;
   for (const s of dormantPieces(ctx)) {
     if (!canReach(ctx, s, piece)) continue;
@@ -145,8 +120,8 @@ export function discover(ctx: Ctx, user: Character, radius: number): GameEvent[]
   for (const t of found) {
     const id = t.id.slice(t.id.indexOf(":") + 1);
     events.push({ type: "uncovered", x: t.x, y: t.y, what: t.kind });
-    if (t.kind === "trap") (mem.revealed ??= []).push(id);
-    else if (t.kind === "event") (mem.discovered ??= []).push(id);
+    if (t.id.startsWith("entity:")) continue; // its handler reacts (the ability's hit, when things settle)
+    if (t.kind === "event") (mem.discovered ??= []).push(id);
     else {
       const piece = board(ctx).pieces[id];
       if (piece) {
@@ -159,17 +134,18 @@ export function discover(ctx: Ctx, user: Character, radius: number): GameEvent[]
   return events;
 }
 
-/** A visible trap on `p`: a revealed ancient trap or one the heroes placed. */
+/** A visible trap on `p`: one the heroes placed, or an entity Defuse can take apart (a revealed trap). */
 export function visibleTrapAt(ctx: Ctx, p: Pos): boolean {
-  return revealedTraps(ctx).some((t) => samePos(t, p)) || board(ctx).traps.some((t) => samePos(t, p));
+  return board(ctx).traps.some((t) => samePos(t, p)) || !!defusableAt(ctx, p);
 }
 
 /** Defuse (§7.5): takes the visible trap on `p` apart – it becomes an item in the inventory. */
 export function defuse(ctx: Ctx, p: Pos, item: string): GameEvent[] {
   const b = board(ctx);
-  const ancient = revealedTraps(ctx).find((t) => samePos(t, p));
-  if (ancient) (memory(ctx).sprung ??= []).push(ancient.id);
-  else if (b.traps.some((t) => samePos(t, p))) b.traps = b.traps.filter((t) => !samePos(t, p));
+  // an entity: its defuse handler says what becomes of it (the ability's hit)
+  if (defusableAt(ctx, p)) {
+    /* the Snare comes from the ability either way */
+  } else if (b.traps.some((t) => samePos(t, p))) b.traps = b.traps.filter((t) => !samePos(t, p));
   else return [];
   return [{ type: "defused", x: p.x, y: p.y, item }, ...addItem(ctx, item)];
 }

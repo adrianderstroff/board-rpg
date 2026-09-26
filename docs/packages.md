@@ -308,13 +308,15 @@ Layering (see also [architecture](../CLAUDE.md)):
 ## R5 · Handlers & triggers (◐)
 - ☑ Interact (options or a script), enter, leave, pass over (stops hero moves, not flying ones), map loaded, condition becomes true; `once`; `heroesOn` condition; chained handlers settle in one go
 - ☐ Enemies' "defeated" handler; state-level hidden (Discover)
-- ☐ New actions: move an entity / hero piece, face, show / hide, damage / heal / status, camera, sound / music, fade / flash / shake, emote, add / remove party member, enable / disable exit
+- ☑ Damage / heal (with status, the heroes here or the party, a trap cue)
+- ☐ New actions: move an entity / hero piece, face, show / hide, camera, sound / music, fade / flash / shake, emote, add / remove party member, enable / disable exit
 
 ## R6 · Presets & migration (◐)
 - ☑ Gate and floor switch: entity presets on the Add buttons; content migrated (13 gates, 6 plates); the gate / switch rules and lists removed; tests and e2e read entity states
 - ☑ Editor: conditions "entity is in state" / "heroes stand on", action "set an entity's state"
 - ☑ Paged events converted to states and handlers (81 events; saves keep what has run)
-- ☐ Hidden traps as entities (Discover, Defuse and Snare work with them)
+- ☑ Hidden traps as entities: preset, content migrated (3), hidden states, trap mark, *avoid*; Discover / Defuse through "ability used" handlers; damage / heal actions
+- ☑ Map-level handlers: `onEnter` and 23 controller entities moved into the map's `on` (Info tab: Events)
 
 ## R7 · State and handler editor ☑
 - ☑ Appearance: states as folder tabs (★ starting state, rename – handlers follow, duplicate, delete), each with its look (sprite picker), facing, movement, passability; hidden

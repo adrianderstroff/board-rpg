@@ -7,6 +7,7 @@ import { itemCount, removeItem } from "../items/inventory";
 import type { Character, Piece } from "../state/types";
 import type { Pos } from "../util/grid";
 import { samePos } from "../util/grid";
+import { recordAbility } from "./entities";
 import {
   aliveMembers,
   board,
@@ -108,11 +109,13 @@ export function targeting(ctx: Ctx, user: Character, use: BoardUse): Targeting {
 
 // ---------- applying a board use (ability or item) ----------
 
-function applyBoardUse(ctx: Ctx, user: Character, use: BoardUse, target: Pos): GameEvent[] {
+function applyBoardUse(ctx: Ctx, user: Character, use: BoardUse, target: Pos, source?: string): GameEvent[] {
   const t = targeting(ctx, user, use);
   if (!t.valid.some((p) => samePos(p, target))) throw new Error(`Invalid target ${target.x},${target.y}`);
   const events: GameEvent[] = [];
   const cells = t.areaAt(target);
+  // entities on the affected cells with a handler for this ability react when things settle (§10.3)
+  if (source) recordAbility(ctx, source, cells);
   const charEffects = use.effects.filter((e) => !["fieldEffect", "freezeArea", "placeTrap", "discover", "defuse", "shock", "cut"].includes(e.type));
   for (const e of use.effects) {
     if (e.type === "discover") events.push(...discover(ctx, user, e.radius));
@@ -207,7 +210,7 @@ export function useBoardAbility(ctx: Ctx, charId: string, abilityId: string, tar
   } else {
     c.mp -= a.mp;
     if (a.mp) events.push({ type: "mp", target: c.id, amount: -a.mp });
-    events.push(...applyBoardUse(ctx, c, a.board!, target!));
+    events.push(...applyBoardUse(ctx, c, a.board!, target!, abilityId));
   }
   markAbilityUsed(ctx, charId);
   return events;
@@ -229,7 +232,7 @@ export function useBoardItem(ctx: Ctx, charId: string, itemId: string, target: P
   if (!item.board || itemCount(ctx, itemId) < 1) throw new Error(`Cannot use ${itemId}`);
   const c = getChar(ctx, charId);
   const events: GameEvent[] = [{ type: "action", actor: charId, name: item.name, item: itemId }];
-  events.push(...applyBoardUse(ctx, c, item.board, target));
+  events.push(...applyBoardUse(ctx, c, item.board, target, itemId));
   removeItem(ctx, itemId);
   return events;
 }

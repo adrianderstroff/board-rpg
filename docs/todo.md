@@ -3,6 +3,16 @@
 Ideas that are designed but not built yet. When one is picked up, move its design into
 [game-design.md](game-design.md), add a work package to [packages.md](packages.md) and remove it here.
 
+## Traps set during play as entities
+- **What:** the Thief's Snare (item) and Trap (skill) place traps while playing; they are a small
+  runtime list (`board.traps`), unlike the maps' traps, which are entities with states and handlers
+  (game-design §7.5, §10.3).
+- **Design:** entities created during play – from a template (the Hidden trap preset, facing the
+  enemies instead of the heroes) – kept in the map memory with their state, so Discover, Defuse and
+  saving treat them like any other entity. Would also allow summoned objects, dropped items, etc.
+- **Open question:** how templates are named and stored (a `templates` section in the content, or the
+  editor's presets).
+
 ## Map events (§10)
 Today a map event is one cell with pages (`when`, last match wins) and a `trigger`:
 `interact` (a hero moves onto the cell), `step` (a hero ends a move there), `auto` (map entry

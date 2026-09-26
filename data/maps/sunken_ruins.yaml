@@ -82,13 +82,41 @@ enemies:
   - { id: bones_b, enemy: skeleton, x: 11, y: 9, dir: N }
   - { id: bones_c, enemy: skeleton, x: 16, y: 5, dir: W }
 
-# Ancient traps: invisible, stop heroes walking over them (§7.5).
-traps:
-  - { id: trap_a, x: 8, y: 6, damage: 8, status: stuck }
-  - { id: trap_b, x: 13, y: 7, damage: 8, status: stuck }
-  - { id: trap_c, x: 4, y: 7, damage: 8, status: stuck }
-
 events:
+  # Ancient traps: invisible, stop heroes walking over them (§7.5).
+  - id: trap_a
+    x: 8
+    y: 6
+    states:
+      armed: { hidden: true, pass: walk }
+      revealed: { mark: trap, pass: avoid }
+      sprung: { pass: walk }
+    on:
+      - { on: pass, when: { not: { state: { event: trap_a, is: sprung } } }, do: [{ damage: { amount: 8, status: stuck, cue: trap } }, { setState: { event: trap_a, state: sprung } }] }
+      - { on: ability, ability: discover, when: { state: { event: trap_a, is: armed } }, do: [{ setState: { event: trap_a, state: revealed } }] }
+      - { on: ability, ability: defuse, when: { state: { event: trap_a, is: revealed } }, do: [{ setState: { event: trap_a, state: sprung } }] }
+  - id: trap_b
+    x: 13
+    y: 7
+    states:
+      armed: { hidden: true, pass: walk }
+      revealed: { mark: trap, pass: avoid }
+      sprung: { pass: walk }
+    on:
+      - { on: pass, when: { not: { state: { event: trap_b, is: sprung } } }, do: [{ damage: { amount: 8, status: stuck, cue: trap } }, { setState: { event: trap_b, state: sprung } }] }
+      - { on: ability, ability: discover, when: { state: { event: trap_b, is: armed } }, do: [{ setState: { event: trap_b, state: revealed } }] }
+      - { on: ability, ability: defuse, when: { state: { event: trap_b, is: revealed } }, do: [{ setState: { event: trap_b, state: sprung } }] }
+  - id: trap_c
+    x: 4
+    y: 7
+    states:
+      armed: { hidden: true, pass: walk }
+      revealed: { mark: trap, pass: avoid }
+      sprung: { pass: walk }
+    on:
+      - { on: pass, when: { not: { state: { event: trap_c, is: sprung } } }, do: [{ damage: { amount: 8, status: stuck, cue: trap } }, { setState: { event: trap_c, state: sprung } }] }
+      - { on: ability, ability: discover, when: { state: { event: trap_c, is: armed } }, do: [{ setState: { event: trap_c, state: revealed } }] }
+      - { on: ability, ability: defuse, when: { state: { event: trap_c, is: revealed } }, do: [{ setState: { event: trap_c, state: sprung } }] }
 
   - id: hidden_chest
     x: 10

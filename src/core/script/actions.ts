@@ -3,7 +3,10 @@ import type { Ctx } from "../context";
 import type { Action, Script } from "../data/types";
 import type { GameEvent } from "../events";
 import { addItem, removeItem } from "../items/inventory";
-import { board, mapMemory, reconcile, spawnMapEnemy } from "../board/board";
+import { aliveMembers, board, mapMemory, piecesAt, reconcile, spawnMapEnemy } from "../board/board";
+import { dealDamage, heal } from "../effects/effects";
+import { addStatus } from "../chars/character";
+import type { Pos } from "../util/grid";
 import { completeQuest, setQuestStep, startQuest } from "./quests";
 import { ScriptRunner } from "./runner";
 import { setEntityState } from "../board/entities";
@@ -42,8 +45,8 @@ const idCount = (v: string | { id: string; count?: number }) => (typeof v === "s
  * the presentation shows (text, dialogs, shops…) comes back as requests in order. A question stops
  * it; its request resumes the script with the answer.
  */
-export function runActions(ctx: Ctx, script: Script | undefined, speaker?: string): ScriptResult {
-  return drive(new ScriptRunner(ctx, script ?? [], speaker, true));
+export function runActions(ctx: Ctx, script: Script | undefined, speaker?: string, here?: Pos): ScriptResult {
+  return drive(new ScriptRunner(ctx, script ?? [], speaker, true, here));
 }
 
 function drive(runner: ScriptRunner, choice?: number): ScriptResult {
@@ -64,7 +67,7 @@ function drive(runner: ScriptRunner, choice?: number): ScriptResult {
 }
 
 /** One action (§10.2); the runner calls it as the script reaches it. */
-export function runAction(ctx: Ctx, a: Action): ScriptResult {
+export function runAction(ctx: Ctx, a: Action, here?: Pos): ScriptResult {
   const s = ctx.state;
   const out = emptyResult();
   if ("setFlag" in a) s.flags[a.setFlag] = true;
@@ -102,6 +105,18 @@ export function runAction(ctx: Ctx, a: Action): ScriptResult {
     }
   } else if ("spawnEnemy" in a) {
     if (s.board) out.events.push(...spawnMapEnemy(ctx, (a as { spawnEnemy: string }).spawnEnemy));
+  } else if ("damage" in a || "heal" in a) {
+    // the heroes standing on the script's cell, or the whole party (on the board: they keep 1 HP)
+    const o = "damage" in a ? a.damage : a.heal;
+    const whom = (o.target ?? "here") === "party" || !here || !s.board ? s.roster.map((id) => s.heroes[id]) : piecesAt(ctx, here).filter((p) => p.faction === "hero").flatMap((p) => aliveMembers(ctx, p));
+    if ("damage" in a && a.damage.cue === "trap" && here) out.events.push({ type: "trap", x: here.x, y: here.y });
+    for (const c of whom) {
+      if (!isAlive(c)) continue;
+      if ("damage" in a) {
+        out.events.push(...dealDamage(ctx, c, a.damage.amount, { nonLethal: !!s.board }));
+        if (a.damage.status && isAlive(c) && addStatus(ctx, c, a.damage.status)) out.events.push({ type: "status", target: c.id, status: a.damage.status, added: true });
+      } else out.events.push(...heal(ctx, c, a.heal.amount));
+    }
   } else if ("setState" in a) {
     if (s.board) out.events.push(...setEntityState(ctx, a.setState.event, a.setState.state));
   } else if ("reveal" in a) {

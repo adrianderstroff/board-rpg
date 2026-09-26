@@ -93,6 +93,7 @@ export function validateContent(db: Database): string[] {
       else if ("completeQuest" in a) has(db.quests, typeof a.completeQuest === "string" ? a.completeQuest : a.completeQuest.id, where, "quest");
       else if ("dialog" in a) has(db.dialogs, a.dialog, where, "dialog");
       else if ("shop" in a) has(db.shops, a.shop, where, "shop");
+      else if ("damage" in a && a.damage.status) has(db.statuses, a.damage.status, where, "status");
       else if ("teleport" in a) {
         const to = db.maps.get(a.teleport.map);
         if (!to) has(db.maps, a.teleport.map, where, "map");
@@ -258,6 +259,7 @@ export function validateContent(db: Database): string[] {
       }
       for (const h of ev.on ?? []) {
         const hw = `${ew} on ${h.on}`;
+        if (h.on === "ability" && (!h.ability || (!db.abilities.has(h.ability) && !db.items.has(h.ability)))) err(hw, `reacts to unknown ability "${h.ability ?? ""}"`);
         condition(h.when, hw);
         actions(h.do, hw);
         for (const i of h.options ?? []) {
@@ -294,10 +296,7 @@ export function validateContent(db: Database): string[] {
       onGrid(wd.x, wd.y, `wall sign ${wd.sign}`);
       if (db.graphics.wallSigns?.frames[wd.sign] === undefined) err(w, `wall decor: unknown sign "${wd.sign}"`);
     }
-    for (const t of m.traps ?? []) {
-      onGrid(t.x, t.y, `trap ${t.id}`);
-      has(db.statuses, t.status, w, "status");
-    }
+
     // the map's own handlers: only "load" and "becomes" make sense for a map
     for (const h of m.on ?? []) {
       if (h.on !== "load" && h.on !== "becomes") err(w, `the map can't react to "${h.on}" (only load / becomes)`);

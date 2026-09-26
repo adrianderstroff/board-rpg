@@ -100,10 +100,47 @@ function run(ctx: Ctx, ev: MapEventDef, i: number, h: EntityHandler, out: Script
   const k = h.onceKey ?? key(ev, i);
   if (h.once && ((mem.ranOnce ?? []).includes(k) || mem.triggered.includes(k))) return false;
   if (h.once) (mem.ranOnce ??= []).push(k);
-  // its dialogs are spoken by whoever it shows (a villager, a keeper)
+  // its dialogs are spoken by whoever it shows (a villager, a keeper); "here" is its cell
   const st = ev.states?.[currentState(ctx, board(ctx).mapId, ev) ?? ""];
-  merge(out, runActions(ctx, h.do, st?.npc ?? st?.keeper));
+  merge(out, runActions(ctx, h.do, st?.npc ?? st?.keeper, ev === MAP ? undefined : { x: ev.x, y: ev.y }));
   return true;
+}
+
+// ---------- abilities used on entities (Discover, Defuse, spells…) ----------
+
+const stateNow = (ctx: Ctx, ev: MapEventDef) => ev.states?.[currentState(ctx, board(ctx).mapId, ev) ?? ""];
+
+/** An ability (or item) used on these cells: entities there with a handler for it react when things settle. */
+export function recordAbility(ctx: Ctx, ability: string, cells: Pos[]) {
+  const mem = mapMemory(ctx, board(ctx).mapId);
+  for (const ev of eventsOf(ctx)) {
+    if (!cells.some((c) => c.x === ev.x && c.y === ev.y)) continue;
+    if ((ev.on ?? []).some((h) => h.on === "ability" && h.ability === ability)) (mem.abilityHits ??= []).push({ event: ev.id, ability });
+  }
+}
+
+/** Entities in a hidden state (unseen by the heroes – Discover's finds). */
+export function hiddenEntities(ctx: Ctx): MapEventDef[] {
+  return eventsOf(ctx).filter((ev) => !mapMemory(ctx, board(ctx).mapId).removedEvents.includes(ev.id) && stateNow(ctx, ev)?.hidden);
+}
+
+/** Cells heroes' paths go around (known dangers – whether drawn or not). */
+export function avoidCells(ctx: Ctx): Pos[] {
+  return eventsOf(ctx)
+    .filter((ev) => stateNow(ctx, ev)?.pass === "avoid")
+    .map((ev) => ({ x: ev.x, y: ev.y }));
+}
+
+/** Cells with a trap mark (known dangers). */
+export function markCells(ctx: Ctx): Pos[] {
+  return eventsOf(ctx)
+    .filter((ev) => stateNow(ctx, ev)?.mark === "trap")
+    .map((ev) => ({ x: ev.x, y: ev.y }));
+}
+
+/** An entity on `p` that Defuse can take apart: seen, with a defuse handler that applies now. */
+export function defusableAt(ctx: Ctx, p: Pos): MapEventDef | undefined {
+  return eventsOf(ctx).find((ev) => ev.x === p.x && ev.y === p.y && !stateNow(ctx, ev)?.hidden && (ev.on ?? []).some((h) => h.on === "ability" && h.ability === "defuse" && check(ctx, h.when)));
 }
 
 /** The map's handlers and every entity's, each with who holds it. */
@@ -115,8 +152,11 @@ function holders(ctx: Ctx): { ev: MapEventDef; on: EntityHandler[] }[] {
 export function loadTriggers(ctx: Ctx): ScriptResult {
   const out = emptyResult();
   const mem = mapMemory(ctx, board(ctx).mapId);
-  // saves from before floor plates were entities: a latched plate stays down
-  for (const id of mem.latched ?? []) if (eventsOf(ctx).some((e) => e.id === id)) (mem.states ??= {})[id] ??= "down";
+  // saves from before floor plates and traps were entities: a latched plate stays down, a trap stays found / spent
+  const has = (id: string) => eventsOf(ctx).some((e) => e.id === id);
+  for (const id of mem.latched ?? []) if (has(id)) (mem.states ??= {})[id] ??= "down";
+  for (const id of mem.revealed ?? []) if (has(id)) (mem.states ??= {})[id] ??= "revealed";
+  for (const id of mem.sprung ?? []) if (has(id)) (mem.states ??= {})[id] = "sprung";
   // arriving doesn't count as stepping onto anything
   mem.occupied = eventsOf(ctx)
     .filter((ev) => heroWeightOn(ctx, ev) > 0)
@@ -140,6 +180,15 @@ export function entityTriggers(ctx: Ctx): ScriptResult {
   const mem = mapMemory(ctx, board(ctx).mapId);
   for (let round = 0; round < 8; round++) {
     let ran = false;
+    // abilities used on entities since the last time
+    const hits = mem.abilityHits ?? [];
+    mem.abilityHits = [];
+    for (const hit of hits) {
+      const ev = eventsOf(ctx).find((e) => e.id === hit.event);
+      (ev?.on ?? []).forEach((h, i) => {
+        if (h.on === "ability" && h.ability === hit.ability && check(ctx, h.when) && run(ctx, ev!, i, h, out)) ran = true;
+      });
+    }
     for (const ev of eventsOf(ctx)) {
       const pending = mem.pendingStates?.[ev.id];
       if (pending && !someoneOn(ctx, ev)) {

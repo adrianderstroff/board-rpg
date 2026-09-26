@@ -111,11 +111,11 @@ export interface MapMemory {
   terrain?: Record<string, string>;
   /** Decor changed per cell "x,y": null = gone (burnt/cut), a decor id = grown (brambles) (§5.4, §5.7). */
   decor?: Record<string, string | null>;
-  /** Ancient traps revealed by Discover (still armed, now visible). */
+  /** Ancient traps revealed by Discover (old saves – traps are entities now). */
   revealed?: string[];
   /** Hidden events uncovered. */
   discovered?: string[];
-  /** Ancient traps triggered or disarmed. */
+  /** Ancient traps triggered or disarmed (old saves – traps are entities now). */
   sprung?: string[];
   /** Latching floor plates of old saves (before plates were entities, §10.3). */
   latched?: string[];
@@ -129,6 +129,8 @@ export interface MapMemory {
   became?: Record<string, boolean>;
   /** `once` handlers that have run ("event#index"). */
   ranOnce?: string[];
+  /** Abilities used on entities, waiting for their handlers (run when things settle). */
+  abilityHits?: { event: string; ability: string }[];
 }
 
 export interface Records {

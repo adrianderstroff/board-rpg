@@ -249,7 +249,7 @@ Damage and status only, no sliding. Flying pieces are unaffected. Board damage c
 
 ### 7.5 Hidden things
 Some maps hide things from the heroes. **Discover** (Thief) finds them.
-- **Ancient traps** (map data) are invisible. A hero piece walking **through or onto** one stops on that cell: it takes damage, gets *Stuck*, and the trap is spent (remembered per map). Flying pieces float over them; enemies ignore them. Once revealed by Discover a trap is shown on the board and the heroes' paths go around it.
+- **Ancient traps** are entities (§10.3, the editor's *Hidden trap*): `armed` (hidden) → `revealed` (a trap mark, passability *avoid*) → `sprung`. A hero piece walking **through or onto** an armed one stops on that cell (its *pass over* handler): it takes damage, gets *Stuck*, and the trap is spent. Flying pieces float over them; enemies ignore them. Discover's *ability used* handler reveals it: it is shown on the board and the heroes' paths go around it.
 - **Hidden objects** (map events with `hidden: true`, e.g. an invisible chest) are not on the board until uncovered.
 - **Dormant enemies** (e.g. skeletons, `boardAi.dormant`) lie on their cell looking exactly like the `skeleton` decor used for harmless remains. They block movement, take no turns and don't count as enemies (the board stays in free exploration). As soon as a hero piece's path reaches a cell the skeleton could attack with its own move pattern, the move stops there, the skeleton **rises** ("!") and attacks at once as an **ambush**; the board switches to turn-based tactics.
 - **Discover** (Thief, board only, MP 1, cast on the thief's own cell): the 3-cell reach around the thief lights up briefly, then everything hidden in it shows itself – traps become visible, hidden objects appear (and can be used), dormant enemies rise. Nothing found → "Nothing hidden nearby." An enemy uncovered this way is caught unprepared: it takes no turn in the current round (when this starts the tactics, round 1) and acts from the next round on – only enemies *provoked* by a party walking into their reach ambush at once.
@@ -396,6 +396,13 @@ instead have states and handlers (the engine supports both; content moves over w
   there; flying pieces are not caught), **map loaded**, **condition becomes true** (also when it
   already holds as the party arrives on the map), and for enemies **defeated** (planned). `once`
   handlers run a single time.
+- **Abilities and entities:** a board ability (or item) used on cells sets off the *ability used*
+  handlers (`on: ability`, `ability: <id>`) of the entities there – Discover reaches the hidden ones
+  within its 3 cells, Defuse (which gives the Snare) an adjacent revealed trap; spells can later burn
+  or freeze entities the same way. A state can be `hidden` (not on the board, unseen by the heroes)
+  and carry a trap `mark`; passability `avoid` = heroes' paths go around it, others walk through.
+  Scripts can `damage` / `heal` the heroes on the entity's cell (or the whole party; on the board
+  they keep 1 HP) – with a trap snapping as the cue.
 - **The map has handlers too** (`on` in the map file; *map loaded* and *becomes true*): what happens
   on the map as a whole – arriving (formerly `onEnter`), intro scenes, "all enemies defeated".
 - A **script** is a sequence of actions with blocks: **if / elif / else**, **choice** (options with
@@ -730,3 +737,4 @@ Where the rough ideas were incomplete or conflicting, these rules were chosen:
 43. **Gates and floor switches are entities** (R6): the maps' `gates` / `switches` lists were migrated once (`tools/migrate-gates.mjs`) into events with states and handlers; a gate's cell is a wall while it is solid; plates don't stop ice slides; old saves keep latched plates down.
 44. **Every event is an entity** (R6): the 81 paged events were converted once (`editor/src/entities/convertPages.ts`): a look per state (switched by "becomes" handlers where pages changed it), interact pages as interact handlers (the most recent first), step pages as enter handlers, auto pages as "becomes" handlers; run-once handlers keep the pages' old keys (`onceKey`) so saves don't replay scenes. Map-load handlers run after the map's `onEnter` script.
 45. **Map-level handlers** (user decision): `onEnter` and the 23 invisible "controller" entities that only held map-wide scripts were moved into the map's own `on` list (run-once keys kept); the map's load handlers run before the entities'.
+46. **Traps are entities; abilities reach entities** (user decision): the three ancient traps were migrated to the Hidden trap preset; Discover and Defuse work through a generic "ability used" handler; hidden states, trap marks and *avoid* passability were added; old saves keep found / spent traps. Traps the Thief sets during play (Snare, Trap) stay a runtime list for now (todo.md).

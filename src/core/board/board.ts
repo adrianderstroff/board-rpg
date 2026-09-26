@@ -140,7 +140,7 @@ export function syncEvents(ctx: Ctx): GameEvent[] {
     const pid = `n:${ev.id}`;
     const page = activePage(ctx, b.mapId, ev);
     const uncovered = !ev.hidden || (mapMemory(ctx, b.mapId).discovered ?? []).includes(ev.id);
-    const visible = !!page && uncovered && (!!page.npc || !!page.decor);
+    const visible = !!page && uncovered && !page.hidden && (!!page.npc || !!page.decor);
     const existing = b.pieces[pid];
     if (!visible) {
       if (existing) {

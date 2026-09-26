@@ -41,6 +41,8 @@ const KINDS: [string, string][] = [
   ["message", "Show a message"],
   ["reveal", "Reveal a hidden event"],
   ["setState", "Set an entity's state"],
+  ["damage", "Damage heroes"],
+  ["heal", "Heal heroes"],
 ];
 
 /** A step's kind: its first key (blocks are recognised by their defining key). */
@@ -58,6 +60,8 @@ function defaultFor(kind: string, db: Database, mapId?: string): Step {
 }
 
 function defaultAction(kind: string, db: Database, mapId?: string): Action {
+  if (kind === "damage") return { damage: { amount: 10 } };
+  if (kind === "heal") return { heal: { amount: 20 } };
   if (kind === "setState") {
     const ev = (mapId ? db.maps.get(mapId)?.events : undefined)?.find((e) => e.states);
     return { setState: { event: ev?.id ?? "", state: Object.keys(ev?.states ?? {})[0] ?? "" } };
@@ -262,6 +266,23 @@ export function ActionEditor({ value, onChange, db, mapId }: { value: Script | u
             }
             case "message":
               return <Text value={v as string} placeholder="text" onChange={(x) => set({ message: x ?? "" })} />;
+            case "damage":
+            case "heal": {
+              const o = v as { amount: number; status?: string; target?: "here" | "party"; cue?: "trap" };
+              const put = (next: typeof o) => set({ [kind]: next } as Action);
+              return (
+                <div class="row wrap">
+                  <Num value={o.amount} min={0} width={56} onChange={(n) => put({ ...o, amount: n ?? 0 })} />
+                  <Select value={o.target} options={[["party", "the whole party"]]} empty="the heroes here" onChange={(t) => put({ ...o, target: t as "party" | undefined })} />
+                  {kind === "damage" && <Select value={o.status} options={[...db.statuses.values()].map((st) => [st.id, st.name] as [string, string])} empty="(no status)" onChange={(x) => put({ ...o, status: x })} />}
+                  {kind === "damage" && (
+                    <label class="check" title="Show a trap snapping on the cell">
+                      <input type="checkbox" checked={o.cue === "trap"} onChange={(e) => put({ ...o, cue: e.currentTarget.checked ? "trap" : undefined })} /> trap
+                    </label>
+                  )}
+                </div>
+              );
+            }
             case "setState": {
               const o = v as { event: string; state: string };
               const withStates = (map?.events ?? []).filter((e) => e.states);

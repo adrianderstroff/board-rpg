@@ -373,7 +373,10 @@ export type Action =
   | { message: string }
   | { reveal: string }
   /** Puts an entity of the current map into a state (§10.3); a solid state waits until its cell is free. */
-  | { setState: { event: string; state: string } };
+  | { setState: { event: string; state: string } }
+  /** Hurts heroes – those standing where the script's entity is (`here`, default) or the whole party; on the board they keep 1 HP. `cue: trap` shows a trap snapping. */
+  | { damage: { amount: number; status?: string; target?: "here" | "party"; cue?: "trap" } }
+  | { heal: { amount: number; target?: "here" | "party" } };
 
 // ---------- dialogs (§9) ----------
 
@@ -546,11 +549,15 @@ export type Interaction =
   | { type: "examine"; dialog?: string; actions?: Script; label?: string };
 
 /** How an entity's cell can be crossed (§10.3). */
-export type Passability = "solid" | "stop" | "walk";
+export type Passability = "solid" | "stop" | "walk" | "avoid";
 
 export interface EventPageDef {
   /** Entities: how its cell can be crossed (legacy pages: from the look). */
   pass?: Passability;
+  /** Entities: not on the board while in this state (found with Discover). */
+  hidden?: boolean;
+  /** Entities: a flat mark on the cell (a known trap). */
+  mark?: "trap";
   when?: Condition;
   npc?: string;
   /** For objects like a shop counter: the npc standing behind it (speaker, close-up figure). */
@@ -583,12 +590,16 @@ export interface EntityState {
   move?: "static" | "wander";
   wanderRadius?: number;
   sign?: string;
-  /** solid: nobody enters; stop: heroes stop there to interact (default when drawn); walk: anyone walks through or stands on it. */
+  /** solid: nobody enters; stop: heroes stop there to interact (default when drawn); walk: anyone walks through or stands on it; avoid: a known danger – heroes' paths go around it, others walk through. */
   pass?: Passability;
+  /** Not on the board and unseen by the heroes (an armed trap, a buried chest) – Discover finds it (§7.5). */
+  hidden?: boolean;
+  /** A flat mark on the cell (a trap the heroes know about). */
+  mark?: "trap";
 }
 
 /** When a handler runs (§10.3). */
-export type HandlerTrigger = "interact" | "enter" | "leave" | "pass" | "load" | "becomes";
+export type HandlerTrigger = "interact" | "enter" | "leave" | "pass" | "load" | "becomes" | "ability";
 
 /** A trigger, a condition and what happens (§10.3). */
 export interface EntityHandler {
@@ -600,6 +611,8 @@ export interface EntityHandler {
   /** The script; for interact it is one more close-up option (`label`, default "Examine"). */
   do?: Script;
   label?: string;
+  /** For `ability`: which ability (or item) used on its cell sets it off – discover, defuse, a fire spell… */
+  ability?: string;
   /** Runs only the first time. */
   once?: boolean;
   /** What "has run" is remembered under (converted pages keep their old key, so saves stay right). */
@@ -618,15 +631,6 @@ export interface MapEventDef {
   on?: EntityHandler[];
   /** Invisible until uncovered with Discover (§7.5). */
   hidden?: boolean;
-}
-
-/** Ancient trap hidden on a map: stops heroes walking over it (§7.5). */
-export interface MapTrapDef {
-  id: string;
-  x: number;
-  y: number;
-  damage: number;
-  status?: string;
 }
 
 export interface ExitDef {
@@ -681,7 +685,6 @@ export interface MapDef {
   exits?: ExitDef[];
   enemies?: MapEnemyDef[];
   events?: MapEventDef[];
-  traps?: MapTrapDef[];
   /**
    * Signs painted on one side of a block (shop lettering next to a door): `sign` from
    * graphics.wallSigns on the `face` side of cell x,y, `level` = which block (default: the top

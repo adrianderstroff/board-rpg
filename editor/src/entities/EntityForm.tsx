@@ -131,19 +131,6 @@ export function EntityForm({ project, mapId, entity, onSelect }: { project: Proj
             {cond("when", "Appears when")}
           </>
         );
-      case "trap":
-        return (
-          <>
-            {idField()}
-            {position}
-            <Field label="Damage">
-              <Num value={data.damage as number} min={0} onChange={(v) => set("damage", v ?? 0, "damage")} />
-            </Field>
-            <Field label="Status">
-              <Select value={data.status as string} options={ids(db.statuses, (s) => s.name)} empty="(none)" onChange={(v) => set("status", v)} />
-            </Field>
-          </>
-        );
       case "event":
         // an entity (states and handlers) or a paged event (until R6 converts them)
         return map.events?.[entity.key as number]?.states ? (

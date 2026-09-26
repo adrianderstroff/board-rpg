@@ -25,17 +25,19 @@ const TRIGGERS: [HandlerTrigger, string, string][] = [
   ["pass", "Pass over", "A hero moves onto or across its cell: the move stops there (not flying pieces)."],
   ["leave", "Leave", "The last hero steps off its cell."],
   ["load", "Map loaded", "The party arrives on this map – set up states that depend on flags here."],
-  ["becomes", "Becomes true", "Its condition turns true (checked after every change)."],
+  ["becomes", "Becomes true", "Its condition turns true (checked after every change) – or holds when the party arrives."],
+  ["ability", "Ability used", "An ability or item is used on its cell – Discover (also on hidden ones in reach), Defuse, a fire spell…"],
 ];
 const triggerLabel = (t: HandlerTrigger) => TRIGGERS.find((x) => x[0] === t)?.[1] ?? t;
 /** What entities react to; the map itself only to "map loaded" and "becomes true". */
-export const ENTITY_TRIGGERS: HandlerTrigger[] = ["interact", "enter", "pass", "leave", "load", "becomes"];
+export const ENTITY_TRIGGERS: HandlerTrigger[] = ["interact", "enter", "pass", "leave", "load", "becomes", "ability"];
 export const MAP_TRIGGERS: HandlerTrigger[] = ["load", "becomes"];
 
 const PASS: [Passability, string, string][] = [
   ["solid", "Solid", "Nobody enters its cell (a closed gate, a wall)."],
   ["stop", "Stop", "Heroes stop in front to interact (villagers, chests) – the default for anything drawn."],
   ["walk", "Walk", "Anyone walks through or stands on it (a floor plate, an open gate)."],
+  ["avoid", "Avoid", "A known danger: heroes' paths go around it, anyone else walks through (a revealed trap)."],
 ];
 
 /**
@@ -234,7 +236,12 @@ export function EntityEventForm({ project, mapId, index, db, interactionForm }: 
             </div>
           </Field>
           <Field label="Hidden">
-            <input type="checkbox" class="box-check" title="Invisible until found with Discover" checked={!!ev.hidden} onChange={(e) => setIn([...base, "hidden"], e.currentTarget.checked || undefined, "Hidden event")} />
+            <div class="row">
+              <input type="checkbox" class="box-check" title="Not on the board in this state – the heroes can't see it; Discover finds it (its Ability used: discover handler says what then)" checked={!!st.hidden} onChange={(e) => setState({ hidden: e.currentTarget.checked || undefined }, "Hidden")} />
+              <label class="check" title="A flat trap mark on its cell in this state (a danger the heroes know about)">
+                <input type="checkbox" checked={st.mark === "trap"} onChange={(e) => setState({ mark: e.currentTarget.checked ? "trap" : undefined }, "Trap mark")} /> trap mark
+              </label>
+            </div>
           </Field>
         </div>
       </div>
@@ -317,6 +324,11 @@ export function HandlerTabs({ project, file, path, handlers, triggers, db, mapId
                 <Field label="Trigger">
                   <Select value={h.on} options={choices.map(([t, l]) => [t, l] as [string, string])} onChange={(v) => setHandler({ on: (v ?? "interact") as HandlerTrigger }, "Trigger")} title={TRIGGERS.find((t) => t[0] === h.on)?.[2]} />
                 </Field>
+                {h.on === "ability" && (
+                  <Field label="Ability">
+                    <Select value={h.ability} options={[...[...db.abilities.values()].filter((a) => a.board).map((a) => [a.id, `${a.name} (${a.id})`] as [string, string]), ...[...db.items.values()].filter((i) => i.board).map((i) => [i.id, `${i.name} (item)`] as [string, string])]} onChange={(v) => setHandler({ ability: v }, "Ability")} />
+                  </Field>
+                )}
                 <Field label="Condition" hint={h.on === "becomes" ? "Runs when this turns true." : undefined}>
                   <ConditionEditor value={h.when} onChange={(c) => setHandler({ when: c }, "Condition")} db={db} flags={[]} />
                 </Field>

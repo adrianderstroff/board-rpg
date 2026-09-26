@@ -1408,7 +1408,7 @@ const scenarios = {
     await d.dbg(`d.place("${actor}", 3, 8)`); // out of the skeletons' reach, next to the trap at 4,7
     await sleep(300);
     await kitCast("Discover");
-    d.expect((await d.dbg(`(d.state().maps.sunken_ruins.revealed ?? []).length`)) === 1, "Discover revealed the trap next to Kit");
+    d.expect((await d.dbg(`Object.values(d.state().maps.sunken_ruins.states ?? {}).filter((st) => st === "revealed").length`)) === 1, "Discover revealed the trap next to Kit");
     await d.shot("trap-revealed");
     await kitCast("Defuse", true);
     d.expect((await d.dbg(`d.state().inventory.snare ?? 0`)) === 1, "the defused trap is a Snare now");

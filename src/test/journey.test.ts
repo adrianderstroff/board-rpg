@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { useBoardAbility } from "../core/board/actions";
 import { board, exitAt, grid, isExploring, mustPieceOf } from "../core/board/board";
 import { exploreTick, exploreTime } from "../core/board/explore";
-import { armedTraps, dormantPieces, hiddenThings } from "../core/board/hidden";
+import { dormantPieces, hiddenThings } from "../core/board/hidden";
+import { hiddenEntities } from "../core/board/entities";
 import { executeMove, moveOptions } from "../core/board/moves";
 import { Game } from "../core/game";
 import { buy, itemCount, readScroll } from "../core/items/inventory";
@@ -87,7 +88,7 @@ describe("the journey inland (§18)", () => {
     // The ruins: dormant skeletons (still exploring), traps and a hidden chest.
     expect(dormantPieces(ctx())).toHaveLength(3);
     expect(isExploring(ctx())).toBe(true);
-    expect(armedTraps(ctx())).toHaveLength(3);
+    expect(hiddenEntities(ctx()).map((e) => e.id)).toEqual(expect.arrayContaining(["trap_a", "trap_b", "trap_c"])); // three armed traps
     expect(hiddenThings(ctx()).some((t) => t.kind === "event")).toBe(true);
 
     // Walking in wakes the first skeleton and stops the party.

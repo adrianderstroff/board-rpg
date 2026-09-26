@@ -21,7 +21,8 @@ import {
   piecesAt,
   reconcile,
 } from "./board";
-import { hiddenStop, interruptionAt, revealedTraps } from "./hidden";
+import { hiddenStop, interruptionAt } from "./hidden";
+import { avoidCells } from "./entities";
 import { resolveMoves, resolvePatternRef, type Occupancy, type Reach } from "./patterns";
 
 export type MoveKind = "move" | "engage" | "interact" | "exit";
@@ -68,10 +69,10 @@ function interactable(ctx: Ctx, npc: Piece): boolean {
 }
 
 export function occupancyFor(ctx: Ctx, mover: Piece): (p: Pos) => Occupancy {
-  const knownTraps = mover.faction === "hero" ? revealedTraps(ctx) : [];
+  // heroes walk around the dangers they know about (a revealed trap, §7.5)
+  const avoid = mover.faction === "hero" ? avoidCells(ctx) : [];
   return (p: Pos) => {
-    // Heroes walk around ancient traps they know about (§7.5).
-    if (knownTraps.some((t) => samePos(t, p))) return "block";
+    if (avoid.some((a) => samePos(a, p))) return "block";
     const exit = exitAt(ctx, p);
     if (exit) {
       if (mover.faction !== "hero" || !exitEnabled(ctx, exit)) return "block";
@@ -90,7 +91,9 @@ export function occupancyFor(ctx: Ctx, mover: Piece): (p: Pos) => Occupancy {
     // an entity says how its cell can be crossed (§10.3)
     const pass = npc && pageOfPiece(ctx, npc)?.pass;
     if (npc && pass && others.every((o) => o.faction === "npc" || o.faction === mover.faction)) {
-      if (pass === "walk") return others.some((o) => o.faction === mover.faction) ? "pass" : "free";
+      // a known danger: heroes go around it, anyone else walks through
+      if (pass === "avoid" && mover.faction === "hero") return "block";
+      if (pass === "walk" || pass === "avoid") return others.some((o) => o.faction === mover.faction) ? "pass" : "free";
       if (pass === "solid") return "block";
       return mover.faction === "hero" && !others.some((o) => o.faction === mover.faction) ? "stop" : "block";
     }
@@ -151,7 +154,7 @@ function classify(ctx: Ctx, piece: Piece, r: Reach): MoveOption {
   const exit = exitAt(ctx, r.pos);
   if (exit && !others.length) return { ...r, kind: "exit", exit };
   // entities one can walk onto (a floor plate, an open gate) are no one to meet (§10.3)
-  const standOn = others.filter((o) => !(o.faction === "npc" && pageOfPiece(ctx, o)?.pass === "walk"));
+  const standOn = others.filter((o) => !(o.faction === "npc" && ["walk", "avoid"].includes(pageOfPiece(ctx, o)?.pass ?? "")));
   if (!standOn.length) return { ...r, kind: "move" };
   others.splice(0, others.length, ...standOn);
   const hostile = others.filter((o) => o.faction !== piece.faction && o.faction !== "npc");
@@ -271,7 +274,7 @@ export function slidePath(ctx: Ctx, piece: Piece): Pos[] {
     const cell = g.cell(n);
     if (!cell || !cell.walkable || Math.abs(cell.height - g.heightAt(cur)) > 1) break;
     // a floor plate doesn't stop a slide; anyone and anything else does (§10.3)
-    if (piecesAt(ctx, n).some((p) => p.id !== piece.id && !(p.faction === "npc" && pageOfPiece(ctx, p)?.pass === "walk")) || exitAt(ctx, n)) break;
+    if (piecesAt(ctx, n).some((p) => p.id !== piece.id && !(p.faction === "npc" && ["walk", "avoid"].includes(pageOfPiece(ctx, p)?.pass ?? ""))) || exitAt(ctx, n)) break;
     out.push(n);
     cur = n;
   }

@@ -181,7 +181,7 @@ function shiftPlaced(doc: Document, map: MapDef, dx: number, dy: number) {
     if (typeof x === "number") doc.setIn([...path, "x"], x + dx);
     if (typeof y === "number") doc.setIn([...path, "y"], y + dy);
   };
-  for (const list of ["events", "exits", "enemies", "traps", "wallDecor"] as const) {
+  for (const list of ["events", "exits", "enemies", "wallDecor"] as const) {
     (map[list] as unknown[] | undefined)?.forEach((_, i) => move([list, i]));
   }
   for (const id of Object.keys(map.spawns ?? {})) move(["spawns", id]);
@@ -350,7 +350,7 @@ export function moveArea(doc: Document, map: MapDef, r: Rect, to: Pos, fill: str
       doc.setIn([...path, "x"], (doc.getIn([...path, "x"]) as number) + dx);
       doc.setIn([...path, "y"], (doc.getIn([...path, "y"]) as number) + dy);
     };
-    for (const list of ["events", "exits", "enemies", "traps", "wallDecor"] as const) {
+    for (const list of ["events", "exits", "enemies", "wallDecor"] as const) {
       (map[list] as { x: number; y: number }[] | undefined)?.forEach((e, i) => inside(e) && move([list, i]));
     }
     for (const [id, s] of Object.entries(map.spawns ?? {})) if (inside(s)) move(["spawns", id]);

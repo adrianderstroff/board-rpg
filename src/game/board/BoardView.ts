@@ -12,7 +12,7 @@ import { CharSprite } from "../../engine/sprites/CharSprite";
 import { CURSOR_KEY, ICONS_KEY, UI_DEPTH } from "../../engine/ui/widgets";
 import { DIR_ROW, EXIT_FRAME, K, icon, miniStatusIconsOf } from "../keys";
 import { isFlyingPiece } from "../../core/board/moves";
-import { revealedTraps } from "../../core/board/hidden";
+import { markCells } from "../../core/board/entities";
 
 interface PieceVisual {
   sprites: Map<string, Phaser.GameObjects.Sprite>;
@@ -241,8 +241,8 @@ export class BoardView {
     for (let row = 0; row < rows; row++) {
       this.overlay(`fx${row}`, K.fieldEffects, byRow.get(row) ?? [], { originY: 16 / 24, layer: LAYER.effect, animFrames: 4 });
     }
-    // the heroes' own traps and ancient traps revealed by Discover (§7.5)
-    const traps = [...b.traps, ...revealedTraps(c)];
+    // the heroes' own traps and trap entities the heroes know about (a mark, §7.5)
+    const traps = [...b.traps, ...markCells(c)];
     this.overlay("traps", K.fieldEffects, traps.map((t) => ({ x: t.x, y: t.y, frame: 4 * 8 })), { originY: 16 / 24, layer: LAYER.effect });
     const exits = (c.db.map(b.mapId).exits ?? []).filter((e) => !e.door); // doors need no arrow
     this.overlay(
