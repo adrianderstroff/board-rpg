@@ -70,12 +70,11 @@ export function MapsScreen({ project, selected: mapSel, onSelect }: { project: P
           <div class="list">
             <input class="search" placeholder="Search maps…" value={filter} onInput={(e) => setFilter(e.currentTarget.value)} />
             {shown.map((id) => (
-              <div key={id} class={`item ${mapSel === id ? "active" : ""}`} onClick={() => onSelect(id)}>
+              <div key={id} class={`item ${mapSel === id ? "active" : ""}`} title={id} onClick={() => onSelect(id)}>
                 <span>
                   {project.data<MapDef>(mapPath(id))?.name ?? id}
                   {dirty.has(mapPath(id)) && <span class="dirty"> ●</span>}
                 </span>
-                <small>{id}</small>
               </div>
             ))}
           </div>

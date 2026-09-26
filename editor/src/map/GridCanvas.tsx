@@ -13,13 +13,6 @@ const MARKER_COLORS = ["#0099db", "#e43b44", "#63c74d", "#feae34", "#ffffff", "#
 const DIR_ARROW: Record<string, string> = { N: "↑", E: "→", S: "↓", W: "←" };
 
 /** Letter per entity kind in the top view. */
-const KIND_MARK: Record<string, [string, string]> = {
-  event: ["E", "#feae34"],
-  exit: ["→", "#feae34"],
-  spawn: ["⚑", "#2ce8f5"],
-  enemy: ["☠", "#e43b44"],
-  trap: ["T", "#2ce8f5"],
-};
 
 interface Props {
   db: Database;
@@ -121,8 +114,10 @@ export function GridCanvas({ db, mapId, hideDecor, focus, markers, entities, gho
         if (!c) {
           // an empty cell of the map: a faint white grid
           if (showGrid) {
-            g.strokeStyle = "rgba(255,255,255,0.3)";
-            g.strokeRect(px + 0.5, py + 0.5, S - 1, S - 1);
+            g.lineWidth = 1.6;
+            g.strokeStyle = "rgba(255,255,255,0.32)";
+            g.strokeRect(px + 0.8, py + 0.8, S - 1.6, S - 1.6);
+            g.lineWidth = 1;
           }
           continue;
         }
@@ -161,15 +156,20 @@ export function GridCanvas({ db, mapId, hideDecor, focus, markers, entities, gho
           }
         }
         if (c.height) {
-          g.fillStyle = "rgba(0,0,0,0.6)";
-          g.fillRect(px + 1, py + 1, S * 0.36 + (c.height > 9 ? S * 0.2 : 0), S * 0.36);
-          g.fillStyle = "#fff";
-          g.font = `${Math.round(S * 0.32)}px monospace`;
-          g.fillText(String(c.height), px + 2, py + S * 0.32);
+          // the height: cyan (yellow is for icons), outlined dark so it reads on any texture
+          g.font = `bold ${Math.round(S * 0.3)}px monospace`;
+          g.lineWidth = 3;
+          g.strokeStyle = "rgba(20,22,28,0.85)";
+          g.strokeText(String(c.height), px + 3, py + S * 0.3);
+          g.fillStyle = "#2ce8f5";
+          g.fillText(String(c.height), px + 3, py + S * 0.3);
+          g.lineWidth = 1;
         }
         if (showGrid) {
-          g.strokeStyle = "rgba(255,255,255,0.16)";
-          g.strokeRect(px + 0.5, py + 0.5, S - 1, S - 1);
+          g.lineWidth = 1.6;
+          g.strokeStyle = "rgba(255,255,255,0.22)";
+          g.strokeRect(px + 0.8, py + 0.8, S - 1.6, S - 1.6);
+          g.lineWidth = 1;
         }
       }
     // entities: one mark per kind and cell, in the cell's lower right
@@ -200,16 +200,15 @@ export function GridCanvas({ db, mapId, hideDecor, focus, markers, entities, gho
         }
         continue;
       }
-      const k = `${e.x},${e.y},${e.kind}`;
+      // one icon per cell, in its middle: the kind's (arrivals, starts and doors their own)
+      const k = `${e.x},${e.y}`;
       if (drawn.has(k)) continue;
       drawn.add(k);
-      const [ch, color] = KIND_MARK[e.kind];
-      const n = [...drawn].filter((d) => d.startsWith(`${e.x},${e.y},`)).length - 1;
       const [px, py] = at(e.x, e.y);
-      g.fillStyle = "rgba(24,20,37,0.8)";
-      g.fillRect(px + S - 11 - n * 10, py + S - 11, 10, 10);
-      g.fillStyle = e.selected ? "#63c74d" : color;
-      g.fillText(ch, px + S - 10 - n * 10, py + S - 2);
+      const name = isMarker(e.texture) ? markerIcon(e.texture!) : e.kind;
+      const size = S * 0.62;
+      drawEntityIcon(g, name, px + S / 2, py + S / 2, size, "rgba(20,22,28,0.9)", 5);
+      drawEntityIcon(g, name, px + S / 2, py + S / 2, size, e.selected ? "#63c74d" : "#feae34");
     }
     // a pending resize: the cells it adds green, the ones it drops red
     if (resizeTo) {

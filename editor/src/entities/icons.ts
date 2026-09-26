@@ -23,12 +23,12 @@ export const isMarker = (texture: string | undefined) => !!texture?.startsWith("
 export const markerIcon = (texture: string) => texture.slice("editor-marker-".length);
 
 /** Draws an icon centred at (cx, cy), `size` px tall. */
-export function drawEntityIcon(g: CanvasRenderingContext2D, icon: string, cx: number, cy: number, size: number, color: string) {
+export function drawEntityIcon(g: CanvasRenderingContext2D, icon: string, cx: number, cy: number, size: number, color: string, lineWidth = 2) {
   g.save();
   g.translate(cx - size / 2, cy - size / 2);
   g.scale(size / 24, size / 24);
   g.strokeStyle = color;
-  g.lineWidth = 2;
+  g.lineWidth = lineWidth;
   g.lineCap = "round";
   g.lineJoin = "round";
   g.stroke(new Path2D(ENTITY_ICONS[icon] ?? ENTITY_ICONS.event));

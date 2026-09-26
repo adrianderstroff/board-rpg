@@ -83,9 +83,9 @@ export function DestinationWindow({ project, fromMap, wayBack: allowWayBack, onP
       <FloatingWindow id="destination" title="Teleport to…" onClose={onClose} size={{ w: 420, h: 480 }} toolbar={<input class="search" placeholder="Search maps…" value={filter} autoFocus onInput={(e) => setFilter(e.currentTarget.value)} />}>
         <div class="map-choice">
           {maps.map((id) => (
-            <button key={id} class={id === fromMap ? "here" : ""} onClick={() => setMap(id)}>
+            <button key={id} class={id === fromMap ? "here" : ""} title={id} onClick={() => setMap(id)}>
               <span>{project.data<MapDef>(mapFile(id))?.name ?? id}</span>
-              <small>{id === fromMap ? "this map" : id}</small>
+              {id === fromMap && <small>this map</small>}
             </button>
           ))}
         </div>

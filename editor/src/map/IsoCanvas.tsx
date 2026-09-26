@@ -285,7 +285,7 @@ class MapScene extends Phaser.Scene {
   drawGrid() {
     const view = this.view;
     if (!view) return;
-    const width = 1 / this.cameras.main.zoom;
+    const width = 1.5 / this.cameras.main.zoom;
     for (const l of this.gridLines) {
       l.g.clear();
       const shown = this.props.showGrid || l.state !== "keep";
