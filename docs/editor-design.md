@@ -168,8 +168,9 @@ strings stay readable in the YAML.
 Pencil (B), rectangle (R), fill (G, by terrain / decor), pick (I), select area (M) – copy / paste
 (also into another map) / move / clear a block of cells across all board layers; moving takes the
 entities standing in it along and leaves the terrain brush behind. Right mouse is the eraser of the
-current tool. Resize (columns on the right, rows at the bottom) is on the Info tab. Painting terrain
-beyond the edge (pencil, rectangle) grows the map: while the cursor is out there a grey temporary
+current tool. Resize (columns on the right, rows at the bottom) is on the Info tab. With the toolbar's
+*Grow the map* toggle on (off by default, after Grid / Decor), painting terrain beyond the edge
+(pencil, rectangle) grows the map: while the cursor is out there a grey temporary
 grid reaches out to it, and a click adds only the rows / columns the painted cells need – on the
 left / top too (everything placed moves along, the view stays put). While the view turns, the
 entities' labels stay up and turn with it.

@@ -25,6 +25,7 @@ const paths: Record<string, string> = {
   select: "M4 4h3 M10 4h4 M17 4h3v3 M20 10v4 M20 17v3h-3 M14 20h-4 M7 20H4v-3 M4 14v-4 M4 7V4",
   grid: "M4 4h16v16H4z M4 9.3h16 M4 14.7h16 M9.3 4v16 M14.7 4v16",
   decor: "M12 3l6 9h-3l4 6H5l4-6H6z M12 18v3",
+  grow: "M8 8h8v8H8z M3 7V3h4 M17 3h4v4 M21 17v4h-4 M7 21H3v-4 M3 3l4 4 M21 3l-4 4 M21 21l-4-4 M3 21l4-4",
   turnLeft: "M4 4v5h5 M4.5 9A8 8 0 1 1 5 15",
   turnRight: "M20 4v5h-5 M19.5 9A8 8 0 1 0 19 15",
   settings: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19 12l2-1-1-3-2 .5-1.5-1.5.5-2-3-1-1 2h-2l-1-2-3 1 .5 2L6 7.5 4 7 3 10l2 1v2l-2 1 1 3 2-.5L7.5 18 7 20l3 1 1-2h2l1 2 3-1-.5-2 1.5-1.5 2 .5 1-3-2-1z",

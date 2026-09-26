@@ -88,6 +88,8 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
   const [rotation, setRotation] = usePersistentState("map.rotation", 0);
   const [hideDecor, setHideDecor] = usePersistentState("map.hideDecor", false);
   const [showGrid, setShowGrid] = usePersistentState("map.grid", true);
+  /** Painting beyond the edge grows the map – only while this is on (off by default). */
+  const [growMap, setGrowMap] = usePersistentState("map.grow", false);
   const [hover, setHoverState] = useState<Pos | null>(null);
   const hoverRef = useRef<Pos | null>(null);
   const setHover = (p: Pos | null) => {
@@ -136,7 +138,7 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
   const chip = db ? getGrid(db, mapId).chipset : null;
 
   // painting terrain beyond the map's edge grows the map (as far as the painted cells need)
-  const canGrow = mode === "board" && brush.board === "terrain" && (tool === "pencil" || tool === "rect");
+  const canGrow = growMap && mode === "board" && brush.board === "terrain" && (tool === "pencil" || tool === "rect");
   const [shift, setShift] = useState<{ dx: number; dy: number; n: number } | null>(null);
   const inMap = (c: Pos) => {
     const { w, h } = mapSize(project.data<MapDef>(path));
@@ -147,7 +149,7 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
   const apply = (cells: Pos[], erase: boolean, group?: string) => {
     const brush = brushRef.current; // the latest brush, even right after a key press
     // cells beyond the edge: new rows / columns for terrain; anything else only paints inside
-    const grow = !erase && mode === "board" && brush.board === "terrain" && cells.some((c) => !inMap(c));
+    const grow = canGrow && !erase && cells.some((c) => !inMap(c));
     if (!grow) cells = cells.filter(inMap);
     if (!cells.length) return;
     const what = mode === "decor" ? (brush.decorKind === "sign" ? "wall sign" : "decor") : brush.board;
@@ -597,6 +599,16 @@ export function MapEditor({ project, mapId, mode, setMode, brush, setBrush, enti
         </button>
         <button class={`icon-button ${hideDecor ? "" : "on"}`} aria-pressed={!hideDecor} title="Decor: show trees, rocks, furniture…" aria-label="Decor" onClick={() => setHideDecor(!hideDecor)}>
           <Icon name="decor" />
+        </button>
+        <span class="sep" />
+        <button
+          class={`icon-button ${growMap ? "on" : ""}`}
+          aria-pressed={growMap}
+          title="Grow the map: painting terrain beyond the edge (pencil, rectangle) adds the rows / columns it needs"
+          aria-label="Grow the map"
+          onClick={() => setGrowMap(!growMap)}
+        >
+          <Icon name="grow" />
         </button>
         {mode !== "entity" && tool === "select" && (
           <>

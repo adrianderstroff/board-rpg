@@ -630,8 +630,8 @@ export function IsoCanvas(props: Props) {
     }
   }, [JSON.stringify(props.wallPreview ?? null)]);
 
-  // handlers change every render – keep the scene's copy fresh without redrawing
-  if (scene.current) scene.current.props = { ...scene.current.props, handlers: props.handlers };
+  // handlers change every render (and "outside" with the tool) – keep the scene's copy fresh without redrawing
+  if (scene.current) scene.current.props = { ...scene.current.props, handlers: props.handlers, outside: props.outside };
 
   const chip = getGrid(props.db, props.mapId).chipset;
   return (
