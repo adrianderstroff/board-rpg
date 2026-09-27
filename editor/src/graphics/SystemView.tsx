@@ -25,9 +25,6 @@ export function SystemMain({ project, state }: { project: Project; state: System
   const signs = raw.graphics.wallSigns;
   return (
     <div class="tiles">
-      <div class="resources-head">
-        <p class="hint">The game's own images. Edit one to draw it – on saving it becomes the project's own copy, which the game uses from then on.</p>
-      </div>
       <div class="cards system-cards">
         {SYSTEM_IMAGES.map((name) => (
           <button key={name} class={`card ${state.sel === name ? "on" : ""}`} title={SYSTEM_META[name].hint} onClick={() => state.setSel(name)}>

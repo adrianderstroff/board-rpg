@@ -4,6 +4,8 @@ import type { GraphicsDb } from "../../../src/core/data/types";
 import { Field, Num } from "../forms/fields";
 import { frameStyle, assetUrl } from "../map/sprites";
 import { usePersistentState } from "../persist";
+import { useDismiss } from "../hooks";
+import { LibraryMark } from "../icons";
 import { putAsset, type Project } from "../project";
 import { RESOURCE_KINDS, resourceId, resourcesOf, sheetFor, type ResourceKind } from "../resources";
 import { MusicPreview } from "./MapsScreen";
@@ -115,9 +117,9 @@ export function ResourcesScreen({ project }: { project: Project }) {
             }}
           >
             <div class="resources-head">
-              <p class="hint">{info.hint} Drop files here to add them to the project.</p>
+              <span class="spacer" />
               {kind !== "music" && <NewSheetMenu project={project} kind={kind} onMade={setSelected} />}
-              <label class="button primary" title={`Add ${info.label.toLowerCase()} to the project`}>
+              <label class="button primary" title={`Add ${info.label.toLowerCase()} to the project (or drop files here)${info.hint ? ` – ${info.hint}` : ""}`}>
                 Import…
                 <input type="file" multiple accept={kind === "music" ? ".wav" : ".png"} onChange={(e) => void importFiles([...(e.currentTarget.files ?? [])])} />
               </label>
@@ -129,7 +131,7 @@ export function ResourcesScreen({ project }: { project: Project }) {
                   <button key={r.id} class={`card ${selected === r.id ? "on" : ""}`} title={r.id} onClick={() => setSelected(r.id)}>
                     <Thumb graphics={db.graphics} kind={kind} id={r.id} />
                     <span class="name">{r.lib ? r.id.slice(4) : r.id}</span>
-                    {r.lib && <span class="badge-lib">library</span>}
+                    {r.lib && <LibraryMark />}
                   </button>
                 ))}
             </div>
@@ -140,7 +142,7 @@ export function ResourcesScreen({ project }: { project: Project }) {
         {storedKind === "tiles" ? <TilesInspector project={project} state={tiles} /> : storedKind === "system" ? <SystemInspector project={project} state={system} /> : db && selected && list.some((r) => r.id === selected) ? (
           <ResourceForm project={project} kind={kind} id={selected} onDeleted={() => setSelected(null)} onCopied={(id) => setSelected(id)} />
         ) : (
-          <p class="hint">Select a resource, or import files: {info.hint}</p>
+          <p class="hint">Select one to see it and draw it.</p>
         )}
       </aside>
     </>
@@ -150,6 +152,7 @@ export function ResourcesScreen({ project }: { project: Project }) {
 /** New ▾ – a blank sheet of the kind, drawn right away in the pixel editor (graphics.md G7). */
 function NewSheetMenu({ project, kind, onMade }: { project: Project; kind: ResourceKind; onMade: (id: string) => void }) {
   const [open, setOpen] = useState(false);
+  const anchor = useDismiss<HTMLDivElement>(open, () => setOpen(false));
   const options = NEW_SHEETS.filter((s) => s.kind === kind);
   const make = async (s: (typeof NEW_SHEETS)[number]) => {
     setOpen(false);
@@ -165,7 +168,7 @@ function NewSheetMenu({ project, kind, onMade }: { project: Project; kind: Resou
     }
   };
   return (
-    <div class="menu-anchor">
+    <div class="menu-anchor" ref={anchor}>
       <button title="A blank sheet in the kind's layout, to draw in the pixel editor" onClick={() => (options.length === 1 ? void make(options[0]) : setOpen(!open))}>
         New{options.length > 1 ? " ▾" : ""}
       </button>

@@ -3,7 +3,8 @@ import type { Project } from "../project";
 import { sheetCanvas } from "../graphics/sheets";
 import { blank, clearRect, clone, colorsIn, copyRect, fill, flip, frameRect, fromHex, GAME_PALETTE, get, grow, hex, line, paste, plot, rect, shift, TRANSPARENT, type Pixels, type Rect, type Rgba } from "./pixels";
 import { closeImage, contextOf, onImageOpen, openedImage, openImage, type ImageTarget } from "./target";
-import { ImagePreview } from "./previews";
+import { ImagePreview, PreviewPane } from "./previews";
+import { Icon } from "../icons";
 
 /**
  * The pixel editor (graphics.md §5): one workspace over the editor, the same from Graphics and
@@ -13,15 +14,16 @@ import { ImagePreview } from "./previews";
 
 type Tool = "pencil" | "eraser" | "fill" | "line" | "rect" | "rectFill" | "picker" | "select";
 
+/** The tools with their icon (icons.tsx) and tooltip. */
 const TOOLS: [Tool, string, string][] = [
-  ["pencil", "✎", "Pencil (B) – right button erases"],
-  ["eraser", "⌫", "Eraser (E)"],
-  ["fill", "◧", "Fill (G) – an area of one colour"],
-  ["line", "╱", "Line (L)"],
-  ["rect", "▭", "Rectangle (R)"],
-  ["rectFill", "■", "Filled rectangle (Shift+R)"],
-  ["picker", "⌖", "Pick a colour (I) – or Alt+click"],
-  ["select", "⬚", "Select (M) – drag inside to move; Ctrl+C / Ctrl+V / Del"],
+  ["pencil", "pencil", "Pencil (B) – right button erases"],
+  ["eraser", "eraser", "Eraser (E)"],
+  ["fill", "fill", "Fill (G) – an area of one colour"],
+  ["line", "line", "Line (L)"],
+  ["rect", "rect", "Rectangle (R)"],
+  ["rectFill", "rectFill", "Filled rectangle (Shift+R)"],
+  ["picker", "eyedropper", "Pick a colour (I) – or Alt+click"],
+  ["select", "select", "Select (M) – drag inside to move; Ctrl+C / Ctrl+V / Del"],
 ];
 const KEYS: Record<string, Tool> = { b: "pencil", e: "eraser", g: "fill", l: "line", r: "rect", i: "picker", m: "select" };
 
@@ -393,8 +395,8 @@ function PixelEditor({ project, target }: { project: Project; target: ImageTarge
         <>
           <div class="segmented">
             {TOOLS.map(([t, icon, hint]) => (
-              <button key={t} class={tool === t ? "on" : ""} title={hint} onClick={() => setTool(t)}>
-                {icon}
+              <button key={t} class={`px-tool ${tool === t ? "on" : ""}`} title={hint} aria-label={hint.split(" (")[0]} onClick={() => setTool(t)}>
+                <Icon name={icon} size={18} />
               </button>
             ))}
           </div>
@@ -490,7 +492,13 @@ function PixelEditor({ project, target }: { project: Project; target: ImageTarge
             ))}
           </div>
           <h4 class="card-heading">Preview</h4>
-          <ImagePreview project={project} target={target} sheet={sheet.current} version={version} frame={frame} layout={{ fw, fh, cols }} />
+          {target.kind === "blocks" || target.kind === "decor" ? (
+            <ImagePreview project={project} target={target} sheet={sheet.current} version={version} frame={frame} layout={{ fw, fh, cols }} />
+          ) : (
+            <PreviewPane>
+              <ImagePreview project={project} target={target} sheet={sheet.current} version={version} frame={frame} layout={{ fw, fh, cols }} />
+            </PreviewPane>
+          )}
         </div>
       </div>
     </Shell>

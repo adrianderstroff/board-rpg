@@ -29,8 +29,24 @@ const paths: Record<string, string> = {
   grow: "M8 8h8v8H8z M3 7V3h4 M17 3h4v4 M21 17v4h-4 M7 21H3v-4 M3 3l4 4 M21 3l-4 4 M21 21l-4-4 M3 21l4-4",
   turnLeft: "M4 4v5h5 M4.5 9A8 8 0 1 1 5 15",
   turnRight: "M20 4v5h-5 M19.5 9A8 8 0 1 0 19 15",
+  // a book: content of the library (read-only)
+  library: "M5 4h9a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z M5 17a3 3 0 0 1 3-3h9 M9 8h5",
+  // pixel editor tools
+  eraser: "M4 16l9-9 6 6-7 7H8z M9 11l6 6 M8 20h12",
+  eyedropper: "M15 4l5 5 M17 6l-9 9-3 1 1-3 9-9 M5 19l1-1",
+  line: "M5 19L19 5",
+  rectFill: "M4 6h16v12H4z M4 10h16 M4 14h16 M8 6v12 M12 6v12 M16 6v12",
   settings: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19 12l2-1-1-3-2 .5-1.5-1.5.5-2-3-1-1 2h-2l-1-2-3 1 .5 2L6 7.5 4 7 3 10l2 1v2l-2 1 1 3 2-.5L7.5 18 7 20l3 1 1-2h2l1 2 3-1-.5-2 1.5-1.5 2 .5 1-3-2-1z",
 };
+
+/** After a name: this is the library's (read-only) – instead of writing "library". */
+export function LibraryMark() {
+  return (
+    <span class="lib-mark" title="Library content">
+      <Icon name="library" size={14} />
+    </span>
+  );
+}
 
 export function Icon({ name, size = 20 }: { name: keyof typeof paths | string; size?: number }) {
   return (

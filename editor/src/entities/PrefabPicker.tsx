@@ -1,6 +1,7 @@
 import { useState } from "preact/hooks";
 import type { Database } from "../../../src/core/data/database";
 import { FloatingWindow } from "../forms/FloatingWindow";
+import { LibraryMark } from "../icons";
 import { ENTITY_ICONS } from "./icons";
 
 /** A prefab's icon (an entity icon by name, a star if it names none it knows). */
@@ -46,7 +47,7 @@ export function PrefabPicker({ db, onPick, onClose }: { db: Database; onPick: (i
                       <span class="name">
                         {p.name}
                         {size > 1 && <span class="dim"> · {size} entities</span>}
-                        {p.id.startsWith("lib:") && <span class="badge-lib"> library</span>}
+                        {p.id.startsWith("lib:") && <LibraryMark />}
                       </span>
                       {p.description && <span class="desc">{p.description}</span>}
                     </span>

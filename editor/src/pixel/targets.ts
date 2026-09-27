@@ -84,7 +84,9 @@ export function tileTarget(project: Project, chipId: string, kind: "terrain" | "
     note: lib ? "Library tiles – saving makes an editable copy of the chipset in the project (its maps use the copy)." : undefined,
     context: (f) => {
       const p = pieceAt(f) as { fill?: number; frames?: number[]; views?: number; frame: number } | undefined;
-      return kind === "terrain" ? { ground, fill: p?.fill, frames: p?.frames } : { blocksImage: chip.image, ground, views: p?.views, baseFrame: p?.frame };
+      const pieceId = Object.entries(pieces).find(([, x]) => x === p)?.[0];
+      const shared = { chipId, pieceKind: kind, pieceId };
+      return kind === "terrain" ? { ...shared, ground, fill: p?.fill, frames: p?.frames } : { ...shared, blocksImage: chip.image, ground, views: p?.views, baseFrame: p?.frame };
     },
     async save(png: Blob): Promise<ImageTarget | void> {
       const { chipsetData, copyChipsetToProject } = await import("../graphics/chipsets");

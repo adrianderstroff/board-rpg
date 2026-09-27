@@ -5,7 +5,7 @@ import { assetsVersion } from "../assetVersions";
 import { optionsOf } from "../forms/EffectList";
 import { Check, Field, Num, Select, Text } from "../forms/fields";
 import { Icon } from "../icons";
-import { IsoCanvas } from "../map/IsoCanvas";
+import { IsoCanvas, type LiveSheet } from "../map/IsoCanvas";
 import { frameStyle, loadImage } from "../map/sprites";
 import { usePersistentState } from "../persist";
 import { openImage } from "../pixel/target";
@@ -108,7 +108,6 @@ export function TilesMain({ project, state }: { project: Project; state: TilesSt
           }} />
         </label>
       </div>
-      {!own && <p class="hint">Library chipset – read-only. Copy it to the project to change its rules or add tiles.</p>}
       <h4 class="list-group">Terrain – blocks</h4>
       <div class="cards tile-cards">
         {blocksW &&
@@ -118,11 +117,6 @@ export function TilesMain({ project, state }: { project: Project; state: TilesSt
               <button key={id} class={`card ${sel?.kind === "terrain" && sel.id === id ? "on" : ""}`} title={`${t.name} (${id})${t.walkable ? "" : " – can't be walked on"}`} onClick={() => state.setPiece({ kind: "terrain", id })}>
                 <span class="thumb" style={frameStyle(chip.image, chip.frameWidth, chip.frameHeight, Math.floor(blocksW / chip.frameWidth), t.frame, 2)} />
                 <span class="name">{t.name}</span>
-                <span class="tile-tags">
-                  {!t.walkable && <span class="tag bad">blocks</span>}
-                  {t.water && <span class="tag">{t.water} water</span>}
-                  {t.surface && <span class="tag">{plain(t.surface)}</span>}
-                </span>
               </button>
             ))}
         {own && (
@@ -141,7 +135,6 @@ export function TilesMain({ project, state }: { project: Project; state: TilesSt
               <button key={id} class={`card ${sel?.kind === "decor" && sel.id === id ? "on" : ""}`} title={`${d.name} (${id})${d.blocks ? " – blocks the way" : ""}`} onClick={() => state.setPiece({ kind: "decor", id })}>
                 <span class="thumb" style={frameStyle(chip.decorImage, chip.decorFrameWidth, chip.decorFrameHeight, Math.floor(decorW / chip.decorFrameWidth), d.frame, 1.5)} />
                 <span class="name">{d.name}</span>
-                <span class="tile-tags">{d.blocks && <span class="tag bad">blocks</span>}</span>
               </button>
             ))}
         {own && (
@@ -177,7 +170,8 @@ export function TilesInspector({ project, state }: { project: Project; state: Ti
   );
 }
 
-function TilePreview({ project, chipId, piece }: { project: Project; chipId: string; piece: PieceRef }) {
+/** The piece on a little board (turnable); `live` shows a sheet being drawn instead of the saved one. */
+export function TilePreview({ project, chipId, piece, live }: { project: Project; chipId: string; piece: PieceRef; live?: LiveSheet | null }) {
   const [rotation, setRotation] = useState(0);
   const version = project.version;
   const db = useMemo(() => {
@@ -204,6 +198,7 @@ function TilePreview({ project, chipId, piece }: { project: Project; chipId: str
           ghost={null}
           showGrid={false}
           handlers={{ down: none, move: none, up: none }}
+          live={live}
         />
       </div>
       <div class="row">
@@ -236,8 +231,8 @@ function TerrainForm({ project, chipId, id }: { project: Project; chipId: string
       <Field label="Name">
         <Text value={t.name} onChange={(v) => set({ ...t, name: v ?? "" }, "name", "name")} />
       </Field>
-      <Field label="Walking">
-        <Check value={t.walkable} label="Can be walked on (off: a wall, the sea)" onChange={(v) => set({ ...t, walkable: !!v }, v ? "walkable" : "blocks")} />
+      <Field label="Walkable">
+        <Check value={t.walkable} label="" onChange={(v) => set({ ...t, walkable: !!v }, v ? "walkable" : "blocks")} />
       </Field>
       <Field label="Water">
         <Select
@@ -253,13 +248,13 @@ function TerrainForm({ project, chipId, id }: { project: Project; chipId: string
       <Field label="Surface">
         <Select value={t.surface} options={optionsOf(raw.fieldEffects)} empty="nothing" title="A field effect that is always there (quicksand is sticky, ice is frozen)" onChange={(v) => set({ ...t, surface: v }, "surface")} />
       </Field>
-      <Field label="Ice">
-        <Check value={t.freezable} label="Freezes to ice (a bridge over water)" onChange={(v) => set({ ...t, freezable: v }, "freezable")} />
+      <Field label="Freezable">
+        <Check value={t.freezable} label="" onChange={(v) => set({ ...t, freezable: v }, "freezable")} />
       </Field>
-      <Field label="Fire">
+      <Field label="Burnable">
         <div class="row">
-          <Check value={t.flammable} label="Burns, into" onChange={(v) => set({ ...t, flammable: v, burnsTo: v ? t.burnsTo : undefined }, "flammable")} />
-          {t.flammable && <Select value={t.burnsTo} options={terrains} empty="(stays)" onChange={(v) => set({ ...t, burnsTo: v }, "burns to")} />}
+          <Check value={t.flammable} label="" onChange={(v) => set({ ...t, flammable: v, burnsTo: v ? t.burnsTo : undefined }, "flammable")} />
+          {t.flammable && <Select value={t.burnsTo} options={terrains} empty="stays as it is" title="What it turns into when it has burnt" onChange={(v) => set({ ...t, burnsTo: v }, "burns to")} />}
         </div>
       </Field>
       <Field label="Frames">
@@ -319,27 +314,19 @@ function DecorForm({ project, chipId, id }: { project: Project; chipId: string; 
       <Field label="Name">
         <Text value={d.name} onChange={(v) => set({ ...d, name: v ?? "" }, "name", "name")} />
       </Field>
-      <Field label="Walking">
-        <Check value={d.blocks} label="Blocks the way (off: walked over – stones, flowers)" onChange={(v) => set({ ...d, blocks: !!v }, v ? "blocks" : "walkable")} />
+      <Field label="Walkable">
+        <Check value={!d.blocks} label="" onChange={(v) => set({ ...d, blocks: !v }, v ? "walkable" : "blocks")} />
       </Field>
-      <Field label="Fire">
-        <Check value={d.flammable} label="Burns away (and passes the fire on)" onChange={(v) => set({ ...d, flammable: v }, "flammable")} />
+      <Field label="Burnable">
+        <Check value={d.flammable} label="" onChange={(v) => set({ ...d, flammable: v }, "flammable")} />
       </Field>
-      <Field label="Cut">
-        <Check value={d.cuttable} label="Can be cut down (the Cut ability)" onChange={(v) => set({ ...d, cuttable: v }, "cuttable")} />
+      <Field label="Cuttable">
+        <Check value={d.cuttable} label="" onChange={(v) => set({ ...d, cuttable: v }, "cuttable")} />
       </Field>
-      <Field label="Frames">
-        <div class="row wrap">
-          <span class="dim">frame</span>
-          <Num value={d.frame} min={0} width={56} onChange={(v) => set({ ...d, frame: v ?? 0 }, "frame", "frame")} />
-          <Select
-            value={d.views ? String(d.views) : ""}
-            options={[["4", "4 frames – one per quarter turn"]]}
-            empty="one frame for every view"
-            title="Directional objects (a ship's wheel) have a frame per quarter turn of the board, from this frame on"
-            onChange={(v) => set({ ...d, views: v ? Number(v) : undefined }, "rotations")}
-          />
-        </div>
+      <Field label="Turns">
+        <span title="A directional object (a ship's wheel, a signpost) looks different from each side: four pictures, one per quarter turn of the view">
+          <Check value={!!d.views} label="" onChange={(v) => set({ ...d, views: v ? 4 : undefined }, v ? "turns with the view" : "the same from every side")} />
+        </span>
       </Field>
     </fieldset>
   );

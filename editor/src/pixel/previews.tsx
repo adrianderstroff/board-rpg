@@ -4,6 +4,8 @@ import { SayPreview } from "../dialogs/SayPreview";
 import { loadImage } from "../map/sprites";
 import type { Project } from "../project";
 import { contextOf, type ImageTarget } from "./target";
+import { TilePreview } from "../graphics/TilesView";
+import { K } from "../../../src/game/keys";
 
 /**
  * The live previews of the pixel editor (graphics.md §1): each kind of image shown the way the game
@@ -129,9 +131,16 @@ export function ImagePreview(p: Props) {
     case "battleback":
       return <BattlebackPreview {...p} />;
     case "blocks":
-      return <BlocksPreview {...p} />;
-    case "decor":
-      return <DecorPreview {...p} />;
+    case "decor": {
+      // the Tiles panel's board, drawn with the game's renderer and the pixels being drawn
+      const ctx = contextOf(p.target, p.frame);
+      if (ctx.chipId && ctx.pieceId) {
+        const id = ctx.chipId as string;
+        const key = p.target.kind === "blocks" ? K.chipset(id) : K.decor(id);
+        return <TilePreview project={p.project} chipId={ctx.chipId as string} piece={{ kind: ctx.pieceKind as "terrain" | "decor", id: ctx.pieceId as string }} live={{ key, source: p.sheet, fw: p.layout.fw, fh: p.layout.fh, version: p.version }} />;
+      }
+      return p.target.kind === "blocks" ? <BlocksPreview {...p} /> : <DecorPreview {...p} />;
+    }
     case "signs":
       return <SignsPreview {...p} />;
     case "fieldEffects":
@@ -566,5 +575,54 @@ function FontPreview({ sheet, version }: Props) {
         lines.forEach((l, i) => text(g, sheet, l, 10, 10 + i * 12));
       }}
     />
+  );
+}
+
+/**
+ * A preview that can be zoomed (−, +, Ctrl + wheel) and panned (drag) – the tile board has its own
+ * (the map canvas's wheel zoom and drag).
+ */
+export function PreviewPane({ children }: { children: preact.ComponentChildren }) {
+  const [z, setZ] = useState(1);
+  const box = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ x: number; y: number } | null>(null);
+  const zoom = (next: number) => setZ(Math.max(0.5, Math.min(8, Math.round(next * 4) / 4)));
+  return (
+    <div class="px-pane">
+      <div class="row px-pane-tools">
+        <button title="Zoom out" onClick={() => zoom(z - 0.5)}>
+          −
+        </button>
+        <button title="Actual size" onClick={() => setZ(1)}>
+          {z}×
+        </button>
+        <button title="Zoom in" onClick={() => zoom(z + 0.5)}>
+          +
+        </button>
+        <span class="dim">drag to pan</span>
+      </div>
+      <div
+        ref={box}
+        class="px-pane-view"
+        onPointerDown={(e) => {
+          if ((e.target as HTMLElement).closest("button")) return;
+          drag.current = { x: e.clientX, y: e.clientY };
+          box.current!.setPointerCapture(e.pointerId);
+        }}
+        onPointerMove={(e) => {
+          if (!drag.current || !box.current) return;
+          box.current.scrollBy(drag.current.x - e.clientX, drag.current.y - e.clientY);
+          drag.current = { x: e.clientX, y: e.clientY };
+        }}
+        onPointerUp={() => (drag.current = null)}
+        onWheel={(e) => {
+          if (!e.ctrlKey) return;
+          e.preventDefault();
+          zoom(z + (e.deltaY < 0 ? 0.5 : -0.5));
+        }}
+      >
+        <div style={{ zoom: z }}>{children}</div>
+      </div>
+    </div>
   );
 }

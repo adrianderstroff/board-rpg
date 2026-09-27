@@ -581,3 +581,15 @@ details.ship summary { cursor: pointer; color: var(--dim); }
 .system-cards { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
 .system-thumb { max-width: 120px; max-height: 64px; image-rendering: pixelated; object-fit: contain; }
 .px-body.single { grid-template-columns: minmax(0, 1fr) 300px; }
+.px-tool { display: inline-grid; place-items: center; padding: 3px 6px; }
+.lib-mark { display: inline-flex; align-items: center; color: var(--dim); margin-left: 4px; flex: none; }
+.card .lib-mark { position: absolute; top: 4px; right: 4px; margin: 0; }
+.card { position: relative; }
+.px-pane-tools { gap: 4px; margin-bottom: 4px; }
+.px-pane-tools button { padding: 1px 8px; min-width: 30px; }
+.px-pane-view { overflow: auto; max-height: 420px; border-radius: 4px; background: #14161c; cursor: grab; user-select: none; }
+.px-pane-view:active { cursor: grabbing; }
+.px-pane-view canvas.px-preview { max-width: none !important; }
+.px-pane-view .row { flex-wrap: nowrap; }
+.px-side .tile-preview .tile-canvas { height: 260px; }
+.resources-head .spacer { flex: 1; }

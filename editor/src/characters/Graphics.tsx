@@ -4,6 +4,7 @@ import { DIR_ROW } from "../../../src/game/keys";
 import { FloatingWindow } from "../forms/FloatingWindow";
 import { assetUrl, frameStyle } from "../map/sprites";
 import { Thumb } from "../screens/ResourcesScreen";
+import { LibraryMark } from "../icons";
 import { useProjectContext } from "../projectContext";
 import { openImage } from "../pixel/target";
 import { graphicTarget } from "../pixel/targets";
@@ -81,7 +82,7 @@ function GraphicPicker({ graphics, kind, value, optional, onPick, onClose }: { g
           <button key={id} class={`card ${value === id ? "on" : ""}`} title={id} onClick={() => onPick(id)}>
             <Thumb graphics={graphics} kind={kind} id={id} />
             <span class="name">{plain(id)}</span>
-            {id.startsWith("lib:") && <span class="badge-lib">library</span>}
+            {id.startsWith("lib:") && <LibraryMark />}
           </button>
         ))}
       </div>

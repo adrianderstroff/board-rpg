@@ -17,6 +17,7 @@ import { canMoveGroup, deleteGroup, groupAnchor, groupMembers, groupPrefab, move
 import { Field, Num } from "../forms/fields";
 import type { Pos } from "../../../src/core/util/grid";
 import { usePersistentState } from "../persist";
+import { useDismiss } from "../hooks";
 import { MapContext } from "../mapContext";
 import type { Project } from "../project";
 import { EntryReferences } from "../forms/References";
@@ -314,6 +315,7 @@ function EntitiesPanel({ project, mapId, entities }: { project: Project; mapId: 
   const list = listEntities(map);
   const db = project.content.db;
   const [teleportMenu, setTeleportMenu] = useState(false);
+  const teleportAnchor = useDismiss<HTMLDivElement>(teleportMenu, () => setTeleportMenu(false));
   const [picker, setPicker] = useState(false);
   const [saving, setSaving] = useState<EntityRef[] | null>(null);
   // one thing waits to be placed at a time
@@ -454,7 +456,7 @@ function EntitiesPanel({ project, mapId, entities }: { project: Project; mapId: 
                 {ADD_INFO[k].label}
               </button>
             ))}
-            <div class="menu-anchor">
+            <div class="menu-anchor" ref={teleportAnchor}>
               <button class={teleportOn ? "on" : ""} aria-haspopup="menu" aria-expanded={teleportMenu} title="A teleport, or where the game / Quick Play starts" onClick={() => setTeleportMenu(!teleportMenu)}>
                 {teleportOn ? ADD_INFO[placing!].label : "Teleport"} ▾
               </button>

@@ -7,8 +7,8 @@ import { projectIdFor } from "./projectFiles";
  */
 export type ResourceKind = "charsets" | "battlers" | "faces" | "battlebacks" | "music";
 
-export const RESOURCE_KINDS: { id: ResourceKind; label: string; hint: string }[] = [
-  { id: "charsets", label: "Charsets", hint: "Walk sheets: 3 columns (step, idle, step) × 4 rows (facing SE, SW, NE, NW), e.g. 72×128 for 24×32 frames." },
+export const RESOURCE_KINDS: { id: ResourceKind; label: string; hint?: string }[] = [
+  { id: "charsets", label: "Charsets" },
   { id: "battlers", label: "Battlers", hint: "One row of square frames: heroes 6 (idle, breathe, attack, cast, hurt, KO), enemies 4 (idle, idle 2, attack, hurt)." },
   { id: "faces", label: "Faces", hint: "One portrait, 48×48." },
   { id: "battlebacks", label: "Battle backgrounds", hint: "480×190; the ground where the combatants stand starts at the floor row (about y 110)." },

@@ -1,6 +1,8 @@
 import type { ComponentChildren } from "preact";
 import { useState } from "preact/hooks";
 import { usePersistentState } from "../persist";
+import { useDismiss } from "../hooks";
+import { LibraryMark } from "../icons";
 
 /**
  * The list of a content screen (editor-design §7, §8): search, **New** (one entry or a menu of
@@ -29,6 +31,7 @@ export interface NewOption {
 export function ContentList({ entries, groups, selected, onSelect, searchKey, placeholder, newOptions, newTitle }: { entries: ListEntry[]; groups?: string[]; selected: string | null; onSelect: (id: string) => void; searchKey: string; placeholder: string; newOptions: NewOption[]; newTitle: string }) {
   const [filter, setFilter] = usePersistentState(searchKey, "");
   const [menu, setMenu] = useState(false);
+  const anchor = useDismiss<HTMLDivElement>(menu, () => setMenu(false));
   const shown = entries.filter((e) => `${e.id} ${e.name}`.toLowerCase().includes(filter.toLowerCase()));
   const lib = (id: string) => id.startsWith("lib:");
   const order = (list: ListEntry[]) => [...list].sort((a, b) => Number(lib(a.id)) - Number(lib(b.id)));
@@ -42,7 +45,7 @@ export function ContentList({ entries, groups, selected, onSelect, searchKey, pl
             New
           </button>
         ) : (
-          <div class="menu-anchor">
+          <div class="menu-anchor" ref={anchor}>
             <button class="primary" aria-haspopup="menu" aria-expanded={menu} title={newTitle} onClick={() => setMenu(!menu)}>
               New ▾
             </button>
@@ -80,7 +83,7 @@ export function ContentList({ entries, groups, selected, onSelect, searchKey, pl
                   {e.name}
                   {e.dirty && <span class="dirty"> ●</span>}
                 </span>
-                {lib(e.id) && <small>library</small>}
+                {lib(e.id) && <LibraryMark />}
               </div>
             ))}
           </div>

@@ -84,6 +84,17 @@ interface Props {
   /** The map just grew to the left / top by dx, dy: the view moves along so nothing jumps. */
   shift?: { dx: number; dy: number; n: number } | null;
   handlers: CanvasHandlers;
+  /** A sheet being drawn in the pixel editor: it replaces that texture, so the board shows it live. */
+  live?: LiveSheet | null;
+}
+
+/** The pixels of a sheet being drawn (graphics.md §5): shown instead of the loaded texture `key`. */
+export interface LiveSheet {
+  key: string;
+  source: HTMLCanvasElement;
+  fw: number;
+  fh: number;
+  version: number;
 }
 
 /** A box of cells (may reach beyond the map, also to negative coordinates). */
@@ -125,6 +136,26 @@ class MapScene extends Phaser.Scene {
 
   constructor(private readonly initial: () => Props) {
     super("editorMap");
+  }
+
+  /** A live sheet waiting for the scene to be ready. */
+  private pendingLive: LiveSheet | null = null;
+
+  /** Swaps a texture for the pixels being drawn, then redraws the board with it. */
+  async setLive(l: LiveSheet) {
+    if (!this.view) {
+      this.pendingLive = l;
+      return;
+    }
+    const img = new Image();
+    img.src = l.source.toDataURL();
+    await img.decode();
+    if (!this.sys.isActive()) return;
+    this.view?.destroy();
+    this.view = undefined;
+    if (this.textures.exists(l.key)) this.textures.remove(l.key);
+    this.textures.addSpriteSheet(l.key, img, { frameWidth: l.fw, frameHeight: l.fh });
+    this.show(this.props);
   }
 
   preload() {
@@ -220,6 +251,11 @@ class MapScene extends Phaser.Scene {
       this.drawGrid(); // lines stay one screen pixel wide
     });
     this.show(this.initial()); // the latest props: the map may have changed while loading
+    if (this.pendingLive) {
+      const l = this.pendingLive;
+      this.pendingLive = null;
+      void this.setLive(l);
+    }
   }
 
   private cellAt(p: Phaser.Input.Pointer): Pos | null {
@@ -579,6 +615,13 @@ export function IsoCanvas(props: Props) {
     if (onlyTurned) s.turnTo(props.rotation, latest.current);
     else s.show(latest.current);
   }, [props.db, props.mapId, props.rotation, props.hideDecor, props.focus]);
+
+  useEffect(() => {
+    const l = props.live;
+    if (!l) return;
+    const t = setTimeout(() => void scene.current?.setLive(l), 120);
+    return () => clearTimeout(t);
+  }, [props.live?.version, props.live?.key]);
 
   useEffect(() => {
     const s = scene.current;
