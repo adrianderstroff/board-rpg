@@ -403,7 +403,7 @@ table.prefab-names .segmented button { white-space: nowrap; }
 .item-icon { display: inline-block; flex: none; }
 .item-icon.none { border: 1px dashed var(--line); border-radius: 3px; }
 .form-scroll { overflow: auto; min-height: 0; padding: 14px 18px 40px; }
-.item-form { max-width: 760px; }
+.item-form { max-width: 760px; margin: 0 auto; }
 .item-form fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
 .item-form fieldset:disabled { opacity: 0.7; }
 .banner { background: #2a2240; border-left: 3px solid var(--accent); padding: 8px 12px; border-radius: 4px; margin-bottom: 12px; color: var(--dim); }
