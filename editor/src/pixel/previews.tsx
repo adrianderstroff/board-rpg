@@ -84,11 +84,15 @@ function text(g: CanvasRenderingContext2D, font: CanvasImageSource | null, s: st
     if (i >= 0 && ch !== " ") {
       t.globalCompositeOperation = "source-over";
       t.clearRect(0, 0, tint.width, tint.height);
-      t.drawImage(font, (i % cols) * FONT.cellWidth, Math.floor(i / cols) * FONT.cellHeight, FONT.cellWidth, FONT.cellHeight, 0, 0, FONT.cellWidth, FONT.cellHeight);
+      const src = [font, (i % cols) * FONT.cellWidth, Math.floor(i / cols) * FONT.cellHeight, FONT.cellWidth, FONT.cellHeight, 0, 0, FONT.cellWidth, FONT.cellHeight] as const;
+      t.drawImage(...src);
       if (color !== "#ffffff") {
-        t.globalCompositeOperation = "source-in";
+        // a tint like the game's (multiplied): the glyph takes the colour, its baked shadow stays dark
+        t.globalCompositeOperation = "multiply";
         t.fillStyle = color;
         t.fillRect(0, 0, tint.width, tint.height);
+        t.globalCompositeOperation = "destination-in";
+        t.drawImage(...src);
       }
       g.drawImage(tint, x, y);
     }

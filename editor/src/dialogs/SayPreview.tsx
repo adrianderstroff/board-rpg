@@ -89,10 +89,14 @@ export function SayPreview({ text, speakerId, raw, face: faceImage, name, versio
         if (i < 0) return;
         t.globalCompositeOperation = "source-over";
         t.clearRect(0, 0, tint.width, tint.height);
-        t.drawImage(font, (i % cols) * FONT.cellWidth, Math.floor(i / cols) * FONT.cellHeight, FONT.cellWidth, FONT.cellHeight, 0, 0, FONT.cellWidth, FONT.cellHeight);
-        t.globalCompositeOperation = "source-in";
+        const src = [font, (i % cols) * FONT.cellWidth, Math.floor(i / cols) * FONT.cellHeight, FONT.cellWidth, FONT.cellHeight, 0, 0, FONT.cellWidth, FONT.cellHeight] as const;
+        t.drawImage(...src);
+        // a tint like the game's (multiplied): the white glyph takes the colour, its baked shadow stays dark
+        t.globalCompositeOperation = "multiply";
         t.fillStyle = color;
         t.fillRect(0, 0, tint.width, tint.height);
+        t.globalCompositeOperation = "destination-in";
+        t.drawImage(...src);
         g.drawImage(tint, Math.round(x), Math.round(y), FONT.cellWidth * scale, FONT.cellHeight * scale);
       };
       if (who.name) {
