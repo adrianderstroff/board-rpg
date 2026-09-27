@@ -72,19 +72,19 @@ export function SystemInspector({ project, state }: { project: Project; state: S
       <div class="resource-preview">
         <img src={assetUrl(systemImagePath(sel))} alt="" />
       </div>
-      <p class="hint">{own ? "The project's own copy – the game uses it instead of its own." : "The game's own image."}</p>
+      
       <div class="row wrap">
         <button class="primary" title={own ? "Draw it" : "Draw it – saving makes the project's own copy"} onClick={() => openImage(systemTarget(project, sel))}>
           ✎ Edit image
         </button>
         {own && (
           <button
-            title="Remove the project's copy – the game's own image is used again"
+            title="Throw away the project's version – the game's own image is used again"
             onClick={() => {
               if (confirm(`Use the game's own ${m.label.toLowerCase()} again? The project's copy is deleted.`)) void dropSystemCopy(project, sel);
             }}
           >
-            Use the game's own
+            Revert to the game's
           </button>
         )}
       </div>

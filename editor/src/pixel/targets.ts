@@ -1,4 +1,4 @@
-import { copyResourceToProject } from "../copyToProject";
+import { ensureChipset, ensureGraphic } from "../overrides";
 import { putAsset, type Project } from "../project";
 import type { ImageTarget } from "./target";
 
@@ -32,17 +32,12 @@ export function graphicTarget(project: Project, kind: GraphicKind, id: string, o
     key: `${kind}:${id}`,
     title: `${{ charsets: "Board sprite", battlers: "Battle sprite", faces: "Face", battlebacks: "Battle background" }[kind]} ${plain(id)}`,
     image: sheet.image,
-    note: lib ? "Library image – saving makes an editable copy in the project (its uses follow)." : undefined,
     context: { id, floor: sheet.floor },
     async save(png: Blob): Promise<ImageTarget | void> {
-      if (!lib) {
-        await putAsset(project.info.id, ownImage(project, kind, id), png);
-        return;
-      }
-      const copy = await copyResourceToProject(project, kind, id);
-      await putAsset(project.info.id, ownImage(project, kind, copy), png);
-      onCopied?.(copy);
-      return graphicTarget(project, kind, copy, onCopied);
+      // a library image: the project's version of it, under the same id (projects.md §2)
+      const image = lib ? await ensureGraphic(project, kind, id) : ownImage(project, kind, id);
+      await putAsset(project.info.id, image, png);
+      if (lib) return graphicTarget(project, kind, id, onCopied);
     },
   };
   switch (kind) {
@@ -81,7 +76,6 @@ export function tileTarget(project: Project, chipId: string, kind: "terrain" | "
     frame,
     frameNames: names,
     canAddFrames: true,
-    note: lib ? "Library tiles – saving makes an editable copy of the chipset in the project (its maps use the copy)." : undefined,
     context: (f) => {
       const p = pieceAt(f) as { fill?: number; frames?: number[]; views?: number; frame: number } | undefined;
       const pieceId = Object.entries(pieces).find(([, x]) => x === p)?.[0];
@@ -89,15 +83,12 @@ export function tileTarget(project: Project, chipId: string, kind: "terrain" | "
       return kind === "terrain" ? { ...shared, ground, fill: p?.fill, frames: p?.frames } : { ...shared, blocksImage: chip.image, ground, views: p?.views, baseFrame: p?.frame };
     },
     async save(png: Blob): Promise<ImageTarget | void> {
-      const { chipsetData, copyChipsetToProject } = await import("../graphics/chipsets");
-      let id = chipId;
-      if (lib) {
-        id = await copyChipsetToProject(project, chipId);
-        onCopied?.(id);
-      }
-      const data = chipsetData(project, id);
+      const { chipsetData } = await import("../graphics/chipsets");
+      // a library chipset: the project's version of it, under the same id (projects.md §2)
+      if (lib) await ensureChipset(project, chipId);
+      const data = chipsetData(project, chipId);
       await putAsset(project.info.id, kind === "terrain" ? data.image : data.decorImage, png);
-      if (lib) return tileTarget(project, id, kind, frame, onCopied);
+      if (lib) return tileTarget(project, chipId, kind, frame, onCopied);
     },
   };
 }
@@ -114,7 +105,6 @@ export function signsTarget(project: Project): ImageTarget | null {
     image: ws.image,
     layout: { fw: ws.frameWidth, fh: ws.frameHeight },
     frameNames: Object.fromEntries(Object.entries(ws.frames ?? {}).map(([n, i]) => [i, n])),
-    note: own ? undefined : "Library image – saving makes the project's own copy.",
     async save(png: Blob): Promise<ImageTarget | void> {
       if (own) return void (await putAsset(project.info.id, own.image, png));
       await putAsset(project.info.id, "signs/wall_signs.png", png);

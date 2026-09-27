@@ -4,7 +4,7 @@ import { ELEMENTS, STAT_KEYS, type AiRule, type BoardAiDef, type Element, type E
 import { aiRuleText, elementWord, ENEMIES_FILE, enemyStatsAt, header, newEnemy, type Enemy } from "../characters/model";
 import { FacePreview, GraphicField, PosePreview, WalkPreview } from "../characters/Graphics";
 import { StatInputs, StatTable } from "../characters/StatFields";
-import { copyEntryToProject } from "../copyToProject";
+import { editEntry, isOverridden, revertToLibrary } from "../overrides";
 import { ContentList, EntryActions } from "../forms/ContentList";
 import { optionsOf } from "../forms/EffectList";
 import { addEntry, deleteEntry, writeEntry } from "../forms/entries";
@@ -65,7 +65,7 @@ export function EnemiesScreen({ project, goTo }: { project: Project; goTo: (t: U
       <main class="main">
         <div class="split">
           <ContentList
-            entries={Object.entries(enemies).map(([id, e]) => ({ id, name: e.name, pic: <CharsetThumb raw={raw} charset={e.charset} />, group: e.boss ? "Bosses" : "Enemies", dirty: dirty && !id.startsWith("lib:") }))}
+            entries={Object.entries(enemies).map(([id, e]) => ({ id, name: e.name, pic: <CharsetThumb raw={raw} charset={e.charset} />, group: e.boss ? "Bosses" : "Enemies", dirty: dirty && (!id.startsWith("lib:") || isOverridden(project, "enemies", id)), changed: isOverridden(project, "enemies", id) }))}
             groups={["Enemies", "Bosses"]}
             selected={current}
             onSelect={select}
@@ -117,7 +117,8 @@ function EnemyCard({ project, id, onSelect, goTo }: { project: Project; id: stri
       <EntryActions
         id={id}
         used={usedIn(project, "enemies", id)}
-        onCopy={() => onSelect(copyEntryToProject(project, "enemies", id))}
+        changed={isOverridden(project, "enemies", id)}
+        onRevert={() => void revertToLibrary(project, "enemies", id)}
         onDuplicate={() => onSelect(addEntry(project, ENEMIES_FILE, header("enemies"), { ...structuredClone(e), name: `${e.name} copy` }, (x) => x in project.content.raw.enemies, `Duplicate ${id}`, "enemy"))}
         onDelete={() => {
           if (!confirm(`Delete ${e.name} (${id})?`)) return;
@@ -132,9 +133,8 @@ function EnemyCard({ project, id, onSelect, goTo }: { project: Project; id: stri
 function EnemyForm({ project, id }: { project: Project; id: string }) {
   const raw = project.content.raw;
   const e = raw.enemies[id] as Enemy;
-  const lib = id.startsWith("lib:");
   const [previewLevel, setPreviewLevel] = useState<number | undefined>(undefined);
-  const write = (next: Enemy, label: string, group?: string) => !lib && writeEntry(project, ENEMIES_FILE, id, e, next, `${e.name}: ${label}`, group);
+  const write = (next: Enemy, label: string, group?: string) => editEntry(project, "enemies", id, `${e.name}: ${label}`, () => writeEntry(project, ENEMIES_FILE, id, e, next, `${e.name}: ${label}`, group));
   const db = project.content.db;
   const statuses = optionsOf(raw.statuses);
   const items = optionsOf(raw.items);
@@ -152,12 +152,7 @@ function EnemyForm({ project, id }: { project: Project; id: string }) {
 
   return (
     <div class="item-form">
-      {lib && (
-        <div class="banner">
-          Library enemy – read-only. <b>Copy to project</b> (on the right) makes an editable copy.
-        </div>
-      )}
-      <fieldset disabled={lib}>
+      <fieldset>
         <Box title="Enemy" aside={<span class="dim">{id}</span>}>
           <Field label="Name">
             <Text value={e.name} onChange={(v) => write({ ...e, name: v ?? "" }, "name", "name")} />

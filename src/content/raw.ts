@@ -3,7 +3,8 @@ import { LIB, type AssetRoots, type RawContent } from "../core/data/database";
 /**
  * Where a data file belongs in the raw content, by its path below `data/`:
  *   <collection>.yaml → raw[collection], maps/<id>.yaml → raw.maps[id],
- *   chipsets/<id>.yaml → raw.chipsets[id], dialogs/*.yaml → merged into raw.dialogs.
+ *   chipsets/<id>.yaml → raw.chipsets[id] (chipsets/lib/<id>.yaml → raw.chipsets["lib:<id>"], a
+ *   project's override of a library chipset), dialogs/*.yaml → merged into raw.dialogs.
  * Shared by the game (bundled files) and the editor (files it edits), so both build the same content.
  */
 export function assembleRaw(files: Iterable<[path: string, data: unknown]>): RawContent {
@@ -11,6 +12,8 @@ export function assembleRaw(files: Iterable<[path: string, data: unknown]>): Raw
   for (const [path, data] of files) {
     const parts = dataPath(path).replace(/\.yaml$/, "").split("/");
     if (parts.length === 1) raw[parts[0]] = data;
+    // a project's version of a library chipset (projects.md §2): chipsets/lib/<id>.yaml → lib:<id>
+    else if (parts[0] === "chipsets" && parts[1] === "lib" && parts.length === 3) (raw.chipsets as Record<string, unknown>)[LIB + parts[2]] = data;
     else if (parts[0] === "maps" || parts[0] === "chipsets") (raw[parts[0]] as Record<string, unknown>)[parts[1]] = data;
     else if (parts[0] === "dialogs") Object.assign(raw.dialogs as object, data);
     else throw new Error(`Don't know where ${path} belongs`);

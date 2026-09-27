@@ -31,6 +31,8 @@ const paths: Record<string, string> = {
   turnRight: "M20 4v5h-5 M19.5 9A8 8 0 1 0 19 15",
   // a book: content of the library (read-only)
   library: "M5 4h9a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z M5 17a3 3 0 0 1 3-3h9 M9 8h5",
+  // the book with a pencil: library content the project has changed
+  libraryChanged: "M5 4h9a3 3 0 0 1 3 3v3 M5 4v13a3 3 0 0 0 3 3h3 M5 17a3 3 0 0 1 3-3h4 M9 8h5 M14 21l1-3 5-5 2 2-5 5z",
   // pixel editor tools
   eraser: "M4 16l9-9 6 6-7 7H8z M9 11l6 6 M8 20h12",
   eyedropper: "M15 4l5 5 M17 6l-9 9-3 1 1-3 9-9 M5 19l1-1",
@@ -40,10 +42,10 @@ const paths: Record<string, string> = {
 };
 
 /** After a name: this is the library's (read-only) – instead of writing "library". */
-export function LibraryMark() {
+export function LibraryMark({ changed }: { changed?: boolean }) {
   return (
-    <span class="lib-mark" title="Library content">
-      <Icon name="library" size={14} />
+    <span class={`lib-mark ${changed ? "changed" : ""}`} title={changed ? "Library content – changed in this project" : "Library content"}>
+      <Icon name={changed ? "libraryChanged" : "library"} size={14} />
     </span>
   );
 }

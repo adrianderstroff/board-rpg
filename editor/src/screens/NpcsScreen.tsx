@@ -68,7 +68,6 @@ function NpcCard({ project, id, onSelect, goTo }: { project: Project; id: string
       <EntryActions
         id={id}
         used={usedIn(project, "npcs", id)}
-        onCopy={() => {}}
         onDuplicate={() => onSelect(addEntry(project, NPCS_FILE, header("NPCs"), { ...structuredClone(n), name: `${n.name} copy` }, (x) => x in project.content.raw.npcs, `Duplicate ${id}`, "npc"))}
         onDelete={() => {
           const at = npcPlacements(raw, id);

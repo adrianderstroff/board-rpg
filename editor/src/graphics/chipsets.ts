@@ -1,10 +1,10 @@
 import type { Document } from "yaml";
-import { rewriteRefs } from "../../../src/content/refs";
 import { LIB, type RawContent } from "../../../src/core/data/database";
 import type { ChipsetDef, DecorDef, MapDef, TerrainDef } from "../../../src/core/data/types";
 import { entryIdFor, patchIn } from "../forms/entries";
 import type { Project } from "../project";
-import { blankSheet, copyFrame, fetchAsset, frameUsed, growTo, saveSheet, sheetCanvas, type SheetLayout } from "./sheets";
+import { chipsetOverrideFile, ensureChipset, isOverridden } from "../overrides";
+import { blankSheet, copyFrame, frameUsed, growTo, saveSheet, sheetCanvas, type SheetLayout } from "./sheets";
 
 /**
  * Tiles (graphics.md §4): a chipset's terrains and decor – their rules, new pieces, copies of the
@@ -19,8 +19,9 @@ const HEADER = "# A chipset of the project (docs/graphics.md §4): block sheet +
 
 export const isOwnChipset = (id: string) => !id.startsWith(LIB);
 
-/** The file that defines a chipset (the library's or the project's). */
-export const chipsetFile = (project: Project, id: string) => (isOwnChipset(id) ? `${DIR}${id}.yaml` : `library/${project.info.library}/data/chipsets/${id.slice(LIB.length)}.yaml`);
+/** The file that defines a chipset: the project's, its version of a library chipset, or the library's. */
+export const chipsetFile = (project: Project, id: string) =>
+  isOwnChipset(id) ? `${DIR}${id}.yaml` : isOverridden(project, "chipsets", id) ? chipsetOverrideFile(id) : `library/${project.info.library}/data/chipsets/${id.slice(LIB.length)}.yaml`;
 
 /** The chipset as its file writes it (image paths relative to its layer's assets). */
 export const chipsetData = (project: Project, id: string) => project.data<Chip>(chipsetFile(project, id));
@@ -49,28 +50,9 @@ export function pieceUsers(raw: RawContent, chipId: string, kind: PieceKind, pid
   return out;
 }
 
-/** Copies a library chipset (both sheets and its rules) into the project; the project's maps follow. */
-export async function copyChipsetToProject(project: Project, libId: string): Promise<string> {
-  const raw = project.content.raw;
-  const src = chipsetData(project, libId);
-  const resolved = raw.chipsets[libId];
-  const id = entryIdFor(libId.slice(LIB.length), (x) => x in raw.chipsets, "tiles");
-  const [blocks, decor] = await Promise.all([fetchAsset(resolved.image), fetchAsset(resolved.decorImage)]);
-  const { putAsset } = await import("../project");
-  await putAsset(project.info.id, `chipsets/${id}.png`, blocks);
-  await putAsset(project.info.id, `chipsets/${id}_decor.png`, decor);
-  project.transaction(`Copy ${libId} to the project`, () => {
-    project.create(`${DIR}${id}.yaml`, HEADER);
-    project.edit(`${DIR}${id}.yaml`, `Copy ${libId}`, (doc: Document) => {
-      doc.contents = doc.createNode({ ...structuredClone(src), image: `chipsets/${id}.png`, decorImage: `chipsets/${id}_decor.png` }) as never;
-    });
-    for (const path of project.paths("data/")) project.edit(path, `Use ${id}`, (doc: Document) => void rewriteRefs(doc, "chipsets", libId, id));
-  });
-  return id;
-}
-
-/** Changes one piece's rules (only what changed is written). */
-export function setPiece(project: Project, chipId: string, kind: PieceKind, pid: string, before: TerrainDef | DecorDef, after: TerrainDef | DecorDef, label: string, group?: string) {
+/** Changes one piece's rules (only what changed is written); a library chipset's first change makes the project's version. */
+export async function setPiece(project: Project, chipId: string, kind: PieceKind, pid: string, before: TerrainDef | DecorDef, after: TerrainDef | DecorDef, label: string, group?: string) {
+  if (!isOwnChipset(chipId)) await ensureChipset(project, chipId);
   const key = kind === "terrain" ? "terrains" : "decor";
   project.edit(chipsetFile(project, chipId), label, (doc: Document) => patchIn(doc, [key, pid], before, after), group ? `${chipId}.${pid}.${group}` : undefined);
 }
@@ -80,6 +62,7 @@ export function setPiece(project: Project, chipId: string, kind: PieceKind, pid:
  * blank – and its entry. Returns the new piece's id.
  */
 export async function addPiece(project: Project, chipId: string, kind: PieceKind, from?: string): Promise<string> {
+  if (!isOwnChipset(chipId)) await ensureChipset(project, chipId);
   const c = chipsetData(project, chipId);
   const resolved = project.content.raw.chipsets[chipId];
   const image = kind === "terrain" ? resolved.image : resolved.decorImage;

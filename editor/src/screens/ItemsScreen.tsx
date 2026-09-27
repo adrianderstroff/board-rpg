@@ -1,7 +1,7 @@
 import { useState } from "preact/hooks";
 import type { RawContent } from "../../../src/core/data/database";
 import { ELEMENTS, STAT_KEYS, type BattleUse, type BoardUse, type EquipDef, type ItemCategory, type StatKey } from "../../../src/core/data/types";
-import { copyEntryToProject } from "../copyToProject";
+import { editEntry, isOverridden, revertToLibrary } from "../overrides";
 import { optionsOf } from "../forms/EffectList";
 import { Check, Field, MultiPick, Num, Percent, Select, Text } from "../forms/fields";
 import { IconPicker, ItemIcon } from "../forms/IconPicker";
@@ -37,7 +37,7 @@ export function ItemsScreen({ project, goTo }: { project: Project; goTo: (t: Usa
       <main class="main">
         <div class="split">
           <ContentList
-            entries={Object.entries(items).map(([id, i]) => ({ id, name: i.name, pic: <ItemIcon icon={i.icon} scale={1} />, group: categoryLabel(i.category), dirty: dirty && !id.startsWith("lib:") }))}
+            entries={Object.entries(items).map(([id, i]) => ({ id, name: i.name, pic: <ItemIcon icon={i.icon} scale={1} />, group: categoryLabel(i.category), dirty: dirty && (!id.startsWith("lib:") || isOverridden(project, "items", id)), changed: isOverridden(project, "items", id) }))}
             groups={CATEGORIES.map(([, label]) => label)}
             selected={current}
             onSelect={select}
@@ -89,7 +89,8 @@ function ItemCard({ project, id, onSelect, goTo }: { project: Project; id: strin
       <EntryActions
         id={id}
         used={usedIn(project, "items", id)}
-        onCopy={() => onSelect(copyEntryToProject(project, "items", id))}
+        changed={isOverridden(project, "items", id)}
+        onRevert={() => void revertToLibrary(project, "items", id)}
         onDuplicate={() => onSelect(addItem(project, { ...structuredClone(item), name: `${item.name} copy` }, `Duplicate ${id}`))}
         onDelete={() => {
           if (!confirm(`Delete ${item.name} (${id})?`)) return;
@@ -113,11 +114,10 @@ function ItemForm({ project, id }: { project: Project; id: string }) {
   const [iconPicker, setIconPicker] = useState(false);
   const raw = project.content.raw;
   const item = raw.items[id] as Item;
-  const lib = id.startsWith("lib:");
 
   /** Writes the top-level fields that changed (the rest of the entry keeps its formatting). */
   const write = (next: Item, label: string, group?: string) => {
-    if (!lib) writeEntry(project, ITEMS_FILE, id, item, next, `${item.name}: ${label}`, group);
+    editEntry(project, "items", id, `${item.name}: ${label}`, () => writeEntry(project, ITEMS_FILE, id, item, next, `${item.name}: ${label}`, group));
   };
   /** A change to the sections: the category follows while it is the derived one. */
   const change = (next: Item, label: string, group?: string) => write(withChange(item, next), label, group);
@@ -133,12 +133,7 @@ function ItemForm({ project, id }: { project: Project; id: string }) {
 
   return (
     <div class="item-form">
-      {lib && (
-        <div class="banner">
-          Library item – read-only. <b>Copy to project</b> (on the right) makes an editable copy.
-        </div>
-      )}
-      <fieldset disabled={lib}>
+      <fieldset>
         <section class="form-section on">
           <div class="form-section-head">
             <h3>Basics</h3>

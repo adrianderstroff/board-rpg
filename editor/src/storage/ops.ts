@@ -8,7 +8,7 @@ import { readText, safePath, writeText, type FileTree } from "./tree";
 export const PROJECT_ID = /^[a-z0-9][a-z0-9_-]*$/;
 
 /** The asset files a project may hold (projects.md §6): graphics sheets and music, by kind folder. */
-export const ASSET_PATH = /^(charsets|battlers|faces|battlebacks|chipsets|signs|system)\/[a-z0-9][a-z0-9_-]*\.png$|^audio\/music\/[a-z0-9][a-z0-9_-]*\.wav$/;
+export const ASSET_PATH = /^(charsets|battlers|faces|battlebacks|chipsets|signs|system)\/(lib\/)?[a-z0-9][a-z0-9_-]*\.png$|^audio\/music\/[a-z0-9][a-z0-9_-]*\.wav$/;
 
 export interface LibraryInfo {
   id: string;

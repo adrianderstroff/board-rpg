@@ -2,7 +2,7 @@ import { useState } from "preact/hooks";
 import type { BattleUse, BoardUse } from "../../../src/core/data/types";
 import { isOffensive } from "../../../src/core/effects/effects";
 import { ABILITIES_FILE, ABILITY_PRESETS, abilityGroups, abilityTypes, abilityUsers, addAbility, EMPTY_ABILITY, type Ability } from "../abilities/model";
-import { copyEntryToProject } from "../copyToProject";
+import { editEntry, isOverridden, revertToLibrary } from "../overrides";
 import { ContentList, EntryActions } from "../forms/ContentList";
 import { deleteEntry, writeEntry } from "../forms/entries";
 import { Field, Num, Select, Text } from "../forms/fields";
@@ -36,7 +36,7 @@ export function AbilitiesScreen({ project, goTo }: { project: Project; goTo: (t:
       <main class="main">
         <div class="split">
           <ContentList
-            entries={Object.entries(abilities).map(([id, a]) => ({ id, name: a.name, pic: <ItemIcon icon={a.icon} scale={1} />, group: a.type, dirty: dirty && !id.startsWith("lib:") }))}
+            entries={Object.entries(abilities).map(([id, a]) => ({ id, name: a.name, pic: <ItemIcon icon={a.icon} scale={1} />, group: a.type, dirty: dirty && (!id.startsWith("lib:") || isOverridden(project, "abilities", id)), changed: isOverridden(project, "abilities", id) }))}
             groups={types}
             selected={current}
             onSelect={select}
@@ -98,7 +98,8 @@ function AbilityCard({ project, id, onSelect, goTo }: { project: Project; id: st
       <EntryActions
         id={id}
         used={usedIn(project, "abilities", id)}
-        onCopy={() => onSelect(copyEntryToProject(project, "abilities", id))}
+        changed={isOverridden(project, "abilities", id)}
+        onRevert={() => void revertToLibrary(project, "abilities", id)}
         onDuplicate={() => onSelect(addAbility(project, { ...structuredClone(a), name: `${a.name} copy` }, `Duplicate ${id}`))}
         onDelete={() => {
           if (!confirm(`Delete ${a.name} (${id})?${users.length ? ` ${users.length} place(s) use it and will show problems.` : ""}`)) return;
@@ -114,8 +115,7 @@ function AbilityForm({ project, id }: { project: Project; id: string }) {
   const [iconPicker, setIconPicker] = useState(false);
   const raw = project.content.raw;
   const a = raw.abilities[id] as Ability;
-  const lib = id.startsWith("lib:");
-  const write = (next: Ability, label: string, group?: string) => !lib && writeEntry(project, ABILITIES_FILE, id, a, next, `${a.name}: ${label}`, group);
+  const write = (next: Ability, label: string, group?: string) => editEntry(project, "abilities", id, `${a.name}: ${label}`, () => writeEntry(project, ABILITIES_FILE, id, a, next, `${a.name}: ${label}`, group));
   const setBattle = (b: BattleUse, label: string, group?: string) => write({ ...a, battle: b }, label, group);
   const setBoard = (b: BoardUse, label: string, group?: string) => write({ ...a, board: b }, label, group);
   const auto = isOffensive(a.battle?.effects ?? []);
@@ -124,12 +124,7 @@ function AbilityForm({ project, id }: { project: Project; id: string }) {
   const enemySkill = users.length > 0 && users.every((u) => u.kind === "enemy");
   return (
     <div class="item-form">
-      {lib && (
-        <div class="banner">
-          Library ability – read-only. <b>Copy to project</b> (on the right) makes an editable copy.
-        </div>
-      )}
-      <fieldset disabled={lib}>
+      <fieldset>
         <Box title="Ability" aside={<span class="dim">{id}</span>}>
           <div class="basics">
             <button class="icon-pick" title="Pick the icon" onClick={() => setIconPicker(true)}>

@@ -23,3 +23,27 @@ describe("a project's own game images (graphics.md §2)", () => {
     expect(problems.some((p) => p.includes("system.images must list icons"))).toBe(true);
   });
 });
+
+describe("a project's overrides of library content (projects.md §2)", () => {
+  it("replaces library entries, graphics and chipsets under the same ids", () => {
+    const roots = { library: "library/v1/assets/", project: "projects/p/assets/" };
+    const chip = { image: "chipsets/desert.png", decorImage: "chipsets/desert_decor.png", terrains: { sand: { name: "Sand", frame: 0, walkable: true } }, decor: {} };
+    const raw = layeredRaw(
+      [
+        ["library/v1/data/items.yaml", { potion: { name: "Potion", price: 20 } }],
+        ["library/v1/data/graphics.yaml", { charsets: { hero: { image: "charsets/hero.png", frameWidth: 24, frameHeight: 32 } } }],
+        ["library/v1/data/chipsets/desert.yaml", chip],
+      ],
+      [
+        ["data/items.yaml", { "lib:potion": { name: "Big Potion", price: 25 } }],
+        ["data/graphics.yaml", { charsets: { "lib:hero": { image: "charsets/lib/hero.png", frameWidth: 24, frameHeight: 32 } } }],
+        ["data/chipsets/lib/desert.yaml", { ...chip, image: "chipsets/lib/desert.png", terrains: { sand: { name: "Hot Sand", frame: 0, walkable: false } } }],
+      ],
+      roots,
+    );
+    expect(raw.items["lib:potion"]).toEqual({ name: "Big Potion", price: 25 });
+    expect(raw.graphics.charsets["lib:hero"].image).toBe("projects/p/assets/charsets/lib/hero.png");
+    expect(raw.chipsets["lib:desert"].terrains.sand).toMatchObject({ name: "Hot Sand", walkable: false });
+    expect(raw.chipsets["lib:desert"].image).toBe("projects/p/assets/chipsets/lib/desert.png");
+  });
+});

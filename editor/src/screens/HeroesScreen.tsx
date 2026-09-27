@@ -4,7 +4,7 @@ import { STAT_KEYS, type EquipSlot, type Stats } from "../../../src/core/data/ty
 import { classUsers, CLASSES_FILE, CONFIG_FILE, header, HEROES_FILE, heroStatTable, newClass, newHero, TABLE_LEVELS, type Hero, type Klass } from "../characters/model";
 import { FacePreview, GraphicField, PosePreview, WalkPreview } from "../characters/Graphics";
 import { StatInputs, StatTable } from "../characters/StatFields";
-import { copyEntryToProject } from "../copyToProject";
+import { editEntry, isOverridden, revertToLibrary } from "../overrides";
 import { ContentList, EntryActions } from "../forms/ContentList";
 import { optionsOf } from "../forms/EffectList";
 import { addEntry, deleteEntry, writeEntry } from "../forms/entries";
@@ -60,7 +60,7 @@ export function HeroesScreen({ project, goTo }: { project: Project; goTo: (t: Us
       <main class="main">
         <div class="split">
           <ContentList
-            entries={Object.entries(heroes).map(([id, h]) => ({ id, name: h.name, pic: <FaceThumb raw={raw} face={h.face} />, group: party.includes(id) ? "Starting party" : "Others", dirty: dirty && !id.startsWith("lib:") }))}
+            entries={Object.entries(heroes).map(([id, h]) => ({ id, name: h.name, pic: <FaceThumb raw={raw} face={h.face} />, group: party.includes(id) ? "Starting party" : "Others", dirty: dirty && (!id.startsWith("lib:") || isOverridden(project, "heroes", id)), changed: isOverridden(project, "heroes", id) }))}
             groups={["Starting party", "Others"]}
             selected={current}
             onSelect={select}
@@ -105,7 +105,8 @@ function HeroCard({ project, id, onSelect, goTo }: { project: Project; id: strin
       <EntryActions
         id={id}
         used={usedIn(project, "heroes", id)}
-        onCopy={() => onSelect(copyEntryToProject(project, "heroes", id))}
+        changed={isOverridden(project, "heroes", id)}
+        onRevert={() => void revertToLibrary(project, "heroes", id)}
         onDuplicate={() => onSelect(addEntry(project, HEROES_FILE, header("heroes"), { ...structuredClone(hero), name: `${hero.name} copy` }, (x) => x in project.content.raw.heroes, `Duplicate ${id}`, "hero"))}
         onDelete={() => {
           if (!confirm(`Delete ${hero.name} (${id})?`)) return;
@@ -123,8 +124,7 @@ function HeroCard({ project, id, onSelect, goTo }: { project: Project; id: strin
 function HeroForm({ project, id }: { project: Project; id: string }) {
   const raw = project.content.raw;
   const hero = raw.heroes[id] as Hero;
-  const lib = id.startsWith("lib:");
-  const write = (next: Hero, label: string, group?: string) => !lib && writeEntry(project, HEROES_FILE, id, hero, next, `${hero.name}: ${label}`, group);
+  const write = (next: Hero, label: string, group?: string) => editEntry(project, "heroes", id, `${hero.name}: ${label}`, () => writeEntry(project, HEROES_FILE, id, hero, next, `${hero.name}: ${label}`, group));
   const cls = raw.classes[hero.classId] as Klass | undefined;
   const inParty = startParty(project).includes(id);
 
@@ -136,17 +136,12 @@ function HeroForm({ project, id }: { project: Project; id: string }) {
 
   return (
     <div class="item-form">
-      {lib && (
-        <div class="banner">
-          Library hero – read-only. <b>Copy to project</b> (on the right) makes an editable copy.
-        </div>
-      )}
       <Box title="Hero" aside={<span class="dim">{id}</span>}>
         {/* the starting party is the project's (config.yaml): also for the library's heroes */}
         <Field label="Party">
           <Check value={inParty} label="In the starting party" onChange={(v) => setInParty(project, id, !!v)} />
         </Field>
-        <fieldset disabled={lib}>
+        <fieldset>
           <Field label="Name">
             <Text value={hero.name} onChange={(v) => write({ ...hero, name: v ?? "" }, "name", "name")} />
           </Field>
@@ -176,7 +171,7 @@ function HeroForm({ project, id }: { project: Project; id: string }) {
         </fieldset>
       </Box>
 
-      <fieldset disabled={lib}>
+      <fieldset>
         <Box title="Graphics">
           <div class="graphics-row">
             <Field label="Board">
@@ -210,8 +205,7 @@ function HeroForm({ project, id }: { project: Project; id: string }) {
 function ClassBox({ project, classId, heroId }: { project: Project; classId: string; heroId: string }) {
   const raw = project.content.raw;
   const cls = raw.classes[classId] as Klass;
-  const lib = classId.startsWith("lib:");
-  const write = (next: Klass, label: string, group?: string) => !lib && writeEntry(project, CLASSES_FILE, classId, cls, next, `${cls.name}: ${label}`, group);
+  const write = (next: Klass, label: string, group?: string) => editEntry(project, "classes", classId, `${cls.name}: ${label}`, () => writeEntry(project, CLASSES_FILE, classId, cls, next, `${cls.name}: ${label}`, group));
   const others = classUsers(raw, classId).filter((h) => h !== heroId);
   const db = project.content.db;
   const hero = raw.heroes[heroId] as Hero;
@@ -219,16 +213,8 @@ function ClassBox({ project, classId, heroId }: { project: Project; classId: str
   const abilities = [...cls.abilities].sort((a, b) => a.level - b.level);
   return (
     <Box title={`Class: ${cls.name}`} aside={<span class="dim">{classId}</span>}>
-      {lib && (
-        <div class="banner">
-          Library class – read-only.{" "}
-          <button disabled={heroId.startsWith("lib:")} title={heroId.startsWith("lib:") ? "Copy the hero to the project first" : "An editable copy; the project's heroes of this class use the copy"} onClick={() => copyEntryToProject(project, "classes", classId)}>
-            Copy class to project
-          </button>
-        </div>
-      )}
       {others.length > 0 && <div class="banner">Shared: editing the {cls.name} class changes {others.map((h) => (raw.heroes[h] as Hero).name).join(", ")} too.</div>}
-      <fieldset disabled={lib}>
+      <fieldset>
         <Field label="Name">
           <Text value={cls.name} onChange={(v) => write({ ...cls, name: v ?? "" }, "name", "name")} />
         </Field>

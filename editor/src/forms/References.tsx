@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { RefCollection } from "../../../src/content/refs";
 import type { Project } from "../project";
+import { LibraryMark } from "../icons";
+import { isOverridden } from "../overrides";
 import { entryFile, outsideUsages, renameEntry, renameProblem, usagePlaces, type UsageTarget } from "../references";
 
 /**
@@ -47,7 +49,10 @@ export function EntryReferences({ project, collection, id, goTo, onRenamed, list
           </button>
         </div>
       ) : (
-        <p class="hint">{id} – library content, read-only.</p>
+        <p class="entry-id" title="The library's ids stay as they are">
+          {id}
+          <LibraryMark changed={isOverridden(project, collection as never, id)} />
+        </p>
       )}
       {problem && draft !== id && <p class="bad-text">{problem}</p>}
       {message && <p class="hint">{message}</p>}
@@ -61,7 +66,7 @@ export function EntryReferences({ project, collection, id, goTo, onRenamed, list
                   <button class="link" title={u.lib ? "In the library (read-only)" : u.file} onClick={() => goTo(u.target)}>
                     {u.label}
                   </button>
-                  {u.lib && <span class="dim"> · library</span>}
+                  {u.lib && <LibraryMark />}
                 </li>
               ))}
             </ul>

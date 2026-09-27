@@ -112,7 +112,6 @@ export function systemTarget(project: Project, name: SystemImage, frame?: number
             return problem;
           }
         : undefined,
-    note: own ? undefined : "The game's own image – saving makes the project's copy, which the game uses from then on.",
     async save(png: Blob): Promise<ImageTarget | void> {
       await putAsset(project.info.id, `system/${name}.png`, png);
       if (!own) {

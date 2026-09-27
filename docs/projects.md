@@ -33,8 +33,17 @@ public/assets/               the runtime's own: system graphics (cursor, highlig
 - Library files write their own keys plain (`aldric:` in `library/v1/data/heroes.yaml`). The
   loader adds the prefix. References inside the library are written with it (`classId:
   lib:knight`), the same way a project writes them. A reference reads the same wherever it stands.
-- A project can't change library content in place. The editor's **Copy to project** makes an
-  editable copy under a plain id and points the project's references at the copy.
+- **Overrides** (user decision): a project can change any library entry by keeping its own version
+  under the same id – `lib:potion:` in the project's `data/items.yaml`, `lib:hero_knight:` in its
+  `data/graphics.yaml` with the image in `assets/charsets/lib/hero_knight.png`, a chipset in
+  `data/chipsets/lib/<id>.yaml` with its sheets in `assets/chipsets/lib/`. The project's version
+  replaces the library's everywhere in the project; references don't move. The library itself is
+  never written to.
+- In the editor library content is editable like the project's own: the **first change** (a
+  field, a rule, a saved image) makes the override – implicitly, no button. A book icon marks
+  library content, a book with a pencil a changed one; **Revert to library** removes the override
+  (and its images) and the library's version is back. **Duplicate** makes a separate entry with a
+  plain id.
 - Sound effects are the runtime's (public/assets/audio/sfx), so `sound: chest` keeps a plain name.
 - Saves made before projects existed don't load (the game hasn't shipped; the save version is
   bumped).
@@ -84,12 +93,10 @@ public/assets/               the runtime's own: system graphics (cursor, highlig
   valid and playable right away) or a **copy** of an existing project. Later export and
   import. The open project is remembered (and `?project=<id>` opens one); unsaved work is kept per
   project, so switching loses nothing.
-- Library content shows in every list with a *library* badge. Its forms are read-only with
-  **Copy to project**: an editable copy under a plain id (a free one), and the project's references
-  follow – by field (`src/content/refs.ts` knows which fields refer to which kind of content), so a
-  copied charset doesn't take the same-named face along. One undo step. Graphics and music bring
-  their file into the project's assets. (Content entries – heroes, items … – get the button with
-  their editor screens; the function is there.)
+- Library content shows in every list with a book icon and is edited like the project's own: the
+  first change makes an **override** under the same id (§2) – a book with a pencil marks it,
+  **Revert to library** removes it. Graphics and chipsets bring their images into the project's
+  assets (`<kind>/lib/`) with the override.
 - The project menu names the library version; **Move to library vN** checks that version first and
   lists what it lacks (entries or music the project refers to) – it only moves when nothing is
   missing.

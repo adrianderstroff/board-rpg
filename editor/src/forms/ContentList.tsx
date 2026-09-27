@@ -18,6 +18,8 @@ export interface ListEntry {
   group?: string;
   /** Unsaved changes. */
   dirty?: boolean;
+  /** A library entry the project has changed (its override, projects.md §2). */
+  changed?: boolean;
 }
 
 export interface NewOption {
@@ -83,7 +85,7 @@ export function ContentList({ entries, groups, selected, onSelect, searchKey, pl
                   {e.name}
                   {e.dirty && <span class="dirty"> ●</span>}
                 </span>
-                {lib(e.id) && <LibraryMark />}
+                {lib(e.id) && <LibraryMark changed={e.changed} />}
               </div>
             ))}
           </div>
@@ -95,13 +97,17 @@ export function ContentList({ entries, groups, selected, onSelect, searchKey, pl
 
 /** The inspector's buttons for an entry: Copy to project (library), Duplicate, Delete (the project's). */
 /** `used`: places that still refer to it – Delete waits until there are none (E9). */
-export function EntryActions({ id, onCopy, onDuplicate, onDelete, used = 0 }: { id: string; onCopy: () => void; onDuplicate: () => void; onDelete: () => void; used?: number }) {
+/**
+ * The inspector's buttons for an entry: Duplicate; Delete (the project's own, when nothing uses it);
+ * Revert to library (a library entry the project has changed, projects.md §2).
+ */
+export function EntryActions({ id, onDuplicate, onDelete, onRevert, changed, used = 0 }: { id: string; onDuplicate: () => void; onDelete: () => void; onRevert?: () => void; changed?: boolean; used?: number }) {
   const lib = id.startsWith("lib:");
   return (
     <div class="row wrap">
-      {lib && (
-        <button class="primary" title="An editable copy in the project; the project's references to it use the copy from then on" onClick={onCopy}>
-          Copy to project
+      {lib && changed && onRevert && (
+        <button title="Throw away the project's changes – the library's version is used again" onClick={() => confirm("Revert to the library's version? The project's changes to it are lost.") && onRevert()}>
+          Revert to library
         </button>
       )}
       <button title="A copy in the project, with a new id" onClick={onDuplicate}>

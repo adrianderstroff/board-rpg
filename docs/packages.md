@@ -472,3 +472,9 @@ Layering (see also [architecture](../CLAUDE.md)):
 ## G7 · New sheets ☑
 - ☑ New ▾ on Graphics: a blank board sprite (24 × 32 or 32 × 32 frames), battle sprite (6 hero poses or 4 creature poses), face, battle background – registered and opened in the pixel editor; New chipset (a plain ground block, empty decor sheet); starting from a library sheet = Copy to project; sheets grow by frames (tiles, decor, icons)
 - ☐ Later: removing image files nothing uses any more (Revert undoes the data, not images already written)
+
+# Library overrides (see [projects.md](projects.md) §2)
+
+## LO1 · Library content edited in place ☑
+- ☑ A project's version of a library entry under the same id – items, heroes, classes, enemies, abilities (`lib:<id>` in its data file), graphics (`graphics.yaml` + `assets/<kind>/lib/`), chipsets (`data/chipsets/lib/<id>.yaml` + both sheets); the loader layers them over the library's; references never move
+- ☑ Editor: library content is editable like the project's own – the first change (a field, a rule, a saved image) makes the override, one undo step; the book icon marks library content, a book with a pencil a changed one; Revert to library removes the override and its images; Copy to project and the read-only banners are gone

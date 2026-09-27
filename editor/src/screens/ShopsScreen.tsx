@@ -65,7 +65,6 @@ export function ShopsScreen({ project, openMap, goTo }: { project: Project; open
             <EntryActions
               id={current}
               used={usedIn(project, "shops", current)}
-              onCopy={() => {}}
               onDuplicate={() => add({ ...structuredClone(shops[current]), name: `${shops[current].name} copy` }, `Duplicate ${current}`)}
               onDelete={() => {
                 if (!confirm(`Delete ${shops[current].name} (${current})?`)) return;

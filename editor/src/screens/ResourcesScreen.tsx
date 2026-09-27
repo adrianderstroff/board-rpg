@@ -9,7 +9,7 @@ import { LibraryMark } from "../icons";
 import { putAsset, type Project } from "../project";
 import { RESOURCE_KINDS, resourceId, resourcesOf, sheetFor, type ResourceKind } from "../resources";
 import { MusicPreview } from "./MapsScreen";
-import { copyResourceToProject } from "../copyToProject";
+import { ensureGraphic, isOverridden, revertToLibrary } from "../overrides";
 import { TilesInspector, TilesMain, useTilesState } from "../graphics/TilesView";
 import { SystemInspector, SystemMain, useSystemState } from "../graphics/SystemView";
 import { NEW_SHEETS, newSheet } from "../graphics/newSheets";
@@ -131,7 +131,7 @@ export function ResourcesScreen({ project }: { project: Project }) {
                   <button key={r.id} class={`card ${selected === r.id ? "on" : ""}`} title={r.id} onClick={() => setSelected(r.id)}>
                     <Thumb graphics={db.graphics} kind={kind} id={r.id} />
                     <span class="name">{r.lib ? r.id.slice(4) : r.id}</span>
-                    {r.lib && <LibraryMark />}
+                    {r.lib && <LibraryMark changed={kind !== "music" && isOverridden(project, kind, r.id)} />}
                   </button>
                 ))}
             </div>
@@ -199,11 +199,16 @@ export function Thumb({ graphics, kind, id }: { graphics: GraphicsDb; kind: Reso
 }
 
 /** A resource's settings: the project's own can be adjusted or deleted, the library's are read-only. */
-function ResourceForm({ project, kind, id, onDeleted, onCopied }: { project: Project; kind: ResourceKind; id: string; onDeleted: () => void; onCopied: (id: string) => void }) {
+function ResourceForm({ project, kind, id, onDeleted }: { project: Project; kind: ResourceKind; id: string; onDeleted: () => void; onCopied: (id: string) => void }) {
   const db = project.content.db!;
   const lib = id.startsWith("lib:");
+  const changed = kind !== "music" && isOverridden(project, kind, id);
   const sheet = kind === "music" ? null : (db.graphics[kind][id] as Sheet);
-  const set = (field: string, v: unknown) => project.edit(GRAPHICS_FILE, `${id}: ${field}`, (doc) => doc.setIn([kind, id, field], v), `${kind}.${id}.${field}`);
+  /** A setting: a library graphic's first change makes the project's version (its image too). */
+  const set = async (field: string, v: unknown) => {
+    if (lib && kind !== "music") await ensureGraphic(project, kind, id);
+    project.edit(GRAPHICS_FILE, `${id}: ${field}`, (doc) => doc.setIn([kind, id, field], v), `${kind}.${id}.${field}`);
+  };
   const remove = async () => {
     if (!confirm(`Delete ${id} from the project? Content that uses it will show problems.`)) return;
     try {
@@ -221,26 +226,10 @@ function ResourceForm({ project, kind, id, onDeleted, onCopied }: { project: Pro
   };
   return (
     <div class="resource-form">
-      <h3>{lib ? id.slice(4) : id}</h3>
-      {lib && (
-        <>
-          <p class="hint">Library content ({project.info.library}) – read-only. Referenced as {id}.</p>
-          <div class="row">
-            <button
-              title="An editable copy in the project; the project's references to it use the copy from then on"
-              onClick={async () => {
-                try {
-                  onCopied(await copyResourceToProject(project, kind, id));
-                } catch (e) {
-                  alert((e as Error).message);
-                }
-              }}
-            >
-              Copy to project
-            </button>
-          </div>
-        </>
-      )}
+      <h3>
+        {lib ? id.slice(4) : id}
+        {lib && <LibraryMark changed={changed} />}
+      </h3>
       {kind === "music" ? (
         <Field label="Listen">
           <MusicPreview src={assetUrl(db.musicPath(id))} />
@@ -251,26 +240,15 @@ function ResourceForm({ project, kind, id, onDeleted, onCopied }: { project: Pro
             <img src={assetUrl(sheet!.image)} alt="" />
           </div>
           <div class="row">
-            <button class="primary" title={lib ? "Draw it – saving makes an editable copy in the project" : "Draw it in the pixel editor"} onClick={() => openImage(graphicTarget(project, kind, id, onCopied))}>
+            <button class="primary" title="Draw it in the pixel editor" onClick={() => openImage(graphicTarget(project, kind, id))}>
               ✎ Edit image
             </button>
           </div>
-          <Field label="Image">
-            <span class="dim">{sheet!.image.replace(lib ? project.roots.library : project.roots.project, "")}</span>
-          </Field>
           {(kind === "charsets" || kind === "battlers") && (
             <Field label="Frame">
               <div class="row">
-                {lib ? (
-                  <span>
-                    {sheet!.frameWidth} × {sheet!.frameHeight}
-                  </span>
-                ) : (
-                  <>
-                    <Num value={sheet!.frameWidth} min={1} width={56} onChange={(v) => set("frameWidth", v ?? 1)} /> ×
-                    <Num value={sheet!.frameHeight} min={1} width={56} onChange={(v) => set("frameHeight", v ?? 1)} />
-                  </>
-                )}
+                <Num value={sheet!.frameWidth} min={1} width={56} onChange={(v) => void set("frameWidth", v ?? 1)} /> ×
+                <Num value={sheet!.frameHeight} min={1} width={56} onChange={(v) => void set("frameHeight", v ?? 1)} />
               </div>
             </Field>
           )}
@@ -281,16 +259,19 @@ function ResourceForm({ project, kind, id, onDeleted, onCopied }: { project: Pro
           )}
           {kind === "battlebacks" && (
             <Field label="Floor" hint="The image row where the ground starts (the close-up stands villagers on it).">
-              {lib ? <span>{sheet!.floor ?? "–"}</span> : <Num value={sheet!.floor} min={0} width={70} onChange={(v) => set("floor", v)} />}
+              <Num value={sheet!.floor} min={0} width={70} onChange={(v) => void set("floor", v)} />
             </Field>
           )}
         </>
       )}
-      {!lib && (
-        <div class="row end">
-          <button onClick={remove}>Delete from the project</button>
-        </div>
-      )}
+      <div class="row end">
+        {!lib && <button onClick={remove}>Delete from the project</button>}
+        {changed && (
+          <button title="Throw away the project's changes – the library's version is used again" onClick={() => confirm("Revert to the library's version? The project's changes to it are lost.") && void revertToLibrary(project, kind, id)}>
+            Revert to library
+          </button>
+        )}
+      </div>
     </div>
   );
 }

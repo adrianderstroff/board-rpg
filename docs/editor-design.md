@@ -357,8 +357,8 @@ and **Delete group** (Del; one undo step). Esc clears the selection. A single en
 Heroes, Enemies and NPCs are three screens with the Items layout (§8): the list on the left
 (search, **New**, the library's marked), the form in the middle as boxes, and the inspector showing
 the character as the game does – the board sprite walking in all four facings, the battle sprite's
-poses, the face at its sizes, the stats – with **Duplicate**, **Delete** and, for the library's,
-**Copy to project**. Graphics are picked from a window of thumbnails (the Resources, §6 of
+poses, the face at its sizes, the stats – with **Duplicate**, **Delete** and, for the library's
+changed in the project, **Revert to library** (projects.md §2). Graphics are picked from a window of thumbnails (the Resources, §6 of
 projects.md). Ids are made from the name when the entry is made.
 
 ### 7.1 Heroes
@@ -454,8 +454,8 @@ it is the derived one; once overridden it stays (the field says "automatic" or o
 with **New ▾** (Empty or a preset) at the top; the selected item's form fills the middle – the
 basics, then one box per section with a switch to add or remove it; the inspector shows the item
 as the game does (icon, name, category, price, text) and what it does in words ("Battle: one ally –
-heal 50 HP"), with **Duplicate** and **Delete**. Library items are read-only: the form is shown
-greyed out with **Copy to project** (projects.md §2). The id is set when the item is made (from its
+heal 50 HP"), with **Duplicate** and **Delete**. Library items are edited in place: the first change
+makes the project's override (projects.md §2), **Revert to library** undoes it. The id is set when the item is made (from its
 name); renaming comes with E9. Board ranges and areas are picked from the patterns, with a small
 grid preview of the cells they reach from the user (an inline pattern shows as "custom", edited in
 YAML).
@@ -565,7 +565,7 @@ Order: E1 → E2 → E3 → E4, then E5–E8 in any order, E9 alongside.
    turn, right mouse erases (holes, no decor, delete); sections as icons in the top bar; inspector
    tabs Edit and Info; Quick Play edited only through its entity (user decisions).
 10. **Content screens share one layout** (E5, E6): list · form of boxes · the entry as the game shows
-    it; library entries read-only with Copy to project; a hero whose class is shared gets **New
+    it; library entries edited in place as overrides (projects.md §2); a hero whose class is shared gets **New
     class** (a copy for this hero) rather than editing the class under the others' feet.
 11. **Chances are percentages in the editor** and fractions in the files (0.25 = 25 %).
 12. **Edits patch the YAML** (E7): a form writes only the values that changed – a changed text keeps

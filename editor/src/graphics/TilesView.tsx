@@ -8,10 +8,11 @@ import { Icon } from "../icons";
 import { IsoCanvas, type LiveSheet } from "../map/IsoCanvas";
 import { frameStyle, loadImage } from "../map/sprites";
 import { usePersistentState } from "../persist";
+import { isOverridden, revertToLibrary } from "../overrides";
 import { openImage } from "../pixel/target";
 import { signsTarget, tileTarget } from "../pixel/targets";
 import type { Project } from "../project";
-import { addPiece, chipsetData, copyChipsetToProject, deletePiece, importChipset, newChipset, isOwnChipset, pieceUsers, PREVIEW_MAP, previewRaw, setPiece, type PieceKind } from "./chipsets";
+import { addPiece, chipsetData, deletePiece, importChipset, newChipset, isOwnChipset, pieceUsers, PREVIEW_MAP, previewRaw, setPiece, type PieceKind } from "./chipsets";
 
 /**
  * Tiles (graphics.md §4): a chipset's terrains and decor with their rules, and a little board that
@@ -74,15 +75,19 @@ export function TilesMain({ project, state }: { project: Project; state: TilesSt
           {ids.map((id) => (
             <option key={id} value={id}>
               {plain(id)}
-              {id.startsWith("lib:") ? " (library)" : ""}
+              {id.startsWith("lib:") ? (isOverridden(project, "chipsets", id) ? " (library, changed)" : " (library)") : ""}
             </option>
           ))}
         </select>
         <input class="search" placeholder="Search tiles…" value={filter} onInput={(e) => setFilter(e.currentTarget.value)} />
         <span class="spacer" />
-        {!own && (
-          <button disabled={!!busy} title="An editable copy of both sheets and the rules; the project's maps use the copy from then on" onClick={() => run("copy", async () => state.setChip(await copyChipsetToProject(project, chipId)))}>
-            {busy === "copy" ? "Copying…" : "Copy to project"}
+        {!own && isOverridden(project, "chipsets", chipId) && (
+          <button
+            disabled={!!busy}
+            title="Throw away the project's changes to this chipset – the library's version is used again"
+            onClick={() => confirm("Revert the chipset to the library's version? The project's changes to it are lost.") && void run("revert", () => revertToLibrary(project, "chipsets", chipId))}
+          >
+            Revert to library
           </button>
         )}
         {signsTarget(project) && (
@@ -119,7 +124,7 @@ export function TilesMain({ project, state }: { project: Project; state: TilesSt
                 <span class="name">{t.name}</span>
               </button>
             ))}
-        {own && (
+        {(
           <button class="card add-card" disabled={!!busy} title="A new block: a copy of the selected terrain (or blank) in a new frame of the sheet" onClick={() => run("terrain", async () => state.setPiece({ kind: "terrain", id: await addPiece(project, chipId, "terrain", sel?.kind === "terrain" ? sel.id : undefined) }))}>
             <span class="plus">+</span>
             <span class="name">{sel?.kind === "terrain" ? "Copy of the selected" : "New terrain"}</span>
@@ -137,7 +142,7 @@ export function TilesMain({ project, state }: { project: Project; state: TilesSt
                 <span class="name">{d.name}</span>
               </button>
             ))}
-        {own && (
+        {(
           <button class="card add-card" disabled={!!busy} title="A new object: a copy of the selected decor (or blank) in a new frame of the sheet" onClick={() => run("decor", async () => state.setPiece({ kind: "decor", id: await addPiece(project, chipId, "decor", sel?.kind === "decor" ? sel.id : undefined) }))}>
             <span class="plus">+</span>
             <span class="name">{sel?.kind === "decor" ? "Copy of the selected" : "New decor"}</span>
@@ -217,14 +222,13 @@ export function TilePreview({ project, chipId, piece, live }: { project: Project
 function TerrainForm({ project, chipId, id }: { project: Project; chipId: string; id: string }) {
   const raw = project.content.raw;
   const t = chipsetData(project, chipId).terrains[id];
-  const own = isOwnChipset(chipId);
-  const set = (next: TerrainDef, label: string, group?: string) => own && setPiece(project, chipId, "terrain", id, t, next, `${t.name}: ${label}`, group);
+  const set = (next: TerrainDef, label: string, group?: string) => void setPiece(project, chipId, "terrain", id, t, next, `${t.name}: ${label}`, group);
   const terrains: [string, string][] = Object.entries(chipsetData(project, chipId).terrains)
     .filter(([tid]) => tid !== id)
     .map(([tid, x]) => [tid, `${x.name} (${tid})`]);
   const [ship, setShip] = useState(!!(t.flare || t.underlay || t.bulwark));
   return (
-    <fieldset disabled={!own} class="tile-form">
+    <fieldset class="tile-form">
       <h3>
         {t.name} <span class="dim">{id}</span>
       </h3>
@@ -304,10 +308,9 @@ function TerrainForm({ project, chipId, id }: { project: Project; chipId: string
 
 function DecorForm({ project, chipId, id }: { project: Project; chipId: string; id: string }) {
   const d = chipsetData(project, chipId).decor[id];
-  const own = isOwnChipset(chipId);
-  const set = (next: DecorDef, label: string, group?: string) => own && setPiece(project, chipId, "decor", id, d, next, `${d.name}: ${label}`, group);
+  const set = (next: DecorDef, label: string, group?: string) => void setPiece(project, chipId, "decor", id, d, next, `${d.name}: ${label}`, group);
   return (
-    <fieldset disabled={!own} class="tile-form">
+    <fieldset class="tile-form">
       <h3>
         {d.name} <span class="dim">{id}</span>
       </h3>

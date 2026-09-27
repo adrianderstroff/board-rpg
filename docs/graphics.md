@@ -66,8 +66,9 @@ library's or the game's (read-only).
 - **Import** as now (PNG; the layout is worked out from the size), now for every kind – a tile
   sheet comes with a chipset definition (§4), a game image must have the runtime image's size.
 - **New** makes a blank sheet with the kind's layout (or a copy of a library sheet to start from).
-- **Edit** opens the pixel editor (§5). A library or game image is copied into the project first
-  (Copy to project – its references follow, as for all content).
+- **Edit** opens the pixel editor (§5). Saving a library image makes the project's override of it
+  (projects.md §2 – same id, its uses see the change); a game image becomes the project's copy
+  (§2). **Revert to library** / **to the game's** brings the original back.
 - The inspector shows the kind's preview (§1) and the image's settings (frame size, floor …).
 
 ## 4. Tiles (chipsets)
@@ -84,8 +85,9 @@ shows all its terrains and decor as thumbnails; a selected one gets:
   through the four view rotations with the game's renderer; decor stands on a cell.
 - **New terrain / New decor** adds a piece (a new frame at the end of the sheet, blank or copied
   from another piece) – then Edit draws it.
-- A library chipset is read-only; **Copy to project** copies both sheets and the definition (maps of
-  the project that use it follow). Maps pick the chipset in their properties.
+- A library chipset is edited in place: the first change of a rule or a sheet makes the project's
+  override (`data/chipsets/lib/<id>.yaml`, both sheets in `assets/chipsets/lib/`); maps keep using
+  `lib:<id>` and see the change. Maps pick the chipset in their properties.
 
 ## 5. The pixel editor
 

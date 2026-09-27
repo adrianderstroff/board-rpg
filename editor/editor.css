@@ -593,3 +593,4 @@ details.ship summary { cursor: pointer; color: var(--dim); }
 .px-pane-view .row { flex-wrap: nowrap; }
 .px-side .tile-preview .tile-canvas { height: 260px; }
 .resources-head .spacer { flex: 1; }
+.lib-mark.changed { color: var(--accent); }
