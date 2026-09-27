@@ -601,5 +601,5 @@ details.ship summary { cursor: pointer; color: var(--dim); }
 .preview-edit:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 .preview-image { position: relative; display: inline-block; max-width: 100%; }
 .preview-image img { display: block; }
-.floor-line { position: absolute; left: 0; right: 0; border-top: 2px dashed #2ce8f5; pointer-events: none; }
+.floor-line { position: absolute; left: 0; right: 0; border-top: 1px dashed #ffffff; pointer-events: none; }
 .tile-inspector > h3 .dim, .item-card > h3 .dim { font-weight: normal; font-size: 12px; margin-left: 6px; }
