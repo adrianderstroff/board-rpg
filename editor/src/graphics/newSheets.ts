@@ -26,7 +26,7 @@ export const NEW_SHEETS: NewSheet[] = [
   { kind: "battlers", label: "Battle sprite – hero or humanoid (6 poses, 32 × 32)", width: 192, height: 32 },
   { kind: "battlers", label: "Battle sprite – creature (4 poses, 48 × 48)", width: 192, height: 48 },
   { kind: "faces", label: "Face (48 × 48)", width: 48, height: 48, fill: "#3a4466" },
-  { kind: "battlebacks", label: "Battle background (480 × 190)", width: 480, height: 190, fill: "#5a6988" },
+  { kind: "battlebacks", label: "Background (480 × 190)", width: 480, height: 190, fill: "#5a6988" },
 ];
 
 /** Makes a blank sheet in the project and registers it; returns its id. */

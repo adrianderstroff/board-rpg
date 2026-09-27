@@ -13,6 +13,7 @@ import { ensureGraphic, isOverridden, revertToLibrary } from "../overrides";
 import { TilesInspector, TilesMain, useTilesState } from "../graphics/TilesView";
 import { SystemInspector, SystemMain, useSystemState } from "../graphics/SystemView";
 import { NEW_SHEETS, newSheet } from "../graphics/newSheets";
+import { PreviewBox } from "../forms/PreviewBox";
 import { openImage } from "../pixel/target";
 import { graphicTarget } from "../pixel/targets";
 
@@ -204,6 +205,7 @@ function ResourceForm({ project, kind, id, onDeleted }: { project: Project; kind
   const lib = id.startsWith("lib:");
   const changed = kind !== "music" && isOverridden(project, kind, id);
   const sheet = kind === "music" ? null : (db.graphics[kind][id] as Sheet);
+  const [height, setHeight] = useState(0);
   /** A setting: a library graphic's first change makes the project's version (its image too). */
   const set = async (field: string, v: unknown) => {
     if (lib && kind !== "music") await ensureGraphic(project, kind, id);
@@ -236,14 +238,15 @@ function ResourceForm({ project, kind, id, onDeleted }: { project: Project; kind
         </Field>
       ) : (
         <>
-          <div class="resource-preview">
-            <img src={assetUrl(sheet!.image)} alt="" />
-          </div>
-          <div class="row">
-            <button class="primary" title="Draw it in the pixel editor" onClick={() => openImage(graphicTarget(project, kind, id))}>
-              ✎ Edit image
-            </button>
-          </div>
+          <PreviewBox onEdit={() => openImage(graphicTarget(project, kind, id))}>
+            <div class="resource-preview">
+              <div class="preview-image">
+                <img src={assetUrl(sheet!.image)} alt="" onLoad={(e) => setHeight(e.currentTarget.naturalHeight)} />
+                {/* a background's floor: where characters stand in close-ups */}
+                {kind === "battlebacks" && sheet!.floor !== undefined && height ? <span class="floor-line" style={{ top: `${(sheet!.floor / height) * 100}%` }} title={`Floor: row ${sheet!.floor}`} /> : null}
+              </div>
+            </div>
+          </PreviewBox>
           {(kind === "charsets" || kind === "battlers") && (
             <Field label="Frame">
               <div class="row">
@@ -258,7 +261,7 @@ function ResourceForm({ project, kind, id, onDeleted }: { project: Project; kind
             </Field>
           )}
           {kind === "battlebacks" && (
-            <Field label="Floor" hint="The image row where the ground starts (the close-up stands villagers on it).">
+            <Field label="Floor" hint="Used to place characters in close-ups.">
               <Num value={sheet!.floor} min={0} width={70} onChange={(v) => void set("floor", v)} />
             </Field>
           )}

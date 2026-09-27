@@ -5,6 +5,7 @@ import { openImage } from "../pixel/target";
 import { dropSystemCopy, ownsSystem, SYSTEM_META, systemImagePath, systemTarget } from "../pixel/system";
 import { signsTarget } from "../pixel/targets";
 import type { Project } from "../project";
+import { PreviewBox } from "../forms/PreviewBox";
 
 /**
  * Game images (graphics.md §2): the runtime's own images – icons, the title, the window skin, the
@@ -54,12 +55,12 @@ export function SystemInspector({ project, state }: { project: Project; state: S
     return (
       <div class="item-card">
         <h3>Wall signs</h3>
-        <p class="hint">Lettering the board paints onto wall faces next to doors – 48 × 14 frames.</p>
-        {t && (
-          <button class="primary" onClick={() => openImage(t)}>
-            ✎ Edit image
-          </button>
-        )}
+        <PreviewBox onEdit={t ? () => openImage(t) : undefined}>
+          <div class="resource-preview">
+            <img src={assetUrl(raw.graphics.wallSigns!.image)} alt="" />
+          </div>
+        </PreviewBox>
+        <p class="hint">Lettering the board paints onto wall faces next to doors.</p>
       </div>
     );
   }
@@ -68,15 +69,14 @@ export function SystemInspector({ project, state }: { project: Project; state: S
   return (
     <div class="item-card">
       <h3>{m.label}</h3>
+      <PreviewBox onEdit={() => openImage(systemTarget(project, sel))}>
+        <div class="resource-preview">
+          <img src={assetUrl(systemImagePath(sel))} alt="" />
+        </div>
+      </PreviewBox>
       <p class="hint">{m.hint}</p>
-      <div class="resource-preview">
-        <img src={assetUrl(systemImagePath(sel))} alt="" />
-      </div>
       
       <div class="row wrap">
-        <button class="primary" title={own ? "Draw it" : "Draw it – saving makes the project's own copy"} onClick={() => openImage(systemTarget(project, sel))}>
-          ✎ Edit image
-        </button>
         {own && (
           <button
             title="Throw away the project's version – the game's own image is used again"

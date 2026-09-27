@@ -8,6 +8,7 @@ import { Icon } from "../icons";
 import { IsoCanvas, type LiveSheet } from "../map/IsoCanvas";
 import { frameStyle, loadImage } from "../map/sprites";
 import { usePersistentState } from "../persist";
+import { PreviewBox } from "../forms/PreviewBox";
 import { isOverridden, revertToLibrary } from "../overrides";
 import { openImage } from "../pixel/target";
 import { signsTarget, tileTarget } from "../pixel/targets";
@@ -163,12 +164,10 @@ export function TilesInspector({ project, state }: { project: Project; state: Ti
   if (!sel || !piece) return <p class="hint">Select a terrain block or a decor object to see it on a board and set what it does – whether it can be walked on, water, fire, ice.</p>;
   return (
     <div class="tile-inspector">
-      <TilePreview project={project} chipId={chipId} piece={sel} />
-      <div class="row">
-        <button class="primary" title={isOwnChipset(chipId) ? "Draw it in the pixel editor" : "Draw it – saving copies the chipset into the project"} onClick={() => openImage(tileTarget(project, chipId, sel.kind, piece.frame, (id) => state.setChip(id)))}>
-          ✎ Draw {sel.kind === "terrain" ? "this block" : "this object"}
-        </button>
-      </div>
+      <h3>
+        {piece.name} <span class="dim">{sel.id}</span>
+      </h3>
+      <TilePreview project={project} chipId={chipId} piece={sel} onEdit={() => openImage(tileTarget(project, chipId, sel.kind, piece.frame))} />
       {sel.kind === "terrain" ? <TerrainForm project={project} chipId={chipId} id={sel.id} /> : <DecorForm project={project} chipId={chipId} id={sel.id} />}
       <PieceActions project={project} chipId={chipId} piece={sel} onDeleted={() => state.setPiece(null)} />
     </div>
@@ -176,7 +175,7 @@ export function TilesInspector({ project, state }: { project: Project; state: Ti
 }
 
 /** The piece on a little board (turnable); `live` shows a sheet being drawn instead of the saved one. */
-export function TilePreview({ project, chipId, piece, live }: { project: Project; chipId: string; piece: PieceRef; live?: LiveSheet | null }) {
+export function TilePreview({ project, chipId, piece, live, onEdit }: { project: Project; chipId: string; piece: PieceRef; live?: LiveSheet | null; onEdit?: () => void }) {
   const [rotation, setRotation] = useState(0);
   const version = project.version;
   const db = useMemo(() => {
@@ -190,6 +189,7 @@ export function TilePreview({ project, chipId, piece, live }: { project: Project
   const none = () => undefined;
   return (
     <div class="tile-preview">
+      <PreviewBox onEdit={onEdit} editTitle={`Draw this ${piece.kind === "terrain" ? "block" : "object"} in the pixel editor`}>
       <div class="tile-canvas">
         <IsoCanvas
           key={`${chipId}:${assetsVersion()}`}
@@ -206,6 +206,7 @@ export function TilePreview({ project, chipId, piece, live }: { project: Project
           live={live}
         />
       </div>
+      </PreviewBox>
       <div class="row">
         <button class="icon-button" title="Turn the view left" onClick={() => setRotation(rotation - 1)}>
           <Icon name="turnLeft" />
@@ -229,9 +230,6 @@ function TerrainForm({ project, chipId, id }: { project: Project; chipId: string
   const [ship, setShip] = useState(!!(t.flare || t.underlay || t.bulwark));
   return (
     <fieldset class="tile-form">
-      <h3>
-        {t.name} <span class="dim">{id}</span>
-      </h3>
       <Field label="Name">
         <Text value={t.name} onChange={(v) => set({ ...t, name: v ?? "" }, "name", "name")} />
       </Field>
@@ -311,9 +309,6 @@ function DecorForm({ project, chipId, id }: { project: Project; chipId: string; 
   const set = (next: DecorDef, label: string, group?: string) => void setPiece(project, chipId, "decor", id, d, next, `${d.name}: ${label}`, group);
   return (
     <fieldset class="tile-form">
-      <h3>
-        {d.name} <span class="dim">{id}</span>
-      </h3>
       <Field label="Name">
         <Text value={d.name} onChange={(v) => set({ ...d, name: v ?? "" }, "name", "name")} />
       </Field>

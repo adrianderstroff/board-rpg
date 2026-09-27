@@ -30,7 +30,7 @@ export function graphicTarget(project: Project, kind: GraphicKind, id: string, o
   const lib = id.startsWith("lib:");
   const base = {
     key: `${kind}:${id}`,
-    title: `${{ charsets: "Board sprite", battlers: "Battle sprite", faces: "Face", battlebacks: "Battle background" }[kind]} ${plain(id)}`,
+    title: `${{ charsets: "Board sprite", battlers: "Battle sprite", faces: "Face", battlebacks: "Background" }[kind]} ${plain(id)}`,
     image: sheet.image,
     context: { id, floor: sheet.floor },
     async save(png: Blob): Promise<ImageTarget | void> {

@@ -11,7 +11,7 @@ export const RESOURCE_KINDS: { id: ResourceKind; label: string; hint?: string }[
   { id: "charsets", label: "Charsets" },
   { id: "battlers", label: "Battlers", hint: "One row of square frames: heroes 6 (idle, breathe, attack, cast, hurt, KO), enemies 4 (idle, idle 2, attack, hurt)." },
   { id: "faces", label: "Faces", hint: "One portrait, 48×48." },
-  { id: "battlebacks", label: "Battle backgrounds", hint: "480×190; the ground where the combatants stand starts at the floor row (about y 110)." },
+  { id: "battlebacks", label: "Backgrounds", hint: "480×190; the ground where the combatants stand starts at the floor row (about y 110)." },
   { id: "music", label: "Music", hint: "A WAV file that loops as a whole." },
 ];
 
